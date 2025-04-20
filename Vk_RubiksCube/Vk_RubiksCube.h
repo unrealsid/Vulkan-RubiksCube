@@ -41,9 +41,7 @@ struct RenderData
 
     std::vector<VkImage> swapchain_images;
     std::vector<VkImageView> swapchain_image_views;
-    std::vector<VkFramebuffer> framebuffers;
 
-    VkRenderPass render_pass;
     VkPipelineLayout pipeline_layout;
     VkPipeline graphics_pipeline;
 
@@ -62,13 +60,23 @@ void destroy_window_glfw(GLFWwindow* window);
 VkSurfaceKHR create_surface_glfw(VkInstance instance, GLFWwindow* window, VkAllocationCallbacks* allocator = nullptr);
 
 int device_initialization(Init& init);
+VkPhysicalDeviceDynamicRenderingFeaturesKHR create_dynamic_rendering_features();
+VkRenderingInfoKHR rendering_info(VkRect2D render_area = {}, uint32_t color_attachment_count = 0, const VkRenderingAttachmentInfoKHR *pColorAttachments = VK_NULL_HANDLE, VkRenderingFlagsKHR flags = 0);
+void image_layout_transition(VkCommandBuffer command_buffer,
+                                VkImage image,
+                                VkPipelineStageFlags src_stage_mask,
+                                VkPipelineStageFlags dst_stage_mask,
+                                VkAccessFlags src_access_mask,
+                                VkAccessFlags dst_access_mask,
+                                VkImageLayout old_layout,
+                                VkImageLayout new_layout,
+                                const VkImageSubresourceRange &subresource_range);
+
 int create_swapchain(Init& init);
 int get_queues(Init& init, RenderData& data);
-int create_render_pass(Init& init, RenderData& data);
 std::vector<char> readFile(const std::string& filename);
 VkShaderModule createShaderModule(Init& init, const std::vector<char>& code);
 int create_graphics_pipeline(Init& init, RenderData& data);
-int create_framebuffers(Init& init, RenderData& data);
 int create_command_pool(Init& init, RenderData& data);
 int create_command_buffers(Init& init, RenderData& data);
 int create_sync_objects(Init& init, RenderData& data);

@@ -38,13 +38,31 @@ VkSurfaceKHR create_surface_glfw(VkInstance instance, GLFWwindow* window, VkAllo
     return surface;
 }
 
+VkPhysicalDeviceDynamicRenderingFeaturesKHR create_dynamic_rendering_features()
+{
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features{};
+    dynamic_rendering_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+    dynamic_rendering_features.pNext = nullptr; // Set to another feature structure if chaining is needed
+
+    // Enable the feature
+    dynamic_rendering_features.dynamicRendering = VK_TRUE;
+
+    return dynamic_rendering_features;
+}
+
 int device_initialization(Init& init)
 {
     init.window = create_window_glfw("Vulkan Triangle", true);
 
     vkb::InstanceBuilder instance_builder;
-    auto instance_ret = instance_builder.use_default_debug_messenger().request_validation_layers().build();
-    if (!instance_ret) {
+    auto instance_ret = instance_builder.
+        set_minimum_instance_version(VK_API_VERSION_1_4)
+        .use_default_debug_messenger()
+        .request_validation_layers()
+        .build();
+    
+    if (!instance_ret)
+    {
         std::cout << instance_ret.error().message() << "\n";
         return -1;
     }
@@ -55,16 +73,28 @@ int device_initialization(Init& init)
     init.surface = create_surface_glfw(init.instance, init.window);
 
     vkb::PhysicalDeviceSelector phys_device_selector(init.instance);
-    auto phys_device_ret = phys_device_selector.set_surface(init.surface).select();
-    if (!phys_device_ret) {
+    auto phys_device_ret = phys_device_selector
+        .add_required_extension(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
+        .set_surface(init.surface).select();
+
+    auto dynamic_rendering_features = create_dynamic_rendering_features();
+    
+    if (!phys_device_ret)
+    {
         std::cout << phys_device_ret.error().message() << "\n";
         return -1;
     }
     vkb::PhysicalDevice physical_device = phys_device_ret.value();
 
     vkb::DeviceBuilder device_builder{ physical_device };
-    auto device_ret = device_builder.build();
-    if (!device_ret) {
+    auto device_ret = device_builder
+        .add_pNext(&dynamic_rendering_features)
+        .build();
+    
+    if (!device_ret)
+    {
         std::cout << device_ret.error().message() << "\n";
         return -1;
     }
@@ -77,7 +107,6 @@ int device_initialization(Init& init)
 
 int create_swapchain(Init& init)
 {
-
     vkb::SwapchainBuilder swapchain_builder{ init.device };
     auto swap_ret = swapchain_builder.set_old_swapchain(init.swapchain).build();
     if (!swap_ret)
@@ -90,7 +119,8 @@ int create_swapchain(Init& init)
     return 0;
 }
 
-int get_queues(Init& init, RenderData& data) {
+int get_queues(Init& init, RenderData& data)
+{
     auto gq = init.device.get_queue(vkb::QueueType::graphics);
     if (!gq.has_value()) {
         std::cout << "failed to get graphics queue: " << gq.error().message() << "\n";
@@ -104,49 +134,6 @@ int get_queues(Init& init, RenderData& data) {
         return -1;
     }
     data.present_queue = pq.value();
-    return 0;
-}
-
-int create_render_pass(Init& init, RenderData& data)
-{
-    VkAttachmentDescription color_attachment = {};
-    color_attachment.format = init.swapchain.image_format;
-    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    VkAttachmentReference color_attachment_ref = {};
-    color_attachment_ref.attachment = 0;
-    color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription subpass = {};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &color_attachment_ref;
-
-    VkSubpassDependency dependency = {};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-    VkRenderPassCreateInfo render_pass_info = {};
-    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    render_pass_info.attachmentCount = 1;
-    render_pass_info.pAttachments = &color_attachment;
-    render_pass_info.subpassCount = 1;
-    render_pass_info.pSubpasses = &subpass;
-    render_pass_info.dependencyCount = 1;
-    render_pass_info.pDependencies = &dependency;
-    if (init.disp.createRenderPass(&render_pass_info, nullptr, &data.render_pass) != VK_SUCCESS) {
-        std::cout << "failed to create render pass\n";
-        return -1; // failed to create render pass!
-    }
     return 0;
 }
 
@@ -183,13 +170,15 @@ VkShaderModule createShaderModule(Init& init, const std::vector<char>& code) {
     return shaderModule;
 }
 
-int create_graphics_pipeline(Init& init, RenderData& data) {
+int create_graphics_pipeline(Init& init, RenderData& data) 
+{
     auto vert_code = readFile(std::string(SHADER_PATH) + "/triangle.vert.spv");
     auto frag_code = readFile(std::string(SHADER_PATH) + "/triangle.frag.spv");
 
     VkShaderModule vert_module = createShaderModule(init, vert_code);
     VkShaderModule frag_module = createShaderModule(init, frag_code);
-    if (vert_module == VK_NULL_HANDLE || frag_module == VK_NULL_HANDLE) {
+    if (vert_module == VK_NULL_HANDLE || frag_module == VK_NULL_HANDLE) 
+    {
         std::cout << "failed to create shader module\n";
         return -1; // failed to create shader modules
     }
@@ -235,6 +224,7 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     viewport_state.pViewports = &viewport;
     viewport_state.scissorCount = 1;
     viewport_state.pScissors = &scissor;
+
     VkPipelineRasterizationStateCreateInfo rasterizer = {};
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable = VK_FALSE;
@@ -270,7 +260,8 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipeline_layout_info.setLayoutCount = 0;
     pipeline_layout_info.pushConstantRangeCount = 0;
-    if (init.disp.createPipelineLayout(&pipeline_layout_info, nullptr, &data.pipeline_layout) != VK_SUCCESS) {
+    if (init.disp.createPipelineLayout(&pipeline_layout_info, nullptr, &data.pipeline_layout) != VK_SUCCESS) 
+    {
         std::cout << "failed to create pipeline layout\n";
         return -1; // failed to create pipeline layout
     }
@@ -281,8 +272,14 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     dynamic_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
     dynamic_info.pDynamicStates = dynamic_states.data();
 
+    VkPipelineRenderingCreateInfoKHR pipeline_create{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+    pipeline_create.pNext = VK_NULL_HANDLE;
+    pipeline_create.colorAttachmentCount = 1;
+    pipeline_create.pColorAttachmentFormats = &init.swapchain.image_format;
+   
     VkGraphicsPipelineCreateInfo pipeline_info = {};
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipeline_info.pNext = &pipeline_create; //Set for dynamic Rendering
     pipeline_info.stageCount = 2;
     pipeline_info.pStages = shader_stages;
     pipeline_info.pVertexInputState = &vertex_input_info;
@@ -293,7 +290,7 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     pipeline_info.pColorBlendState = &color_blending;
     pipeline_info.pDynamicState = &dynamic_info;
     pipeline_info.layout = data.pipeline_layout;
-    pipeline_info.renderPass = data.render_pass;
+    pipeline_info.renderPass = VK_NULL_HANDLE; //set to nullptr for dynamic rendering
     pipeline_info.subpass = 0;
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -307,31 +304,8 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     return 0;
 }
 
-int create_framebuffers(Init& init, RenderData& data) {
-    data.swapchain_images = init.swapchain.get_images().value();
-    data.swapchain_image_views = init.swapchain.get_image_views().value();
-
-    data.framebuffers.resize(data.swapchain_image_views.size());
-    for (size_t i = 0; i < data.swapchain_image_views.size(); i++) {
-        VkImageView attachments[] = { data.swapchain_image_views[i] };
-        VkFramebufferCreateInfo framebuffer_info = {};
-        framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebuffer_info.renderPass = data.render_pass;
-        framebuffer_info.attachmentCount = 1;
-        framebuffer_info.pAttachments = attachments;
-        framebuffer_info.width = init.swapchain.extent.width;
-        framebuffer_info.height = init.swapchain.extent.height;
-        framebuffer_info.layers = 1;
-
-        if (init.disp.createFramebuffer(&framebuffer_info, nullptr, &data.framebuffers[i]) != VK_SUCCESS) {
-            return -1;
-            // failed to create framebuffer
-        }
-    }
-    return 0;
-}
-
-int create_command_pool(Init& init, RenderData& data) {
+int create_command_pool(Init& init, RenderData& data) 
+{
     VkCommandPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     pool_info.queueFamilyIndex = init.device.get_queue_index(vkb::QueueType::graphics).value();
@@ -345,7 +319,7 @@ int create_command_pool(Init& init, RenderData& data) {
 
 int create_command_buffers(Init& init, RenderData& data)
 {
-    data.command_buffers.resize(data.framebuffers.size());
+    data.command_buffers.resize(init.swapchain.image_count);
 
     VkCommandBufferAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -353,36 +327,66 @@ int create_command_buffers(Init& init, RenderData& data)
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = (uint32_t)data.command_buffers.size();
 
-    if (init.disp.allocateCommandBuffers(&allocInfo, data.command_buffers.data()) != VK_SUCCESS) {
+    if (init.disp.allocateCommandBuffers(&allocInfo, data.command_buffers.data()) != VK_SUCCESS)
+    {
         return -1;
         // failed to allocate command buffers;
     }
+    
+    VkClearValue clear_values = {{0.0f, 0.0f, 0.0f, 0.0f}};
 
-    for (size_t i = 0; i < data.command_buffers.size(); i++) {
+    for (size_t i = 0; i < data.command_buffers.size(); i++)
+    {
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-        if (init.disp.beginCommandBuffer(data.command_buffers[i], &begin_info) != VK_SUCCESS) {
+        if (init.disp.beginCommandBuffer(data.command_buffers[i], &begin_info) != VK_SUCCESS)
+        {
             return -1;
             // failed to begin recording command buffer
         }
 
-        VkRenderPassBeginInfo render_pass_info = {};
-        render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        render_pass_info.renderPass = data.render_pass;
-        render_pass_info.framebuffer = data.framebuffers[i];
-        render_pass_info.renderArea.offset = { 0, 0 };
-        render_pass_info.renderArea.extent = init.swapchain.extent;
-        VkClearValue clearColor{ { { 0.0f, 0.0f, 0.0f, 1.0f } } };
-        render_pass_info.clearValueCount = 1;
-        render_pass_info.pClearValues = &clearColor;
         VkViewport viewport = {};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = (float)init.swapchain.extent.width;
-        viewport.height = (float)init.swapchain.extent.height;
+        viewport.width = static_cast<float>(init.swapchain.extent.width);
+        viewport.height = static_cast<float>(init.swapchain.extent.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
+
+        vkCmdSetViewport(data.command_buffers[i], 0, 1, &viewport);
+
+        VkImageSubresourceRange range{};
+        range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        range.baseMipLevel   = 0;
+        range.levelCount     = VK_REMAINING_MIP_LEVELS;
+        range.baseArrayLayer = 0;
+        range.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+
+        image_layout_transition(data.command_buffers[i],
+                                         init.swapchain.get_images().value()[i],
+                                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                         0,
+                                         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                         VK_IMAGE_LAYOUT_UNDEFINED,
+                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                         range);
+        
+        VkRenderingAttachmentInfoKHR color_attachment_info = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+        color_attachment_info.pNext = VK_NULL_HANDLE;
+        color_attachment_info.imageView                    = init.swapchain.get_image_views().value()[i];        // color_attachment.image_view;
+        color_attachment_info.imageLayout                  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        color_attachment_info.resolveMode                  = VK_RESOLVE_MODE_NONE;
+        color_attachment_info.loadOp                       = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        color_attachment_info.storeOp                      = VK_ATTACHMENT_STORE_OP_STORE;
+        color_attachment_info.clearValue                   = clear_values;
+
+        auto render_area             = VkRect2D{VkOffset2D{}, VkExtent2D{init.swapchain.extent.width, init.swapchain.extent.height}};
+        auto render_info             = rendering_info(render_area, 1, &color_attachment_info);
+        render_info.layerCount       = 1;
+        render_info.pDepthAttachment = VK_NULL_HANDLE;
+        render_info.pStencilAttachment = VK_NULL_HANDLE;
 
         VkRect2D scissor = {};
         scissor.offset = { 0, 0 };
@@ -391,19 +395,84 @@ int create_command_buffers(Init& init, RenderData& data)
         init.disp.cmdSetViewport(data.command_buffers[i], 0, 1, &viewport);
         init.disp.cmdSetScissor(data.command_buffers[i], 0, 1, &scissor);
 
-        init.disp.cmdBeginRenderPass(data.command_buffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+        init.disp.cmdBeginRenderingKHR(data.command_buffers[i], &render_info);
 
+        //Draw Stuff goes here
         init.disp.cmdBindPipeline(data.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data.graphics_pipeline);
-
         init.disp.cmdDraw(data.command_buffers[i], 3, 1, 0, 0);
 
-        init.disp.cmdEndRenderPass(data.command_buffers[i]);
-        if (init.disp.endCommandBuffer(data.command_buffers[i]) != VK_SUCCESS) {
+       init.disp.cmdEndRenderingKHR(data.command_buffers[i]);
+
+        image_layout_transition(
+            data.command_buffers[i],                            // Command buffer
+            init.swapchain.get_images().value()[i],               // Swapchain image
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // Source pipeline stage
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,     // Destination pipeline stage
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // Source access mask
+            VK_ACCESS_MEMORY_READ_BIT,                // Destination access mask
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // Old layout
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // New layout
+            range);
+
+        if (init.disp.endCommandBuffer(data.command_buffers[i]) != VK_SUCCESS)
+        {
             std::cout << "failed to record command buffer\n";
             return -1; // failed to record command buffer!
         }
     }
     return 0;
+}
+
+VkRenderingInfoKHR rendering_info(VkRect2D render_area, uint32_t color_attachment_count, const VkRenderingAttachmentInfoKHR *pColorAttachments, VkRenderingFlagsKHR flags)
+{
+    VkRenderingInfoKHR rendering_info   = {};
+    rendering_info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+    rendering_info.pNext                = VK_NULL_HANDLE;
+    rendering_info.flags                = flags;
+    rendering_info.renderArea           = render_area;
+    rendering_info.layerCount           = 1;
+    rendering_info.viewMask             = 0;
+    rendering_info.colorAttachmentCount = color_attachment_count;
+    rendering_info.pColorAttachments    = pColorAttachments;
+    rendering_info.pDepthAttachment     = VK_NULL_HANDLE;
+    rendering_info.pStencilAttachment   = VK_NULL_HANDLE;
+    return rendering_info;
+}
+
+void image_layout_transition(VkCommandBuffer command_buffer,
+    VkImage image,
+    VkPipelineStageFlags src_stage_mask,
+    VkPipelineStageFlags dst_stage_mask,
+    VkAccessFlags src_access_mask,
+    VkAccessFlags dst_access_mask,
+    VkImageLayout old_layout,
+    VkImageLayout new_layout,
+    const VkImageSubresourceRange& subresource_range)
+{
+    // Define an image memory barrier
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = old_layout;       // Previous image layout
+    barrier.newLayout = new_layout;       // Target image layout
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;                // Target image
+    barrier.subresourceRange = subresource_range; // Range of image subresources
+
+    // Set source and destination access masks
+    barrier.srcAccessMask = src_access_mask; // Access mask for the previous layout
+    barrier.dstAccessMask = dst_access_mask; // Access mask for the target layout
+
+    // Record the pipeline barrier into the command buffer
+    vkCmdPipelineBarrier(
+        command_buffer,  // Command buffer
+        src_stage_mask,  // Source pipeline stage
+        dst_stage_mask,  // Destination pipeline stage
+        0,               // Dependency flags (0 for none)
+        0, nullptr,      // Memory barriers (none in this example)
+        0, nullptr,      // Buffer memory barriers (none in this example)
+        1, &barrier      // Image memory barriers
+    );
 }
 
 int create_sync_objects(Init& init, RenderData& data)
@@ -435,13 +504,9 @@ int recreate_swapchain(Init& init, RenderData& data)
     init.disp.deviceWaitIdle();
 
     init.disp.destroyCommandPool(data.command_pool, nullptr);
-    for (auto framebuffer : data.framebuffers) {
-        init.disp.destroyFramebuffer(framebuffer, nullptr);
-    }
 
     init.swapchain.destroy_image_views(data.swapchain_image_views);
     if (0 != create_swapchain(init)) return -1;
-    if (0 != create_framebuffers(init, data)) return -1;
     if (0 != create_command_pool(init, data)) return -1;
     if (0 != create_command_buffers(init, data)) return -1;
     return 0;
@@ -453,14 +518,18 @@ int draw_frame(Init& init, RenderData& data)
     uint32_t image_index = 0;
     VkResult result = init.disp.acquireNextImageKHR(
         init.swapchain, UINT64_MAX, data.available_semaphores[data.current_frame], VK_NULL_HANDLE, &image_index);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) 
+    {
         return recreate_swapchain(init, data);
-    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+    } 
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) 
+    {
         std::cout << "failed to acquire swapchain image. Error " << result << "\n";
         return -1;
     }
 
-    if (data.image_in_flight[image_index] != VK_NULL_HANDLE) {
+    if (data.image_in_flight[image_index] != VK_NULL_HANDLE) 
+    {
         init.disp.waitForFences(1, &data.image_in_flight[image_index], VK_TRUE, UINT64_MAX);
     }
     data.image_in_flight[image_index] = data.in_flight_fences[data.current_frame];
@@ -482,7 +551,8 @@ int draw_frame(Init& init, RenderData& data)
     submitInfo.pSignalSemaphores = signal_semaphores;
 
     init.disp.resetFences(1, &data.in_flight_fences[data.current_frame]);
-    if (init.disp.queueSubmit(data.graphics_queue, 1, &submitInfo, data.in_flight_fences[data.current_frame]) != VK_SUCCESS) {
+    if (init.disp.queueSubmit(data.graphics_queue, 1, &submitInfo, data.in_flight_fences[data.current_frame]) != VK_SUCCESS) 
+    {
         std::cout << "failed to submit draw command buffer\n";
         return -1; //"failed to submit draw command buffer
     }
@@ -500,9 +570,12 @@ int draw_frame(Init& init, RenderData& data)
     present_info.pImageIndices = &image_index;
 
     result = init.disp.queuePresentKHR(data.present_queue, &present_info);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+    {
         return recreate_swapchain(init, data);
-    } else if (result != VK_SUCCESS) {
+    }
+    else if (result != VK_SUCCESS)
+    {
         std::cout << "failed to present swapchain image\n";
         return -1;
     }
@@ -520,13 +593,9 @@ void cleanup(Init& init, RenderData& data)
     }
 
     init.disp.destroyCommandPool(data.command_pool, nullptr);
-    for (auto framebuffer : data.framebuffers) {
-        init.disp.destroyFramebuffer(framebuffer, nullptr);
-    }
 
     init.disp.destroyPipeline(data.graphics_pipeline, nullptr);
     init.disp.destroyPipelineLayout(data.pipeline_layout, nullptr);
-    init.disp.destroyRenderPass(data.render_pass, nullptr);
 
     init.swapchain.destroy_image_views(data.swapchain_image_views);
 
@@ -545,9 +614,7 @@ int main()
     if (0 != device_initialization(init)) return -1;
     if (0 != create_swapchain(init)) return -1;
     if (0 != get_queues(init, render_data)) return -1;
-    if (0 != create_render_pass(init, render_data)) return -1;
     if (0 != create_graphics_pipeline(init, render_data)) return -1;
-    if (0 != create_framebuffers(init, render_data)) return -1;
     if (0 != create_command_pool(init, render_data)) return -1;
     if (0 != create_command_buffers(init, render_data)) return -1;
     if (0 != create_sync_objects(init, render_data)) return -1;
