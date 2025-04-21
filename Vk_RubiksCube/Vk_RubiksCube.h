@@ -18,46 +18,13 @@
 
 #include <vulkan/vulkan_core.h>
 #include <GLFW/glfw3.h>
-
 #include <VkBootstrap.h>
-
 #include "materials/ShaderObject.h"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-struct Init
-{
-    GLFWwindow* window;
-    vkb::Instance instance;
-    vkb::InstanceDispatchTable inst_disp;
-    VkSurfaceKHR surface;
-    vkb::Device device;
-    vkb::DispatchTable disp;
-    vkb::Swapchain swapchain;
-};
-
-struct RenderData
-{
-    VkQueue graphics_queue;
-    VkQueue present_queue;
-
-    std::vector<VkImage> swapchain_images;
-    std::vector<VkImageView> swapchain_image_views;
-
-    VkPipelineLayout pipeline_layout;
-    VkPipeline graphics_pipeline;
-
-    VkCommandPool command_pool;
-    std::vector<VkCommandBuffer> command_buffers;
-
-    std::vector<VkSemaphore> available_semaphores;
-    std::vector<VkSemaphore> finished_semaphore;
-    std::vector<VkFence> in_flight_fences;
-    std::vector<VkFence> image_in_flight;
-    size_t current_frame = 0;
-
-    std::unique_ptr<ShaderObject> shader_object = nullptr;
-};
+#include "structs/Vk_Init.h"
+#include "structs/Vk_RenderData.h"
 
 GLFWwindow* create_window_glfw(const char* window_name = "", bool resize = true);
 void destroy_window_glfw(GLFWwindow* window);

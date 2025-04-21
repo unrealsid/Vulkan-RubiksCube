@@ -1,11 +1,9 @@
-﻿#include <iostream>
+﻿
+#include "Vk_RubiksCube.h"
+#include <iostream>
 #include <stdexcept>
 #include <cstdlib>
 #include "Config.h"
-
-// VkTriangle.cpp
-#include "Vk_RubiksCube.h"
-
 #include "materials/ShaderObject.h"
 #include "rendering/Vk_DynamicRendering.h"
 
