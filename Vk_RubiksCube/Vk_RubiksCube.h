@@ -21,6 +21,8 @@
 
 #include <VkBootstrap.h>
 
+#include "materials/ShaderObject.h"
+
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 struct Init
@@ -53,6 +55,8 @@ struct RenderData
     std::vector<VkFence> in_flight_fences;
     std::vector<VkFence> image_in_flight;
     size_t current_frame = 0;
+
+    std::unique_ptr<ShaderObject> shader_object = nullptr;
 };
 
 GLFWwindow* create_window_glfw(const char* window_name = "", bool resize = true);
