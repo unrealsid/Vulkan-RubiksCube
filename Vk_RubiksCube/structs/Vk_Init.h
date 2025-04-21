@@ -1,0 +1,20 @@
+#pragma once
+
+#ifndef VK_INIT_H
+#define VK_INIT_H
+
+#include <GLFW/glfw3.h>
+#include "VkBootstrap.h"
+
+struct Init
+{
+    GLFWwindow* window;
+    vkb::Instance instance;
+    vkb::InstanceDispatchTable inst_disp;
+    VkSurfaceKHR surface;
+    vkb::Device device;
+    vkb::DispatchTable disp;
+    vkb::Swapchain swapchain;
+};
+
+#endif
