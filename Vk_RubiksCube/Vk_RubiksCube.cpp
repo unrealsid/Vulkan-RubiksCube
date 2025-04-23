@@ -6,6 +6,8 @@
 #include "Config.h"
 #include "materials/ShaderObject.h"
 #include "rendering/Vk_DynamicRendering.h"
+#include "utils/ModelUtils.h"
+#include "utils/VMA_MemoryUtils.h"
 
 GLFWwindow* create_window_glfw(const char* window_name, bool resize)
 {
@@ -16,7 +18,8 @@ GLFWwindow* create_window_glfw(const char* window_name, bool resize)
     return glfwCreateWindow(1024, 1024, window_name, NULL, NULL);
 }
 
-void destroy_window_glfw(GLFWwindow* window) {
+void destroy_window_glfw(GLFWwindow* window)
+{
     glfwDestroyWindow(window);
     glfwTerminate();
 }
@@ -29,7 +32,8 @@ VkSurfaceKHR create_surface_glfw(VkInstance instance, GLFWwindow* window, VkAllo
     {
         const char* error_msg;
         int ret = glfwGetError(&error_msg);
-        if (ret != 0) {
+        if (ret != 0)
+        {
             std::cout << ret << " ";
             if (error_msg != nullptr) std::cout << error_msg;
             std::cout << "\n";
@@ -37,18 +41,6 @@ VkSurfaceKHR create_surface_glfw(VkInstance instance, GLFWwindow* window, VkAllo
         surface = VK_NULL_HANDLE;
     }
     return surface;
-}
-
-VkPhysicalDeviceDynamicRenderingFeaturesKHR create_dynamic_rendering_features()
-{
-    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features{};
-    dynamic_rendering_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-    dynamic_rendering_features.pNext = nullptr; // Set to another feature structure if chaining is needed
-
-    // Enable the feature
-    dynamic_rendering_features.dynamicRendering = VK_TRUE;
-
-    return dynamic_rendering_features;
 }
 
 int device_initialization(Init& init)
@@ -79,10 +71,12 @@ int device_initialization(Init& init)
         .add_required_extension(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
         .add_required_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
         .add_required_extension(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)
         .set_surface(init.surface).select();
 
-    auto dynamic_rendering_features = create_dynamic_rendering_features();
+    auto dynamic_rendering_features = Vk_DynamicRendering::create_dynamic_rendering_features();
     auto shader_object_features = ShaderObject::create_shader_object_features();
+    auto device_memory_features = vmaUtils::create_physical_device_buffer_address();
     
     if (!phys_device_ret)
     {
@@ -95,6 +89,7 @@ int device_initialization(Init& init)
     auto device_ret = device_builder
         .add_pNext(&dynamic_rendering_features)
         .add_pNext(&shader_object_features)
+        .add_pNext(& device_memory_features)
         .build();
     
     if (!device_ret)
@@ -126,7 +121,8 @@ int create_swapchain(Init& init)
 int get_queues(Init& init, RenderData& data)
 {
     auto gq = init.device.get_queue(vkb::QueueType::graphics);
-    if (!gq.has_value()) {
+    if (!gq.has_value())
+    {
         std::cout << "failed to get graphics queue: " << gq.error().message() << "\n";
         return -1;
     }
@@ -198,8 +194,8 @@ std::vector<uint32_t> convert_char_to_uint32(const std::vector<char>& char_vec)
 
 int create_graphics_pipeline(Init& init, RenderData& data) 
 {
-    auto vert_code = readFile(std::string(SHADER_PATH) + "/triangle.vert.spv");
-    auto frag_code = readFile(std::string(SHADER_PATH) + "/triangle.frag.spv");
+    auto vert_code = readFile(std::string(SHADER_PATH) + "/mesh_shader.vert.spv");
+    auto frag_code = readFile(std::string(SHADER_PATH) + "/mesh_shader.frag.spv");
 
     auto vert_code_uint32 = convert_char_to_uint32(vert_code);
     auto frag_code_uint32 = convert_char_to_uint32(frag_code);
@@ -239,7 +235,7 @@ int create_command_buffers(Init& init, RenderData& data)
         return -1;
     }
     
-    VkClearValue clear_values = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    VkClearValue clear_values = {{{0.0f, 0.0f, 0.0f, 0.0f}}};
 
     for (size_t i = 0; i < data.command_buffers.size(); i++)
     {
@@ -251,8 +247,6 @@ int create_command_buffers(Init& init, RenderData& data)
             return -1;
             // failed to begin recording command buffer
         }
-
-        data.shader_object->set_initial_state(init, data.command_buffers[i]);
 
         VkImageSubresourceRange range{};
         range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -282,18 +276,40 @@ int create_command_buffers(Init& init, RenderData& data)
 
         auto render_area             = VkRect2D{VkOffset2D{}, VkExtent2D{init.swapchain.extent.width, init.swapchain.extent.height}};
         auto render_info             = Vk_DynamicRendering::rendering_info(render_area, 1, &color_attachment_info);
+
         render_info.layerCount       = 1;
         render_info.pDepthAttachment = VK_NULL_HANDLE;
         render_info.pStencilAttachment = VK_NULL_HANDLE;
 
         init.disp.cmdBeginRenderingKHR(data.command_buffers[i], &render_info);
 
+        data.shader_object->set_initial_state(init, data.command_buffers[i]);
+
         init.disp.cmdSetCullModeEXT(data.command_buffers[i], VK_CULL_MODE_NONE);
         init.disp.cmdSetDepthWriteEnableEXT(data.command_buffers[i], VK_FALSE);
         
         //Draw Stuff goes here
         data.shader_object->bind_material_shader(init.disp, data.command_buffers[i]);    
-        init.disp.cmdDraw(data.command_buffers[i], 3, 1, 0, 0);
+        //init.disp.cmdDraw(data.command_buffers[i], 3, 1, 0, 0);
+
+        // Bind the vertex buffer
+        VkBuffer vertexBuffers[] = {data.vertexBuffer};
+        VkDeviceSize offsets[] = {0};
+        init.disp.cmdBindVertexBuffers(data.command_buffers[i], 0, 1, vertexBuffers, offsets); // Binding point 0, 1 buffer, the buffer, offset
+
+        // Bind the index buffer
+        init.disp.cmdBindIndexBuffer(data.command_buffers[i], data.indexBuffer, 0, VK_INDEX_TYPE_UINT32); // The index buffer, offset, index type (uint32_t)
+
+        // Issue the draw call using the index buffer
+        init.disp.cmdDrawIndexed
+        (
+            data.command_buffers[i],
+            static_cast<uint32_t>(data.outIndices.size()), // Use the number of indices loaded
+            1,           // instanceCount (usually 1 for a single mesh instance)
+            0,           // firstIndex (start from the beginning of the index buffer)
+            0,           // vertexOffset (offset added to indices)
+            0            // firstInstance (start from instance 0)
+        );
 
         init.disp.cmdEndRenderingKHR(data.command_buffers[i]);
 
@@ -452,6 +468,14 @@ void cleanup(Init& init, RenderData& data)
     destroy_window_glfw(init.window);
 }
 
+void loadModel(RenderData& data)
+{
+    vkUtils::loadModel(std::string(RESOURCE_PATH) + "/models/rubiks_cube/rubiks_cube.obj", data.outVertices, data.outIndices);
+    
+    std::cout << "Vertices: " << data.outVertices.size() << std::endl;
+    std::cout << "Indices: " << data.outIndices.size() << std::endl;
+}
+
 int main()
 {
     Init init;
@@ -462,6 +486,13 @@ int main()
     if (0 != get_queues(init, render_data)) return -1;
     if (0 != create_graphics_pipeline(init, render_data)) return -1;
     if (0 != create_command_pool(init, render_data)) return -1;
+
+    //load model
+    loadModel(render_data);
+    vmaUtils::createVmaAllocator(init);
+    vmaUtils::createVertexAndIndexBuffersVMA(init.vmaAllocator, init.disp, render_data.graphics_queue, render_data.command_pool, render_data, render_data.outVertices, render_data.outIndices);
+    
+    
     if (0 != create_command_buffers(init, render_data)) return -1;
     if (0 != create_sync_objects(init, render_data)) return -1;
 

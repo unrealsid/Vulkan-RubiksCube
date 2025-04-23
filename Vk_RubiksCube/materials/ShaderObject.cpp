@@ -1,5 +1,6 @@
 #include "ShaderObject.h"
 #include "../Vk_RubiksCube.h"
+#include "../Structs/Vertex.h"
 #include <iostream>
 
 ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
@@ -86,12 +87,12 @@ void ShaderObject::create_shaders(const vkb::DispatchTable& disp, const std::vec
 {
     triangle_vert_shader = new Shader(VK_SHADER_STAGE_VERTEX_BIT,
                                         VK_SHADER_STAGE_FRAGMENT_BIT,
-                                        "Triangle Shader",
+                                        "MeshShader",
                                         vertexShader, nullptr, nullptr);
                                         
     triangle_frag_shader = new Shader(VK_SHADER_STAGE_FRAGMENT_BIT,
                                     0,
-                                    "Triangle Shader",
+                                    "MeshShader",
                                     fragmentShader, nullptr, nullptr);
 
     build_linked_shaders(disp, triangle_vert_shader, triangle_frag_shader);
@@ -128,19 +129,29 @@ void ShaderObject::set_initial_state(const Init& init, VkCommandBuffer cmd_buffe
 		init.disp.cmdSetScissorWithCountEXT(cmd_buffer, 1, &scissor);
 	}
 
+	//Vertex input
+    {
+    	// Get the vertex binding and attribute descriptions
+    	auto bindingDescription = Vertex::getBindingDescription();
+    	auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+    	// Set the vertex input state using the descriptions
+    	init.disp.cmdSetVertexInputEXT
+        (
+			cmd_buffer,
+			1,                                                          // bindingCount = 1 (we have one vertex buffer binding)
+			&bindingDescription,                                        // pVertexBindingDescriptions
+			static_cast<uint32_t>(attributeDescriptions.size()),        // attributeCount
+			attributeDescriptions.data()                                // pVertexAttributeDescriptions
+		);
+    }
+
 	// Rasterization is always enabled
 	init.disp.cmdSetRasterizerDiscardEnableEXT(cmd_buffer, VK_FALSE);
 
 	// This also requires setting blend equations
 	VkColorBlendEquationEXT colorBlendEquationEXT{};
 	init.disp.cmdSetColorBlendEquationEXT(cmd_buffer, 0, 1, &colorBlendEquationEXT);
-	init.disp.cmdSetVertexInputEXT(
-		cmd_buffer,
-		0,         // bindingCount = 0
-		nullptr,   // pVertexBindingDescriptions = nullptr
-		0,         // attributeCount = 0
-		nullptr    // pVertexAttributeDescriptions = nullptr
-	);
 
 
 	// Set the topology to triangles, don't restart primitives, set samples to only 1 per pixel
@@ -171,7 +182,7 @@ void ShaderObject::set_initial_state(const Init& init, VkCommandBuffer cmd_buffe
 
 	// Do not enable logic op
 	init.disp.cmdSetLogicOpEnableEXT(cmd_buffer, VK_FALSE);
-
+	
 	{
     	// Disable color blending
     	VkBool32 color_blend_enables[] = {VK_FALSE};

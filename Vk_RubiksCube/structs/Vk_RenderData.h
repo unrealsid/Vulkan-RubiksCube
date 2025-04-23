@@ -5,8 +5,10 @@
 
 #include <memory>
 #include <vector>
+#include <vk_mem_alloc.h>
 #include <vulkan_core.h>
 
+struct Vertex;
 class ShaderObject;
 
 struct RenderData
@@ -30,6 +32,14 @@ struct RenderData
     size_t current_frame = 0;
 
     std::unique_ptr<ShaderObject> shader_object = nullptr;
+    
+    VkBuffer vertexBuffer;
+    VmaAllocation vertexBufferAllocation;
+    VkBuffer indexBuffer;
+    VmaAllocation indexBufferAllocation;
+
+    std::vector<uint32_t> outIndices;
+    std::vector<Vertex> outVertices;
 };
 
 #endif

@@ -16,7 +16,7 @@ endif()
 project ("Vulkan_RubiksCube") # Project name remains Vulkan_RubiksCube
 
 # Require at least C++17 or later
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -136,7 +136,7 @@ target_link_libraries(Vulkan_RubiksCube imgui)
 target_include_directories(Vulkan_RubiksCube PUBLIC ${CMAKE_SOURCE_DIR}/ext/stb-master)
 
 # ------------------------------------------------------
-#5 Add vk bootstrapper
+# 6. Add vk bootstrapper
 # ------------------------------------------------------
 set(VK_BOOTSTRAP ${EXT_DIR}/vk-bootstrap)
 
@@ -168,7 +168,42 @@ endif()
 message(STATUS "Current source files: ${SRC_FILES}")
 
 # ------------------------------------------------------
-# 6. Add Vulkan and related libraries (vk_hpp, vma) from Vulkan SDK
+# 8. Add tiny obj loader
+# ------------------------------------------------------
+
+set(TINYOBJLOADER_DIR ${EXT_DIR}/tinyobjloader)
+file(GLOB TINYOBJLOADER_SRC_FILES
+    "${TINYOBJLOADER_DIR}/tiny_obj_loader.cc"
+)
+
+message(STATUS "Tinyobjloader source files found: ${TINYOBJLOADER_SRC_FILES}")
+
+# Add tiny_obj_loader.cc to a static library
+if(TINYOBJLOADER_SRC_FILES)
+    add_library(tinyobjloader STATIC ${TINYOBJLOADER_SRC_FILES})
+
+    # Define TINYOBJLOADER_IMPLEMENTATION when compiling the tinyobjloader library
+    target_compile_definitions(tinyobjloader PRIVATE TINYOBJLOADER_IMPLEMENTATION)
+
+    # Add the tinyobjloader include directory to the library
+    target_include_directories(tinyobjloader PUBLIC
+        ${TINYOBJLOADER_DIR}
+    )
+
+    # Link the main executable against the tinyobjloader library
+    target_link_libraries(Vulkan_RubiksCube tinyobjloader)
+
+    # Add the tinyobjloader include directory to the main executable for header access
+    target_include_directories(Vulkan_RubiksCube PUBLIC
+        ${TINYOBJLOADER_DIR}
+    )
+else()
+    message(FATAL_ERROR "tiny_obj_loader.cc not found in ${TINYOBJLOADER_DIR}. Please ensure tinyobjloader is in the correct location.")
+endif()
+
+
+# ------------------------------------------------------
+# 8. Add Vulkan and related libraries (vk_hpp, vma) from Vulkan SDK
 # ------------------------------------------------------
 if (NOT "${VULKAN_SDK_PATH}" STREQUAL "")
     message(STATUS "Using Vulkan SDK from: ${VULKAN_SDK_PATH}")

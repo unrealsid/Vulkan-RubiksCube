@@ -5,6 +5,7 @@
 
 #include <GLFW/glfw3.h>
 #include "VkBootstrap.h"
+#include <vma/vk_mem_alloc.h>
 
 struct Init
 {
@@ -15,6 +16,8 @@ struct Init
     vkb::Device device;
     vkb::DispatchTable disp;
     vkb::Swapchain swapchain;
+
+    VmaAllocator vmaAllocator;
 };
 
 #endif
