@@ -51,6 +51,7 @@ int device_initialization(Init& init)
     auto instance_ret = instance_builder.
         set_minimum_instance_version(VK_API_VERSION_1_4)
         .use_default_debug_messenger()
+        .enable_extension(VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME)
         .request_validation_layers()
         .build();
     
@@ -71,8 +72,14 @@ int device_initialization(Init& init)
         .add_required_extension(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
         .add_required_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
         .add_required_extension(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_MULTIVIEW_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_MAINTENANCE_2_EXTENSION_NAME)
         .add_required_extension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)
-        .set_surface(init.surface).select();
+        .add_required_extension(VK_KHR_DEVICE_GROUP_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME) 
+        .add_required_extension(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME)
+        .set_surface(init.surface)
+        .select();
 
     auto dynamic_rendering_features = Vk_DynamicRendering::create_dynamic_rendering_features();
     auto shader_object_features = ShaderObject::create_shader_object_features();
@@ -83,7 +90,7 @@ int device_initialization(Init& init)
         std::cout << phys_device_ret.error().message() << "\n";
         return -1;
     }
-    vkb::PhysicalDevice physical_device = phys_device_ret.value();
+    const vkb::PhysicalDevice& physical_device = phys_device_ret.value();
 
     vkb::DeviceBuilder device_builder{ physical_device };
     auto device_ret = device_builder

@@ -13,13 +13,20 @@
 
 void vmaUtils::createVmaAllocator(Init& init)
 {
-    PFN_vkGetInstanceProcAddr fnGetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(vkGetInstanceProcAddr);
-    PFN_vkGetDeviceProcAddr fnGetDeviceProcAddr = reinterpret_cast<PFN_vkGetDeviceProcAddr>(vkGetDeviceProcAddr);
+    PFN_vkGetInstanceProcAddr fnGetInstanceProcAddr = (vkGetInstanceProcAddr);
+    PFN_vkGetDeviceProcAddr fnGetDeviceProcAddr = (vkGetDeviceProcAddr);
     
     VmaVulkanFunctions vulkanFunctions = {};
     vulkanFunctions.vkGetInstanceProcAddr = fnGetInstanceProcAddr;
     vulkanFunctions.vkGetDeviceProcAddr = fnGetDeviceProcAddr;
-   
+
+    //TODO: Change later Needed to run with NVIDIA NSights
+    vulkanFunctions.vkGetBufferMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetInstanceProcAddr(init.instance, "vkGetBufferMemoryRequirements2KHR"));
+    vulkanFunctions.vkGetImageMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetImageMemoryRequirements2KHR>(vkGetInstanceProcAddr(init.instance, "vkGetImageMemoryRequirements2KHR"));
+    vulkanFunctions.vkGetBufferMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetInstanceProcAddr(init.instance, "vkGetBufferMemoryRequirements2KHR"));
+    vulkanFunctions.vkBindBufferMemory2KHR = reinterpret_cast<PFN_vkBindBufferMemory2KHR>(vkGetInstanceProcAddr(init.instance, "vkBindBufferMemory2KHR"));
+    vulkanFunctions.vkBindImageMemory2KHR = reinterpret_cast<PFN_vkBindImageMemory2KHR>(vkGetInstanceProcAddr(init.instance, "vkBindImageMemory2KHR"));
+    
     static VmaAllocatorCreateInfo allocatorInfo;
 
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
