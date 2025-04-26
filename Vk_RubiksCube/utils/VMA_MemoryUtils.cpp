@@ -10,6 +10,8 @@
 #define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
 
+#include "Vk_Utils.h"
+
 
 void vmaUtils::createVmaAllocator(Init& init)
 {
@@ -109,9 +111,15 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
     // Create Staging Buffer for Vertices using VMA
     VkBuffer stagingVertexBuffer;
     VmaAllocation stagingVertexBufferAllocation;
-    createBufferVMA(vmaAllocator, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, stagingVertexBuffer, stagingVertexBufferAllocation);
+    createBufferVMA(vmaAllocator, vertexBufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        stagingVertexBuffer, stagingVertexBufferAllocation);
 
     // Copy Vertex Data to Staging Buffer using VMA mapping
+    assert(vertices.size() != 0, "Vertex Data is empty!");
+    
     void* data;
     vmaMapMemory(vmaAllocator, stagingVertexBufferAllocation, &data);
     memcpy(data, vertices.data(), (size_t) vertexBufferSize);
@@ -119,21 +127,22 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
 
     // Create Vertex Buffer (Device Local) using VMA
     createBufferVMA(vmaAllocator, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                 VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,renderData.vertexBuffer, renderData.vertexBufferAllocation);
+                                 VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,renderData.vertexBuffer, renderData.vertexBufferAllocation);
 
     // Copy from Staging Vertex Buffer to Device Local Vertex Buffer
     copyBuffer(disp, queue, command_pool, stagingVertexBuffer, renderData.vertexBuffer, vertexBufferSize);
+    vkUtils::SetVulkanObjectName(disp, (uint64_t) renderData.vertexBuffer, VK_OBJECT_TYPE_BUFFER, "Vertex Buffer");
 
     // Clean up Staging Vertex Buffer using VMA
     vmaDestroyBuffer(vmaAllocator, stagingVertexBuffer, stagingVertexBufferAllocation);
 
-
     // Create Staging Buffer for Indices using VMA
     VkBuffer stagingIndexBuffer;
     VmaAllocation stagingIndexBufferAllocation;
-    createBufferVMA(vmaAllocator, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, stagingIndexBuffer, stagingIndexBufferAllocation);
+    createBufferVMA(vmaAllocator, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        stagingIndexBuffer, stagingIndexBufferAllocation);
 
     // Copy Index Data to Staging Buffer using VMA mapping
     vmaMapMemory(vmaAllocator, stagingIndexBufferAllocation, &data);
@@ -142,7 +151,10 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
 
     // Create Index Buffer (Device Local) using VMA
     createBufferVMA(vmaAllocator, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                 VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, renderData.indexBuffer, renderData.indexBufferAllocation);
+                                  VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_AUTO,
+                                  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, renderData.indexBuffer, renderData.indexBufferAllocation);
+    
+    vkUtils::SetVulkanObjectName(disp, (uint64_t) renderData.indexBuffer, VK_OBJECT_TYPE_BUFFER, "Index Buffer");
 
     // Copy from Staging Index Buffer to Device Local Index Buffer
     copyBuffer(disp, queue, command_pool, stagingIndexBuffer, renderData.indexBuffer, indexBufferSize);

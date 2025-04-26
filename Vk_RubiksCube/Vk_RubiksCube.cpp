@@ -3,6 +3,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <thread>
+
 #include "Config.h"
 #include "materials/ShaderObject.h"
 #include "rendering/Vk_DynamicRendering.h"
@@ -47,11 +49,21 @@ int device_initialization(Init& init)
 {
     init.window = create_window_glfw("Rubik's Cube", true);
 
+    // Create the disable feature struct
+    VkValidationFeatureDisableEXT disables[] =
+    {
+        VK_VALIDATION_FEATURE_DISABLE_UNIQUE_HANDLES_EXT
+    };
+    
     vkb::InstanceBuilder instance_builder;
     auto instance_ret = instance_builder.
         set_minimum_instance_version(VK_API_VERSION_1_4)
         .use_default_debug_messenger()
+        .add_validation_feature_disable(*disables)
+        //.enable_layer("VK_LAYER_KHRONOS_shader_object")
         .enable_extension(VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME)
+        .enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
+        .enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
         .request_validation_layers()
         .build();
     
@@ -66,10 +78,16 @@ int device_initialization(Init& init)
 
     init.surface = create_surface_glfw(init.instance, init.window);
 
+    VkPhysicalDeviceFeatures features = {};
+    features.geometryShader = VK_FALSE;
+    features.tessellationShader = VK_FALSE;
+
     vkb::PhysicalDeviceSelector phys_device_selector(init.instance);
     auto phys_device_ret = phys_device_selector
         .add_required_extension(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
         .add_required_extension(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
+        .add_required_extension(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
+        .add_required_extension(VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME)
         .add_required_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
         .add_required_extension(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
         .add_required_extension(VK_KHR_MULTIVIEW_EXTENSION_NAME)
@@ -78,6 +96,9 @@ int device_initialization(Init& init)
         .add_required_extension(VK_KHR_DEVICE_GROUP_EXTENSION_NAME)
         .add_required_extension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME) 
         .add_required_extension(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
+        //.add_required_extension(VK_KHR_MAINTENANCE_6_EXTENSION_NAME)
+        .set_required_features(features)
         .set_surface(init.surface)
         .select();
 
@@ -96,7 +117,7 @@ int device_initialization(Init& init)
     auto device_ret = device_builder
         .add_pNext(&dynamic_rendering_features)
         .add_pNext(&shader_object_features)
-        .add_pNext(& device_memory_features)
+        .add_pNext(&device_memory_features)
         .build();
     
     if (!device_ret)
@@ -144,21 +165,22 @@ int get_queues(Init& init, RenderData& data)
     return 0;
 }
 
-std::vector<char> readFile(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open file!");
+void loadShader(std::string filename, char* &code, size_t &size)
+{
+    std::ifstream is(filename, std::ios::binary | std::ios::in | std::ios::ate);
+    if (is.is_open())
+    {
+        size = is.tellg();
+        is.seekg(0, std::ios::beg);
+        code = new char[size];
+        is.read(code, size);
+        is.close();
+        assert(size > 0);
     }
-
-    size_t file_size = (size_t)file.tellg();
-    std::vector<char> buffer(file_size);
-
-    file.seekg(0);
-    file.read(buffer.data(), static_cast<std::streamsize>(file_size));
-
-    file.close();
-
-    return buffer;
+    else
+    {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+    }
 }
 
 VkShaderModule createShaderModule(Init& init, const std::vector<char>& code)
@@ -201,14 +223,14 @@ std::vector<uint32_t> convert_char_to_uint32(const std::vector<char>& char_vec)
 
 int create_graphics_pipeline(Init& init, RenderData& data) 
 {
-    auto vert_code = readFile(std::string(SHADER_PATH) + "/mesh_shader.vert.spv");
-    auto frag_code = readFile(std::string(SHADER_PATH) + "/mesh_shader.frag.spv");
-
-    auto vert_code_uint32 = convert_char_to_uint32(vert_code);
-    auto frag_code_uint32 = convert_char_to_uint32(frag_code);
+    size_t shaderCodeSizes[2]{};
+    char* shaderCodes[2]{};
+    
+    loadShader(std::string(SHADER_PATH) + "/mesh_shader.vert.spv", shaderCodes[0], shaderCodeSizes[0]);
+    loadShader(std::string(SHADER_PATH) + "/mesh_shader.frag.spv", shaderCodes[1], shaderCodeSizes[1]);
     
     data.shader_object = std::make_unique<ShaderObject>();
-    data.shader_object->create_shaders(init.disp, vert_code_uint32, frag_code_uint32);
+    data.shader_object->create_shaders(init.disp, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1]);
     
     return 0;
 }
@@ -241,8 +263,6 @@ int create_command_buffers(Init& init, RenderData& data)
         // failed to allocate command buffers;
         return -1;
     }
-    
-    VkClearValue clear_values = {{{0.0f, 0.0f, 0.0f, 0.0f}}};
 
     for (size_t i = 0; i < data.command_buffers.size(); i++)
     {
@@ -264,7 +284,7 @@ int create_command_buffers(Init& init, RenderData& data)
 
         Vk_DynamicRendering::image_layout_transition(data.command_buffers[i],
                                          init.swapchain.get_images().value()[i],
-                                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                                          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                                          0,
                                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -279,45 +299,35 @@ int create_command_buffers(Init& init, RenderData& data)
         color_attachment_info.resolveMode                  = VK_RESOLVE_MODE_NONE;
         color_attachment_info.loadOp                       = VK_ATTACHMENT_LOAD_OP_CLEAR;
         color_attachment_info.storeOp                      = VK_ATTACHMENT_STORE_OP_STORE;
-        color_attachment_info.clearValue                   = clear_values;
+        color_attachment_info.clearValue                   = {0.5f, 0.2f, 0.3f, 1.0f}; ;
 
         auto render_area             = VkRect2D{VkOffset2D{}, VkExtent2D{init.swapchain.extent.width, init.swapchain.extent.height}};
         auto render_info             = Vk_DynamicRendering::rendering_info(render_area, 1, &color_attachment_info);
 
         render_info.layerCount       = 1;
+        render_info.pColorAttachments = &color_attachment_info;
         render_info.pDepthAttachment = VK_NULL_HANDLE;
         render_info.pStencilAttachment = VK_NULL_HANDLE;
-
+        
         init.disp.cmdBeginRenderingKHR(data.command_buffers[i], &render_info);
-
+        
         data.shader_object->set_initial_state(init, data.command_buffers[i]);
-
-        init.disp.cmdSetCullModeEXT(data.command_buffers[i], VK_CULL_MODE_NONE);
-        init.disp.cmdSetDepthWriteEnableEXT(data.command_buffers[i], VK_FALSE);
         
         //Draw Stuff goes here
-        data.shader_object->bind_material_shader(init.disp, data.command_buffers[i]);    
         //init.disp.cmdDraw(data.command_buffers[i], 3, 1, 0, 0);
 
-        // Bind the vertex buffer
+        //Bind buffers
         VkBuffer vertexBuffers[] = {data.vertexBuffer};
         VkDeviceSize offsets[] = {0};
-        init.disp.cmdBindVertexBuffers(data.command_buffers[i], 0, 1, vertexBuffers, offsets); // Binding point 0, 1 buffer, the buffer, offset
-
-        // Bind the index buffer
-        init.disp.cmdBindIndexBuffer(data.command_buffers[i], data.indexBuffer, 0, VK_INDEX_TYPE_UINT32); // The index buffer, offset, index type (uint32_t)
-
+        init.disp.cmdBindVertexBuffers(data.command_buffers[i], 0, 1, vertexBuffers, offsets);
+        init.disp.cmdBindIndexBuffer(data.command_buffers[i], data.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        data.shader_object->bind_material_shader(init.disp, data.command_buffers[i]);
+        
+        
+        //init.disp.cmdDraw(data.command_buffers[i], static_cast<uint32_t>(data.outVertices.size()), 1, 0, 0);
+        
         // Issue the draw call using the index buffer
-        init.disp.cmdDrawIndexed
-        (
-            data.command_buffers[i],
-            static_cast<uint32_t>(data.outIndices.size()), // Use the number of indices loaded
-            1,           // instanceCount (usually 1 for a single mesh instance)
-            0,           // firstIndex (start from the beginning of the index buffer)
-            0,           // vertexOffset (offset added to indices)
-            0            // firstInstance (start from instance 0)
-        );
-
+        init.disp.cmdDrawIndexed(data.command_buffers[i], static_cast<uint32_t>(data.outIndices.size()), 1, 0, 0,0);
         init.disp.cmdEndRenderingKHR(data.command_buffers[i]);
 
         Vk_DynamicRendering::image_layout_transition
@@ -327,7 +337,7 @@ int create_command_buffers(Init& init, RenderData& data)
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // Source pipeline stage
             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,     // Destination pipeline stage
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // Source access mask
-            VK_ACCESS_MEMORY_READ_BIT,                // Destination access mask
+            0,                                        // Destination access mask
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // Old layout
             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // New layout
             range);
@@ -481,10 +491,46 @@ void loadModel(RenderData& data)
     
     std::cout << "Vertices: " << data.outVertices.size() << std::endl;
     std::cout << "Indices: " << data.outIndices.size() << std::endl;
+
+
+    // data.outVertices = {
+    //     // Front face (Z = +0.5)
+    //     {{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 0: Bottom-left-front
+    //     {{ 0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 1: Bottom-right-front
+    //     {{ 0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 2: Top-right-front
+    //     {{-0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 3: Top-left-front
+    //
+    //     // Back face (Z = -0.5)
+    //     {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 4: Bottom-left-back
+    //     {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 5: Bottom-right-back
+    //     {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 6: Top-right-back
+    //     {{-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}  // 7: Top-left-back
+    // };
+    //
+    // // Define index data (36 indices for 12 triangles)
+    // // This defines the triangles using the vertices above.
+    // // Assuming uint32_t for indices, change to uint16_t if you use that.
+    // data.outIndices = {
+    //     // Front face
+    //     0, 1, 2, 0, 2, 3,
+    //     // Back face
+    //     4, 6, 5, 4, 7, 6,
+    //     // Top face
+    //     3, 2, 6, 3, 6, 7,
+    //     // Bottom face
+    //     0, 4, 5, 0, 5, 1,
+    //     // Right face
+    //     1, 5, 6, 1, 6, 2,
+    //     // Left face
+    //     4, 0, 3, 4, 3, 7
+    // };
 }
 
 int main()
 {
+
+    //std::this_thread::sleep_for(std::chrono::seconds(10));
+    
     Init init;
     RenderData render_data;
 

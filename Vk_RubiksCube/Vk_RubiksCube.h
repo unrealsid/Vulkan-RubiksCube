@@ -33,7 +33,8 @@ VkSurfaceKHR create_surface_glfw(VkInstance instance, GLFWwindow* window, VkAllo
 int device_initialization(Init& init);
 int create_swapchain(Init& init);
 int get_queues(Init& init, RenderData& data);
-std::vector<char> readFile(const std::string& filename);
+void loadShader(std::string filename, char* &code, size_t &size);
+
 VkShaderModule createShaderModule(Init& init, const std::vector<char>& code);
 int create_graphics_pipeline(Init& init, RenderData& data);
 int create_command_pool(Init& init, RenderData& data);

@@ -17,14 +17,16 @@ public:
         VkShaderEXT           shader      = VK_NULL_HANDLE;
         std::string           shader_name = "shader";
         VkShaderCreateInfoEXT vk_shader_create_info{};
-        std::vector<uint32_t> spirv;
+        char* spirv = nullptr;
+        size_t spirv_size = 0;
 
     public:
         Shader(){}
         Shader(VkShaderStageFlagBits        stage,
                VkShaderStageFlags           next_stage,
                std::string                  name,
-               const std::vector<uint32_t>& glsl_source,
+               char*                        glsl_source,
+               size_t                       spir_size,
                const VkDescriptorSetLayout *pSetLayouts,
                const VkPushConstantRange   *pPushConstantRange);
 
@@ -66,7 +68,7 @@ public:
     ShaderObject() = default;
     ~ShaderObject() = default;
 
-    void create_shaders(const vkb::DispatchTable& disp, const std::vector<uint32_t>& vertexShader, const std::vector<uint32_t>& fragmentShader);
+    void create_shaders(const vkb::DispatchTable& disp, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize);
 
     static void bind_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer, const ShaderObject::Shader *shader);
     void bind_material_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer) const;

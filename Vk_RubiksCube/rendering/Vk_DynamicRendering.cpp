@@ -4,9 +4,7 @@ VkPhysicalDeviceDynamicRenderingFeaturesKHR Vk_DynamicRendering::create_dynamic_
 {
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features{};
     dynamic_rendering_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-    dynamic_rendering_features.pNext = nullptr; // Set to another feature structure if chaining is needed
-
-    // Enable the feature
+    dynamic_rendering_features.pNext = nullptr;
     dynamic_rendering_features.dynamicRendering = VK_TRUE;
 
     return dynamic_rendering_features;

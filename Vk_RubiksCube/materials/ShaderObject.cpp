@@ -6,7 +6,8 @@
 ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
                              VkShaderStageFlags           next_stage_,
                              std::string                  shader_name_,
-                             const std::vector<uint32_t>& glsl_source,
+                             char*						  glsl_source,
+                             size_t						  spirv_size,
                              const VkDescriptorSetLayout *pSetLayouts,
                              const VkPushConstantRange   *pPushConstantRange)
 {
@@ -22,8 +23,8 @@ ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
     vk_shader_create_info.stage                  = stage;
     vk_shader_create_info.nextStage              = next_stage;
     vk_shader_create_info.codeType               = VK_SHADER_CODE_TYPE_SPIRV_EXT;
-    vk_shader_create_info.codeSize               = spirv.size() * sizeof(spirv[0]);
-    vk_shader_create_info.pCode                  = spirv.data();
+    vk_shader_create_info.codeSize               = spirv_size;
+    vk_shader_create_info.pCode                  = spirv;
     vk_shader_create_info.pName                  = "main";
     vk_shader_create_info.setLayoutCount         = 0;
     vk_shader_create_info.pSetLayouts            = pSetLayouts;
@@ -83,17 +84,18 @@ void ShaderObject::build_linked_shaders(const vkb::DispatchTable& disp, ShaderOb
     frag->set_shader(shaderEXTs[1]);
 }
 
-void ShaderObject::create_shaders(const vkb::DispatchTable& disp, const std::vector<uint32_t>& vertexShader, const std::vector<uint32_t>& fragmentShader)
+void ShaderObject::create_shaders(const vkb::DispatchTable& disp, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize)
 {
     triangle_vert_shader = new Shader(VK_SHADER_STAGE_VERTEX_BIT,
                                         VK_SHADER_STAGE_FRAGMENT_BIT,
-                                        "MeshShader",
-                                        vertexShader, nullptr, nullptr);
+                                        "MeshShader", vertexShader,
+                                        vertShaderSize, nullptr, nullptr);
                                         
     triangle_frag_shader = new Shader(VK_SHADER_STAGE_FRAGMENT_BIT,
                                     0,
                                     "MeshShader",
-                                    fragmentShader, nullptr, nullptr);
+                                    fragmentShader,
+                                    fragShaderSize, nullptr, nullptr);
 
     build_linked_shaders(disp, triangle_vert_shader, triangle_frag_shader);
 }
@@ -127,6 +129,30 @@ void ShaderObject::set_initial_state(const Init& init, VkCommandBuffer cmd_buffe
     	
 		init.disp.cmdSetViewportWithCountEXT(cmd_buffer, 1, &viewport);
 		init.disp.cmdSetScissorWithCountEXT(cmd_buffer, 1, &scissor);
+    	init.disp.cmdSetCullModeEXT(cmd_buffer, VK_CULL_MODE_NONE);
+    	init.disp.cmdSetFrontFaceEXT(cmd_buffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+    	init.disp.cmdSetDepthTestEnableEXT(cmd_buffer, VK_FALSE);
+    	init.disp.cmdSetDepthWriteEnableEXT(cmd_buffer, VK_FALSE);
+    	init.disp.cmdSetDepthCompareOpEXT(cmd_buffer, VK_COMPARE_OP_NEVER);
+    	init.disp.cmdSetPrimitiveTopologyEXT(cmd_buffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    	init.disp.cmdSetRasterizerDiscardEnableEXT(cmd_buffer, VK_FALSE);
+    	init.disp.cmdSetPolygonModeEXT(cmd_buffer, VK_POLYGON_MODE_FILL);
+    	init.disp.cmdSetRasterizationSamplesEXT(cmd_buffer, VK_SAMPLE_COUNT_1_BIT);
+    	init.disp.cmdSetAlphaToCoverageEnableEXT(cmd_buffer, VK_FALSE);
+    	init.disp.cmdSetDepthBiasEnableEXT(cmd_buffer, VK_FALSE);
+		init.disp.cmdSetStencilTestEnableEXT(cmd_buffer, VK_FALSE);
+    	init.disp.cmdSetPrimitiveRestartEnableEXT(cmd_buffer, VK_FALSE);
+
+    	const VkSampleMask sample_mask = 0xFF;
+    	init.disp.cmdSetSampleMaskEXT(cmd_buffer, VK_SAMPLE_COUNT_1_BIT, &sample_mask);
+
+    	// Disable color blending
+    	VkBool32 color_blend_enables= VK_FALSE;
+    	init.disp.cmdSetColorBlendEnableEXT(cmd_buffer, 0, 1, &color_blend_enables);
+
+    	// Use RGBA color write mask
+    	VkColorComponentFlags color_component_flags = 0xF;
+    	init.disp.cmdSetColorWriteMaskEXT(cmd_buffer, 0, 1, &color_component_flags);
 	}
 
 	//Vertex input
@@ -141,57 +167,31 @@ void ShaderObject::set_initial_state(const Init& init, VkCommandBuffer cmd_buffe
 			cmd_buffer,
 			1,                                                          // bindingCount = 1 (we have one vertex buffer binding)
 			&bindingDescription,                                        // pVertexBindingDescriptions
-			static_cast<uint32_t>(attributeDescriptions.size()),        // attributeCount
+			attributeDescriptions.size(),								// attributeCount
 			attributeDescriptions.data()                                // pVertexAttributeDescriptions
 		);
     }
-
-	// Rasterization is always enabled
-	init.disp.cmdSetRasterizerDiscardEnableEXT(cmd_buffer, VK_FALSE);
-
+	
 	// This also requires setting blend equations
-	VkColorBlendEquationEXT colorBlendEquationEXT{};
-	init.disp.cmdSetColorBlendEquationEXT(cmd_buffer, 0, 1, &colorBlendEquationEXT);
-
-
-	// Set the topology to triangles, don't restart primitives, set samples to only 1 per pixel
-	init.disp.cmdSetPrimitiveTopologyEXT(cmd_buffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	init.disp.cmdSetPrimitiveRestartEnableEXT(cmd_buffer, VK_FALSE);
-	init.disp.cmdSetRasterizationSamplesEXT(cmd_buffer, VK_SAMPLE_COUNT_1_BIT);
-
-	{
-    	// Use 1 sample per pixel
-    	const VkSampleMask sample_mask = 0x1;
-    	init.disp.cmdSetSampleMaskEXT(cmd_buffer, VK_SAMPLE_COUNT_1_BIT, &sample_mask);
-	}
-
-	// Do not use alpha to coverage or alpha to one because not using MSAA
-	init.disp.cmdSetAlphaToCoverageEnableEXT(cmd_buffer, VK_FALSE);
-
-	init.disp.cmdSetPolygonModeEXT(cmd_buffer, VK_POLYGON_MODE_FILL);
-	
-	// Set front face, cull mode is set in build_command_buffers.
-	init.disp.cmdSetFrontFaceEXT(cmd_buffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-
-	// Set depth state, the depth write. Don't enable depth bounds, bias, or stencil test.
-	init.disp.cmdSetDepthTestEnableEXT(cmd_buffer, VK_TRUE);
-	init.disp.cmdSetDepthCompareOpEXT(cmd_buffer, VK_COMPARE_OP_GREATER);
-	init.disp.cmdSetDepthBoundsTestEnableEXT(cmd_buffer, VK_FALSE);
-	init.disp.cmdSetDepthBiasEnableEXT(cmd_buffer, VK_FALSE);
-	init.disp.cmdSetStencilTestEnableEXT(cmd_buffer, VK_FALSE);
-
-	// Do not enable logic op
-	init.disp.cmdSetLogicOpEnableEXT(cmd_buffer, VK_FALSE);
-	
-	{
-    	// Disable color blending
-    	VkBool32 color_blend_enables[] = {VK_FALSE};
-    	init.disp.cmdSetColorBlendEnableEXT(cmd_buffer, 0, 1, color_blend_enables);
-	}
-
-	{
-    	// Use RGBA color write mask
-    	VkColorComponentFlags color_component_flags[] = {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_A_BIT};
-    	init.disp.cmdSetColorWriteMaskEXT(cmd_buffer, 0, 1, color_component_flags);
-	}
+	// VkColorBlendEquationEXT colorBlendEquationEXT{};
+	// init.disp.cmdSetColorBlendEquationEXT(cmd_buffer, 0, 1, &colorBlendEquationEXT);
+	//
+	//
+	//
+	// // Set depth state, the depth write. Don't enable depth bounds, bias, or stencil test.
+	// init.disp.cmdSetDepthTestEnableEXT(cmd_buffer, VK_FALSE);
+	// init.disp.cmdSetDepthCompareOpEXT(cmd_buffer, VK_COMPARE_OP_GREATER);
+	// init.disp.cmdSetDepthBoundsTestEnableEXT(cmd_buffer, VK_FALSE);
+	// init.disp.cmdSetDepthWriteEnableEXT(cmd_buffer, VK_FALSE);
+	//
+	// // Do not enable logic op
+	// init.disp.cmdSetLogicOpEnableEXT(cmd_buffer, VK_FALSE);
+	//
+	// {
+ //    
+	// }
+	//
+	// {
+ //    
+	// }
 }
