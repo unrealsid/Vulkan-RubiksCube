@@ -8,7 +8,10 @@
 #include "Config.h"
 #include "materials/ShaderObject.h"
 #include "rendering/Vk_DynamicRendering.h"
+#include "structs/SceneData.h"
 #include "utils/ModelUtils.h"
+#include "utils/Vk_Descriptors.h"
+#include "utils/Vk_Utils.h"
 #include "utils/VMA_MemoryUtils.h"
 
 GLFWwindow* create_window_glfw(const char* window_name, bool resize)
@@ -228,9 +231,28 @@ int create_graphics_pipeline(Init& init, RenderData& data)
     
     loadShader(std::string(SHADER_PATH) + "/mesh_shader.vert.spv", shaderCodes[0], shaderCodeSizes[0]);
     loadShader(std::string(SHADER_PATH) + "/mesh_shader.frag.spv", shaderCodes[1], shaderCodeSizes[1]);
+
+    //Descriptor creation 
+    VkBuffer outUboBuffer;
+    VmaAllocation outUboAllocation;
+    Vk_DescriptorUtils::createUniformBuffer(init, sizeof(SceneDataUBO), outUboBuffer, outUboAllocation);
+    
+    uint32_t maxSets = 1;
+    VkDeviceSize uniformBufferSize = sizeof(SceneDataUBO);
+    VkDescriptorPool descriptorPool = Vk_DescriptorUtils::createDescriptorPool(init.disp, maxSets);
+    init.descriptorSetLayout = Vk_DescriptorUtils::createDescriptorSetLayout(init.disp);
+    data.descriptorSet = Vk_DescriptorUtils::allocateAndWriteDescriptorSet(init.disp, descriptorPool, init.descriptorSetLayout, outUboBuffer, uniformBufferSize);
+    
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = Vk_DescriptorUtils::pipelineLayoutCreateInfo(&init.descriptorSetLayout, 1);
+    init.disp.createPipelineLayout(&pipelineLayoutInfo, VK_NULL_HANDLE, &init.pipelineLayout);
+
+    SceneDataUBO sceneDataUBO;
+    vkUtils::prepareUBO(sceneDataUBO);
+    
+    Vk_DescriptorUtils::mapUBO(init, outUboAllocation, sceneDataUBO);
     
     data.shader_object = std::make_unique<ShaderObject>();
-    data.shader_object->create_shaders(init.disp, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1]);
+    data.shader_object->create_shaders(init, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1]);
     
     return 0;
 }
@@ -275,13 +297,6 @@ int create_command_buffers(Init& init, RenderData& data)
             // failed to begin recording command buffer
         }
 
-        VkImageSubresourceRange range{};
-        range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        range.baseMipLevel   = 0;
-        range.levelCount     = VK_REMAINING_MIP_LEVELS;
-        range.baseArrayLayer = 0;
-        range.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-
         Vk_DynamicRendering::image_layout_transition(data.command_buffers[i],
                                          init.swapchain.get_images().value()[i],
                                          VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -290,7 +305,8 @@ int create_command_buffers(Init& init, RenderData& data)
                                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                                          VK_IMAGE_LAYOUT_UNDEFINED,
                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                         range);
+                                          VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
+
         
         VkRenderingAttachmentInfoKHR color_attachment_info = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
         color_attachment_info.pNext = VK_NULL_HANDLE;
@@ -321,8 +337,8 @@ int create_command_buffers(Init& init, RenderData& data)
         VkDeviceSize offsets[] = {0};
         init.disp.cmdBindVertexBuffers(data.command_buffers[i], 0, 1, vertexBuffers, offsets);
         init.disp.cmdBindIndexBuffer(data.command_buffers[i], data.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        init.disp.cmdBindDescriptorSets(data.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, init.pipelineLayout, 0, 1, &data.descriptorSet, 0, nullptr);
         data.shader_object->bind_material_shader(init.disp, data.command_buffers[i]);
-        
         
         //init.disp.cmdDraw(data.command_buffers[i], static_cast<uint32_t>(data.outVertices.size()), 1, 0, 0);
         
@@ -340,7 +356,7 @@ int create_command_buffers(Init& init, RenderData& data)
             0,                                        // Destination access mask
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // Old layout
             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // New layout
-            range);
+             VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
 
         if (init.disp.endCommandBuffer(data.command_buffers[i]) != VK_SUCCESS)
         {
@@ -537,12 +553,14 @@ int main()
     if (0 != device_initialization(init)) return -1;
     if (0 != create_swapchain(init)) return -1;
     if (0 != get_queues(init, render_data)) return -1;
+    
+    vmaUtils::createVmaAllocator(init);
+    
     if (0 != create_graphics_pipeline(init, render_data)) return -1;
     if (0 != create_command_pool(init, render_data)) return -1;
 
     //load model
     loadModel(render_data);
-    vmaUtils::createVmaAllocator(init);
     vmaUtils::createVertexAndIndexBuffersVMA(init.vmaAllocator, init.disp, render_data.graphics_queue, render_data.command_pool, render_data, render_data.outVertices, render_data.outIndices);
     
     

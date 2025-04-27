@@ -15,7 +15,10 @@ struct Init
     VkSurfaceKHR surface;
     vkb::Device device;
     vkb::DispatchTable disp;
+    
     vkb::Swapchain swapchain;
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkPipelineLayout pipelineLayout { VK_NULL_HANDLE };
 
     VmaAllocator vmaAllocator;
 };

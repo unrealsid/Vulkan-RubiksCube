@@ -40,6 +40,8 @@ struct RenderData
 
     std::vector<uint32_t> outIndices;
     std::vector<Vertex> outVertices;
+
+    VkDescriptorSet descriptorSet;
 };
 
 #endif

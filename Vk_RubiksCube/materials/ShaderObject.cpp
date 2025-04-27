@@ -9,6 +9,7 @@ ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
                              char*						  glsl_source,
                              size_t						  spirv_size,
                              const VkDescriptorSetLayout *pSetLayouts,
+                             uint32_t                     setLayoutCount,
                              const VkPushConstantRange   *pPushConstantRange)
 {
     stage       = stage_;
@@ -26,7 +27,7 @@ ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
     vk_shader_create_info.codeSize               = spirv_size;
     vk_shader_create_info.pCode                  = spirv;
     vk_shader_create_info.pName                  = "main";
-    vk_shader_create_info.setLayoutCount         = 0;
+    vk_shader_create_info.setLayoutCount         = setLayoutCount;
     vk_shader_create_info.pSetLayouts            = pSetLayouts;
     vk_shader_create_info.pushConstantRangeCount = 0;
     vk_shader_create_info.pPushConstantRanges    = pPushConstantRange;
@@ -84,20 +85,20 @@ void ShaderObject::build_linked_shaders(const vkb::DispatchTable& disp, ShaderOb
     frag->set_shader(shaderEXTs[1]);
 }
 
-void ShaderObject::create_shaders(const vkb::DispatchTable& disp, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize)
+void ShaderObject::create_shaders(const Init& init, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize)
 {
-    triangle_vert_shader = new Shader(VK_SHADER_STAGE_VERTEX_BIT,
+	triangle_vert_shader = new Shader(VK_SHADER_STAGE_VERTEX_BIT,
                                         VK_SHADER_STAGE_FRAGMENT_BIT,
                                         "MeshShader", vertexShader,
-                                        vertShaderSize, nullptr, nullptr);
+                                        vertShaderSize, &init.descriptorSetLayout, 1, nullptr);
                                         
     triangle_frag_shader = new Shader(VK_SHADER_STAGE_FRAGMENT_BIT,
                                     0,
                                     "MeshShader",
                                     fragmentShader,
-                                    fragShaderSize, nullptr, nullptr);
+                                    fragShaderSize, &init.descriptorSetLayout, 1, nullptr);
 
-    build_linked_shaders(disp, triangle_vert_shader, triangle_frag_shader);
+    build_linked_shaders(init.disp, triangle_vert_shader, triangle_frag_shader);
 }
 
 void ShaderObject::bind_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer, const ShaderObject::Shader* shader)
