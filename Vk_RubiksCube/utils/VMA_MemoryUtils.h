@@ -1,8 +1,7 @@
 #pragma once
 #include "VkBootstrapDispatch.h"
 #include "../structs/Vk_RenderData.h"
-
-
+#include "../structs/Vk_DepthStencil_Image.h"
 
 struct Init;
 struct Vertex;
@@ -18,6 +17,11 @@ namespace vmaUtils
     void copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
     void createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool,RenderData& renderData, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
+
+    VkBool32 getSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat);
+
+    void setupDepthStencil(vkb::DispatchTable disp, VkExtent2D extents, VmaAllocator
+                           allocator, DepthStencil_Image& depthImage);
 
     VkPhysicalDeviceBufferDeviceAddressFeatures create_physical_device_buffer_address();
 }

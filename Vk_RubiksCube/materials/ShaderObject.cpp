@@ -132,9 +132,9 @@ void ShaderObject::set_initial_state(const Init& init, VkCommandBuffer cmd_buffe
 		init.disp.cmdSetScissorWithCountEXT(cmd_buffer, 1, &scissor);
     	init.disp.cmdSetCullModeEXT(cmd_buffer, VK_CULL_MODE_NONE);
     	init.disp.cmdSetFrontFaceEXT(cmd_buffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-    	init.disp.cmdSetDepthTestEnableEXT(cmd_buffer, VK_FALSE);
-    	init.disp.cmdSetDepthWriteEnableEXT(cmd_buffer, VK_FALSE);
-    	init.disp.cmdSetDepthCompareOpEXT(cmd_buffer, VK_COMPARE_OP_NEVER);
+    	init.disp.cmdSetDepthTestEnableEXT(cmd_buffer, VK_TRUE);
+    	init.disp.cmdSetDepthWriteEnableEXT(cmd_buffer, VK_TRUE);
+    	init.disp.cmdSetDepthCompareOpEXT(cmd_buffer, VK_COMPARE_OP_LESS_OR_EQUAL);
     	init.disp.cmdSetPrimitiveTopologyEXT(cmd_buffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     	init.disp.cmdSetRasterizerDiscardEnableEXT(cmd_buffer, VK_FALSE);
     	init.disp.cmdSetPolygonModeEXT(cmd_buffer, VK_POLYGON_MODE_FILL);
@@ -188,11 +188,4 @@ void ShaderObject::set_initial_state(const Init& init, VkCommandBuffer cmd_buffe
 	// // Do not enable logic op
 	// init.disp.cmdSetLogicOpEnableEXT(cmd_buffer, VK_FALSE);
 	//
-	// {
- //    
-	// }
-	//
-	// {
- //    
-	// }
 }

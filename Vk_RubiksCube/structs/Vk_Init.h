@@ -14,6 +14,7 @@ struct Init
     vkb::InstanceDispatchTable inst_disp;
     VkSurfaceKHR surface;
     vkb::Device device;
+    vkb::PhysicalDevice physicalDevice;
     vkb::DispatchTable disp;
     
     vkb::Swapchain swapchain;

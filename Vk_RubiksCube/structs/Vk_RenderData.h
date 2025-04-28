@@ -8,6 +8,8 @@
 #include <vk_mem_alloc.h>
 #include <vulkan_core.h>
 
+#include "Vk_DepthStencil_Image.h"
+
 struct Vertex;
 class ShaderObject;
 
@@ -42,6 +44,8 @@ struct RenderData
     std::vector<Vertex> outVertices;
 
     VkDescriptorSet descriptorSet;
+
+    DepthStencil_Image depthStencilImage;
 };
 
 #endif

@@ -129,7 +129,7 @@ int device_initialization(Init& init)
         return -1;
     }
     init.device = device_ret.value();
-
+    init.physicalDevice = physical_device;
     init.disp = init.device.make_table();
 
     return 0;
@@ -253,6 +253,11 @@ int create_graphics_pipeline(Init& init, RenderData& data)
     
     data.shader_object = std::make_unique<ShaderObject>();
     data.shader_object->create_shaders(init, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1]);
+
+    //create depth stencil image
+    vmaUtils::getSupportedDepthStencilFormat(init.physicalDevice, &data.depthStencilImage.format);
+
+    vmaUtils::setupDepthStencil(init.disp, init.swapchain.extent, init.vmaAllocator, data.depthStencilImage);
     
     return 0;
 }
@@ -307,7 +312,17 @@ int create_command_buffers(Init& init, RenderData& data)
                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
 
-        
+        Vk_DynamicRendering::image_layout_transition(data.command_buffers[i],
+                                         data.depthStencilImage.image,
+                                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                         0,
+                                         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                                         VK_IMAGE_LAYOUT_UNDEFINED,
+                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                          VkImageSubresourceRange{ VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1 });
+
+        //Color attachment
         VkRenderingAttachmentInfoKHR color_attachment_info = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
         color_attachment_info.pNext = VK_NULL_HANDLE;
         color_attachment_info.imageView                    = init.swapchain.get_image_views().value()[i];        // color_attachment.image_view;
@@ -315,23 +330,31 @@ int create_command_buffers(Init& init, RenderData& data)
         color_attachment_info.resolveMode                  = VK_RESOLVE_MODE_NONE;
         color_attachment_info.loadOp                       = VK_ATTACHMENT_LOAD_OP_CLEAR;
         color_attachment_info.storeOp                      = VK_ATTACHMENT_STORE_OP_STORE;
-        color_attachment_info.clearValue                   = {0.5f, 0.2f, 0.3f, 1.0f}; ;
+        color_attachment_info.clearValue                   = {0.5f, 0.2f, 0.3f, 1.0f};
+
+        //Depth Stencil
+        VkRenderingAttachmentInfoKHR depth_attachment_info = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+        depth_attachment_info.pNext = VK_NULL_HANDLE;
+        depth_attachment_info.imageView = data.depthStencilImage.view;
+        depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depth_attachment_info.resolveMode = VK_RESOLVE_MODE_NONE;
+        depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        depth_attachment_info.clearValue = {1.0f };
 
         auto render_area             = VkRect2D{VkOffset2D{}, VkExtent2D{init.swapchain.extent.width, init.swapchain.extent.height}};
         auto render_info             = Vk_DynamicRendering::rendering_info(render_area, 1, &color_attachment_info);
 
         render_info.layerCount       = 1;
         render_info.pColorAttachments = &color_attachment_info;
-        render_info.pDepthAttachment = VK_NULL_HANDLE;
-        render_info.pStencilAttachment = VK_NULL_HANDLE;
+        render_info.pDepthAttachment = &depth_attachment_info;
+        render_info.pStencilAttachment = &depth_attachment_info;
         
         init.disp.cmdBeginRenderingKHR(data.command_buffers[i], &render_info);
         
         data.shader_object->set_initial_state(init, data.command_buffers[i]);
         
         //Draw Stuff goes here
-        //init.disp.cmdDraw(data.command_buffers[i], 3, 1, 0, 0);
-
         //Bind buffers
         VkBuffer vertexBuffers[] = {data.vertexBuffer};
         VkDeviceSize offsets[] = {0};
