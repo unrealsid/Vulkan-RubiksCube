@@ -1,9 +1,49 @@
 #include "Vk_Descriptors.h"
+
+#include <iostream>
 #include <vector>
 #include <stdexcept>
+
+#include "Vk_Utils.h"
 #include "../structs/SceneData.h"
 
 #include "VMA_MemoryUtils.h"
+
+VkPhysicalDeviceDescriptorBufferFeaturesEXT Vk_DescriptorUtils::createPhysicalDeviceDescriptorBufferFeatures()
+{
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT enabledDeviceDescriptorBufferFeaturesEXT{};
+    enabledDeviceDescriptorBufferFeaturesEXT.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+    enabledDeviceDescriptorBufferFeaturesEXT.descriptorBuffer = VK_TRUE;
+
+    return enabledDeviceDescriptorBufferFeaturesEXT;
+}
+
+void Vk_DescriptorUtils::prepareMVP_UBO(const Init& init, RenderData& data)
+{
+    createUniformBuffer(init, sizeof(SceneDataUBO), data.mvpUniformBufferInfo);
+    SceneDataUBO sceneDataUBO;
+    vkUtils::prepareUBO(sceneDataUBO);
+    
+    mapUBO(init, data.mvpUniformBufferInfo.allocation, sceneDataUBO);
+}
+
+void Vk_DescriptorUtils::setupDescriptors(const vkb::DispatchTable& disp, RenderData& data)
+{
+    VkDescriptorSetLayoutCreateInfo descriptorLayoutCI{};
+    descriptorLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorLayoutCI.bindingCount = 1;
+    descriptorLayoutCI.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkDescriptorSetLayoutBinding setLayoutBinding = {};
+
+    setLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    setLayoutBinding.binding = 0;
+    setLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    setLayoutBinding.descriptorCount = 1;
+
+    descriptorLayoutCI.pBindings = &setLayoutBinding;
+    disp.createDescriptorSetLayout(&descriptorLayoutCI, nullptr, &data.mvpDescriptorInfo.setLayout);
+}
 
 VkDescriptorSetLayout Vk_DescriptorUtils::createDescriptorSetLayout(const vkb::DispatchTable& disp)
 {
@@ -28,7 +68,85 @@ VkDescriptorSetLayout Vk_DescriptorUtils::createDescriptorSetLayout(const vkb::D
     return descriptorSetLayout;
 }
 
-VkDescriptorPool Vk_DescriptorUtils::createDescriptorPool(const vkb::DispatchTable& disp, uint32_t maxSets) {
+void Vk_DescriptorUtils::prepareDescriptorBuffer(Init& init, const vkb::InstanceDispatchTable& instancedDisp, const vkb::DispatchTable& disp, RenderData& data)
+{
+    // We need to get sizes and offsets for the descriptor layouts
+    VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptorBufferProperties{};
+    VkPhysicalDeviceProperties2KHR deviceProps2{};
+    descriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+    deviceProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+    deviceProps2.pNext = &descriptorBufferProperties;
+    instancedDisp.getPhysicalDeviceProperties2KHR(init.physicalDevice.physical_device, &deviceProps2);
+
+    // Some devices have very low limits for the no. of max descriptor buffer bindings, so we need to check
+    if (descriptorBufferProperties.maxResourceDescriptorBufferBindings < 2)
+    {
+        std::cerr << "This sample requires at least 2 descriptor bindings to run, the selected device only supports " + std::to_string(descriptorBufferProperties.maxResourceDescriptorBufferBindings);
+    }
+
+    disp.getDescriptorSetLayoutSizeEXT(data.mvpDescriptorInfo.setLayout, &data.mvpDescriptorInfo.layoutSize);
+    disp.getDescriptorSetLayoutBindingOffsetEXT(data.mvpDescriptorInfo.setLayout, 0, &data.mvpDescriptorInfo.layoutOffset);
+
+    // To copy resource descriptors to the correct place, we need to calculate aligned sizes
+    data.mvpDescriptorInfo.layoutSize = alignedVkSize(data.mvpDescriptorInfo.layoutSize, descriptorBufferProperties.descriptorBufferOffsetAlignment);
+
+    //Create the buffer that will store descriptor metadata
+    vmaUtils::createBufferVMA(init.vmaAllocator, data.mvpDescriptorInfo.layoutSize,
+        VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        data.mvpDescriptorInfo.bufferInfo.buffer, data.mvpDescriptorInfo.bufferInfo.allocation, data.mvpDescriptorInfo.bufferInfo.allocationInfo);
+
+    //map that data
+    //TODO: Change this
+    vmaUtils::mapPersistenData(
+        init.vmaAllocator,
+        data.mvpDescriptorInfo.bufferInfo.allocation,
+        data.mvpDescriptorInfo.bufferInfo.allocationInfo,
+        data.mvpDescriptorInfo.bufferInfo.buffer, data.mvpDescriptorInfo.layoutSize);
+
+    data.mvpDescriptorInfo.bufferDeviceAddress.deviceAddress = getBufferDeviceAddress(disp, data.mvpDescriptorInfo.bufferInfo.buffer);
+
+    VkDescriptorGetInfoEXT descriptorInfo{};
+    descriptorInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+
+    //Get the buffer address
+    char* uniformDescriptorBufPtr = (char*)data.mvpDescriptorInfo.bufferInfo.allocationInfo.pMappedData;
+
+    VkDescriptorAddressInfoEXT descriptorAddressInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
+    descriptorAddressInfo.pNext = nullptr;
+    descriptorAddressInfo.address = getBufferDeviceAddress(disp, data.mvpUniformBufferInfo.buffer);
+    descriptorAddressInfo.range = data.mvpUniformBufferInfo.allocationInfo.size;
+    descriptorAddressInfo.format = VK_FORMAT_UNDEFINED;
+
+    //get MVP data
+    descriptorInfo.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorInfo.data.pCombinedImageSampler = nullptr;
+    descriptorInfo.data.pUniformBuffer = &descriptorAddressInfo;
+    disp.getDescriptorEXT(&descriptorInfo, descriptorBufferProperties.uniformBufferDescriptorSize, uniformDescriptorBufPtr);
+
+    init.descriptorSetLayout = data.mvpDescriptorInfo.setLayout;
+}
+
+VkDeviceAddress Vk_DescriptorUtils::getBufferDeviceAddress(const vkb::DispatchTable disp, VkBuffer buffer)
+{
+    VkBufferDeviceAddressInfoEXT bufferDeviceAI{};
+    bufferDeviceAI.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    bufferDeviceAI.buffer = buffer;
+
+    PFN_vkGetDeviceProcAddr fnGetDeviceProcAddr = (vkGetDeviceProcAddr);
+    PFN_vkGetBufferDeviceAddressEXT fnGetBufferDeviceAddressEXT = reinterpret_cast<PFN_vkGetBufferDeviceAddressEXT>(vkGetDeviceProcAddr(disp.device, "vkGetBufferDeviceAddressKHR"));
+    
+    return fnGetBufferDeviceAddressEXT(disp.device, &bufferDeviceAI);
+}
+
+VkDeviceSize Vk_DescriptorUtils::alignedVkSize(VkDeviceSize value, VkDeviceSize alignment)
+{
+    return (value + alignment - 1) & ~(alignment - 1);
+}
+
+VkDescriptorPool Vk_DescriptorUtils::createDescriptorPool(const vkb::DispatchTable& disp, uint32_t maxSets)
+{
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSize.descriptorCount = maxSets; // Maximum number of descriptor sets that can be allocated with this type
@@ -88,13 +206,12 @@ VkDescriptorSet Vk_DescriptorUtils::allocateAndWriteDescriptorSet
     return descriptorSet;
 }
 
-void Vk_DescriptorUtils::createUniformBuffer(const Init& init, VkDeviceSize size,
-                                         VkBuffer& buffer, VmaAllocation& allocation)
+void Vk_DescriptorUtils::createUniformBuffer(const Init& init, VkDeviceSize size, BufferInfo& bufferInfo)
 {
     vmaUtils::createBufferVMA(init.vmaAllocator, size,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,  
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,  
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, buffer, allocation);
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, bufferInfo.buffer, bufferInfo.allocation, bufferInfo.allocationInfo);
 }
 
 VkPipelineLayoutCreateInfo Vk_DescriptorUtils::pipelineLayoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,

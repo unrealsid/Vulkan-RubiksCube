@@ -4,10 +4,13 @@
 #define VK_RENDER_DATA_H
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 #include <vk_mem_alloc.h>
 #include <vulkan_core.h>
 
+#include "DescriptorInfo.h"
+#include "MaterialParams.h"
 #include "Vk_DepthStencil_Image.h"
 
 struct Vertex;
@@ -39,6 +42,22 @@ struct RenderData
     VmaAllocation vertexBufferAllocation;
     VkBuffer indexBuffer;
     VmaAllocation indexBufferAllocation;
+
+    std::vector<uint32_t> primitiveMaterialIndices;
+    std::unordered_map<uint32_t, MaterialParams> materialParams;
+
+    VkBuffer materialParamsBufferSSBO = VK_NULL_HANDLE;
+    VmaAllocation materialParamsBufferSSBOAllocation = VK_NULL_HANDLE;
+    VkDeviceSize materialParamsBufferSSBOSize = 0;
+
+    VkBuffer primitiveMaterialMapBufferSSBO = VK_NULL_HANDLE;
+    VmaAllocation primitiveMaterialMapBufferSSBOAllocation = VK_NULL_HANDLE;
+    VkDeviceSize primitiveMaterialMapBufferSSBOSize = 0;
+
+    //Container for Descriptor info for the MVP UBO
+    DescriptorInfo mvpDescriptorInfo;
+    //Contains actual mvp UBO
+    BufferInfo mvpUniformBufferInfo;
 
     std::vector<uint32_t> outIndices;
     std::vector<Vertex> outVertices;

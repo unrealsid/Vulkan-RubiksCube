@@ -62,8 +62,7 @@ int device_initialization(Init& init)
     auto instance_ret = instance_builder.
         set_minimum_instance_version(VK_API_VERSION_1_4)
         .use_default_debug_messenger()
-        .add_validation_feature_disable(*disables)
-        //.enable_layer("VK_LAYER_KHRONOS_shader_object")
+        //.add_validation_feature_disable(*disables)
         .enable_extension(VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME)
         .enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
         .enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
@@ -95,19 +94,30 @@ int device_initialization(Init& init)
         .add_required_extension(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
         .add_required_extension(VK_KHR_MULTIVIEW_EXTENSION_NAME)
         .add_required_extension(VK_KHR_MAINTENANCE_2_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_MAINTENANCE_6_EXTENSION_NAME)
         .add_required_extension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)
         .add_required_extension(VK_KHR_DEVICE_GROUP_EXTENSION_NAME)
         .add_required_extension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME) 
         .add_required_extension(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME)
         .add_required_extension(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
-        //.add_required_extension(VK_KHR_MAINTENANCE_6_EXTENSION_NAME)
+        .add_required_extension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)
+        //.add_required_extension(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
         .set_required_features(features)
         .set_surface(init.surface)
         .select();
 
+    std::cout << "Selected physical device: " << phys_device_ret.value() << "\n";
+
+    for (auto extensions : phys_device_ret.value().get_extensions())
+    {
+        std::cout << extensions << "\n";   
+    }
+
     auto dynamic_rendering_features = Vk_DynamicRendering::create_dynamic_rendering_features();
     auto shader_object_features = ShaderObject::create_shader_object_features();
     auto device_memory_features = vmaUtils::create_physical_device_buffer_address();
+    auto descriptorBufferFeatures = Vk_DescriptorUtils::createPhysicalDeviceDescriptorBufferFeatures();
     
     if (!phys_device_ret)
     {
@@ -121,6 +131,7 @@ int device_initialization(Init& init)
         .add_pNext(&dynamic_rendering_features)
         .add_pNext(&shader_object_features)
         .add_pNext(&device_memory_features)
+        //.add_pNext(&descriptorBufferFeatures)
         .build();
     
     if (!device_ret)
@@ -232,24 +243,23 @@ int create_graphics_pipeline(Init& init, RenderData& data)
     loadShader(std::string(SHADER_PATH) + "/mesh_shader.vert.spv", shaderCodes[0], shaderCodeSizes[0]);
     loadShader(std::string(SHADER_PATH) + "/mesh_shader.frag.spv", shaderCodes[1], shaderCodeSizes[1]);
 
-    //Descriptor creation 
-    VkBuffer outUboBuffer;
-    VmaAllocation outUboAllocation;
-    Vk_DescriptorUtils::createUniformBuffer(init, sizeof(SceneDataUBO), outUboBuffer, outUboAllocation);
+    Vk_DescriptorUtils::prepareMVP_UBO(init, data);
+    Vk_DescriptorUtils::setupDescriptors(init.disp, data);
+    Vk_DescriptorUtils::prepareDescriptorBuffer(init, init.inst_disp, init.disp, data);
     
-    uint32_t maxSets = 1;
-    VkDeviceSize uniformBufferSize = sizeof(SceneDataUBO);
-    VkDescriptorPool descriptorPool = Vk_DescriptorUtils::createDescriptorPool(init.disp, maxSets);
-    init.descriptorSetLayout = Vk_DescriptorUtils::createDescriptorSetLayout(init.disp);
-    data.descriptorSet = Vk_DescriptorUtils::allocateAndWriteDescriptorSet(init.disp, descriptorPool, init.descriptorSetLayout, outUboBuffer, uniformBufferSize);
+    // uint32_t maxSets = 1;
+    // VkDeviceSize uniformBufferSize = sizeof(SceneDataUBO);
+    // VkDescriptorPool descriptorPool = Vk_DescriptorUtils::createDescriptorPool(init.disp, maxSets);
+    // init.descriptorSetLayout = Vk_DescriptorUtils::createDescriptorSetLayout(init.disp);
+    // data.descriptorSet = Vk_DescriptorUtils::allocateAndWriteDescriptorSet(init.disp, descriptorPool, init.descriptorSetLayout, outUboBuffer, uniformBufferSize);
+    //
+    std::vector<VkDescriptorSetLayout> pipelineSetLayouts = 
+    {
+        init.descriptorSetLayout // Place the handle for Set 0 at index 0
+    };
     
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = Vk_DescriptorUtils::pipelineLayoutCreateInfo(&init.descriptorSetLayout, 1);
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = Vk_DescriptorUtils::pipelineLayoutCreateInfo(pipelineSetLayouts.data(), 1);
     init.disp.createPipelineLayout(&pipelineLayoutInfo, VK_NULL_HANDLE, &init.pipelineLayout);
-
-    SceneDataUBO sceneDataUBO;
-    vkUtils::prepareUBO(sceneDataUBO);
-    
-    Vk_DescriptorUtils::mapUBO(init, outUboAllocation, sceneDataUBO);
     
     data.shader_object = std::make_unique<ShaderObject>();
     data.shader_object->create_shaders(init, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1]);
@@ -299,7 +309,7 @@ int create_command_buffers(Init& init, RenderData& data)
         if (init.disp.beginCommandBuffer(data.command_buffers[i], &begin_info) != VK_SUCCESS)
         {
             return -1;
-            // failed to begin recording command buffer
+            // failed to begin recording the command buffer
         }
 
         Vk_DynamicRendering::image_layout_transition(data.command_buffers[i],
@@ -360,7 +370,16 @@ int create_command_buffers(Init& init, RenderData& data)
         VkDeviceSize offsets[] = {0};
         init.disp.cmdBindVertexBuffers(data.command_buffers[i], 0, 1, vertexBuffers, offsets);
         init.disp.cmdBindIndexBuffer(data.command_buffers[i], data.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        init.disp.cmdBindDescriptorSets(data.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, init.pipelineLayout, 0, 1, &data.descriptorSet, 0, nullptr);
+        //init.disp.cmdBindDescriptorSets(data.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, init.pipelineLayout, 0, 1, &data.descriptorSet, 0, nullptr);
+
+        // Descriptor buffer bindings
+        // Set 0 = uniform buffer
+        VkDescriptorBufferBindingInfoEXT bindingInfos[1]{};
+        bindingInfos[0].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
+        bindingInfos[0].address = data.mvpDescriptorInfo.bufferDeviceAddress.deviceAddress;
+        bindingInfos[0].usage = VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;// | VK_BUFFER_USAGE_PUSH_DESCRIPTORS_DESCRIPTOR_BUFFER_BIT_EXT;
+        init.disp.cmdBindDescriptorBuffersEXT(data.command_buffers[i], 1, bindingInfos);
+        
         data.shader_object->bind_material_shader(init.disp, data.command_buffers[i]);
         
         //init.disp.cmdDraw(data.command_buffers[i], static_cast<uint32_t>(data.outVertices.size()), 1, 0, 0);
@@ -526,10 +545,11 @@ void cleanup(Init& init, RenderData& data)
 
 void loadModel(RenderData& data)
 {
-    vkUtils::loadModel(std::string(RESOURCE_PATH) + "/models/rubiks_cube/rubiks_cube.obj", data.outVertices, data.outIndices);
+    VkUtils::ModelUtils modelUtils;
+    modelUtils.loadObj(std::string(RESOURCE_PATH) + "/models/rubiks_cube/rubiks_cube.obj", data.outVertices, data.outIndices, data.primitiveMaterialIndices, data.materialParams);
     
-    std::cout << "Vertices: " << data.outVertices.size() << std::endl;
-    std::cout << "Indices: " << data.outIndices.size() << std::endl;
+    std::cout << "Vertices: " << data.outVertices.size() << "\n";
+    std::cout << "Indices: " << data.outIndices.size() << "\n";
 
 
     // data.outVertices = {
@@ -585,6 +605,10 @@ int main()
     //load model
     loadModel(render_data);
     vmaUtils::createVertexAndIndexBuffersVMA(init.vmaAllocator, init.disp, render_data.graphics_queue, render_data.command_pool, render_data, render_data.outVertices, render_data.outIndices);
+    vmaUtils::createMaterialParamsSSBO(init.vmaAllocator, init.disp, render_data);
+    vmaUtils::createMaterialMapSSBO(init.vmaAllocator, init.disp, render_data);
+
+    //Vk_DescriptorUtils::allocateAndWriteDescriptorSetForModel(init.disp, init.descriptorSetLayout, render_data);
     
     
     if (0 != create_command_buffers(init, render_data)) return -1;

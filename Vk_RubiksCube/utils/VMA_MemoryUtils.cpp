@@ -28,6 +28,7 @@ void vmaUtils::createVmaAllocator(Init& init)
     vulkanFunctions.vkGetBufferMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetInstanceProcAddr(init.instance, "vkGetBufferMemoryRequirements2KHR"));
     vulkanFunctions.vkBindBufferMemory2KHR = reinterpret_cast<PFN_vkBindBufferMemory2KHR>(vkGetInstanceProcAddr(init.instance, "vkBindBufferMemory2KHR"));
     vulkanFunctions.vkBindImageMemory2KHR = reinterpret_cast<PFN_vkBindImageMemory2KHR>(vkGetInstanceProcAddr(init.instance, "vkBindImageMemory2KHR"));
+    vulkanFunctions.vkGetPhysicalDeviceMemoryProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2KHR>(vkGetInstanceProcAddr(init.instance, "vkGetPhysicalDeviceMemoryProperties2KHR"));
     
     static VmaAllocatorCreateInfo allocatorInfo;
 
@@ -49,7 +50,7 @@ void vmaUtils::createVmaAllocator(Init& init)
 }
 
 void vmaUtils::createBufferVMA(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage,
-                               VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, VkBuffer& buffer, VmaAllocation& allocation)
+                               VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, VkBuffer& buffer, VmaAllocation& allocation, VmaAllocationInfo& outVmaAllocationInfo)
 {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -61,7 +62,7 @@ void vmaUtils::createBufferVMA(VmaAllocator allocator, VkDeviceSize size, VkBuff
     allocCreateInfo.usage = memoryUsage;  
     allocCreateInfo.flags = vmaAllocationFlags;
 
-    if (VkResult result = vmaCreateBuffer(allocator, &bufferInfo, &allocCreateInfo, &buffer, &allocation, nullptr); result != VK_SUCCESS)
+    if (VkResult result = vmaCreateBuffer(allocator, &bufferInfo, &allocCreateInfo, &buffer, &allocation, &outVmaAllocationInfo); result != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create buffer with VMA!");
     }
@@ -108,16 +109,18 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
     VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
     VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
 
+    VmaAllocationInfo outVmaAllocationInfo;
+
     // Create Staging Buffer for Vertices using VMA
     VkBuffer stagingVertexBuffer;
     VmaAllocation stagingVertexBufferAllocation;
     createBufferVMA(vmaAllocator, vertexBufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
-        stagingVertexBuffer, stagingVertexBufferAllocation);
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VMA_MEMORY_USAGE_AUTO,
+                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                    stagingVertexBuffer, stagingVertexBufferAllocation, outVmaAllocationInfo);
 
-    // Copy Vertex Data to Staging Buffer using VMA mapping
+    // Copy Vertex Data to Staging Buffer using VMA mapping 
     assert(vertices.size() != 0, "Vertex Data is empty!");
     
     void* data;
@@ -127,8 +130,8 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
 
     // Create Vertex Buffer (Device Local) using VMA
     createBufferVMA(vmaAllocator, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                 VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,renderData.vertexBuffer, renderData.vertexBufferAllocation);
+                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,renderData.vertexBuffer, renderData.vertexBufferAllocation, outVmaAllocationInfo);
 
     // Copy from Staging Vertex Buffer to Device Local Vertex Buffer
     copyBuffer(disp, queue, command_pool, stagingVertexBuffer, renderData.vertexBuffer, vertexBufferSize);
@@ -141,8 +144,8 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
     VkBuffer stagingIndexBuffer;
     VmaAllocation stagingIndexBufferAllocation;
     createBufferVMA(vmaAllocator, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
-        stagingIndexBuffer, stagingIndexBufferAllocation);
+                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                    stagingIndexBuffer, stagingIndexBufferAllocation, outVmaAllocationInfo);
 
     // Copy Index Data to Staging Buffer using VMA mapping
     vmaMapMemory(vmaAllocator, stagingIndexBufferAllocation, &data);
@@ -151,8 +154,8 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
 
     // Create Index Buffer (Device Local) using VMA
     createBufferVMA(vmaAllocator, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                  VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_AUTO,
-                                  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, renderData.indexBuffer, renderData.indexBufferAllocation);
+                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_AUTO,
+                    VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, renderData.indexBuffer, renderData.indexBufferAllocation, outVmaAllocationInfo);
     
     vkUtils::SetVulkanObjectName(disp, (uint64_t) renderData.indexBuffer, VK_OBJECT_TYPE_BUFFER, "Index Buffer");
 
@@ -161,6 +164,89 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
 
     // Clean up Staging Index Buffer using VMA
     vmaDestroyBuffer(vmaAllocator, stagingIndexBuffer, stagingIndexBufferAllocation);
+}
+
+VkResult vmaUtils::mapPersistenData(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize
+                                    bufferSize)
+{
+    VkMemoryPropertyFlags memPropFlags;
+    vmaGetAllocationMemoryProperties(vmaAllocator, allocation, &memPropFlags);
+
+    if(memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+    {
+        memcpy(allocationInfo.pMappedData, data, bufferSize);
+        VkResult result = vmaFlushAllocation(vmaAllocator, allocation, 0, VK_WHOLE_SIZE);
+
+        return result;
+    }
+
+    return VK_ERROR_UNKNOWN;
+}
+
+void vmaUtils::createMaterialParamsSSBO(VmaAllocator vmaAllocator, vkb::DispatchTable disp, RenderData& renderData)
+{
+    VmaAllocationInfo outVmaAllocationInfo;
+
+    uint32_t maxMaterialIndex = 0;
+    if (!renderData.materialParams.empty())
+    {
+        // Find the element with the maximum key (material index)
+        auto max_it = std::max_element(renderData.materialParams.begin(), renderData.materialParams.end(),
+            [](const auto& a, const auto& b)
+            {
+                return a.first < b.first;
+            });
+        maxMaterialIndex = max_it->first;
+    }
+
+    // The vector size needs to be max_index + 1 to accommodate all indices from 0 to max_index
+    size_t materialCount = maxMaterialIndex + 1;
+    std::vector<MaterialParams> materialData(materialCount);
+
+    // Populate the vector using the map, placing each material at its correct index
+    for (const auto& pair : renderData.materialParams)
+    {
+        if (pair.first < materialCount)
+        {
+            materialData[pair.first] = pair.second;
+        }
+        else
+        {
+            std::cerr << "Warning: Material index " << pair.first << " is out of expected range (" << materialCount << ")" << std::endl;
+        }
+    }
+
+    VkDeviceSize bufferSize = sizeof(MaterialParams) * materialData.size();
+    renderData.materialParamsBufferSSBOSize = bufferSize;
+    
+    createBufferVMA(vmaAllocator, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                    VMA_MEMORY_USAGE_AUTO,
+                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                    renderData.materialParamsBufferSSBO,  renderData.materialParamsBufferSSBOAllocation, outVmaAllocationInfo);
+
+    vmaUtils::mapPersistenData(vmaAllocator, renderData.materialParamsBufferSSBOAllocation, outVmaAllocationInfo, materialData.data(), bufferSize);   
+}
+
+void vmaUtils::createMaterialMapSSBO(VmaAllocator vmaAllocator, vkb::DispatchTable disp, RenderData& renderData)
+{
+    VmaAllocationInfo outVmaAllocationInfo;
+    
+    VkDeviceSize bufferSize = sizeof(uint32_t) * renderData.primitiveMaterialIndices.size();
+    renderData.primitiveMaterialMapBufferSSBOSize = bufferSize;
+    
+    createBufferVMA(vmaAllocator, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                    VMA_MEMORY_USAGE_AUTO,
+                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                    renderData.primitiveMaterialMapBufferSSBO,  renderData.primitiveMaterialMapBufferSSBOAllocation, outVmaAllocationInfo);
+
+    VkMemoryPropertyFlags memPropFlags;
+    vmaGetAllocationMemoryProperties(vmaAllocator, renderData.materialParamsBufferSSBOAllocation, &memPropFlags);
+
+    if(memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+    {
+        memcpy(outVmaAllocationInfo.pMappedData, renderData.primitiveMaterialIndices.data(), bufferSize);
+        VkResult result = vmaFlushAllocation(vmaAllocator, renderData.materialParamsBufferSSBOAllocation, 0, VK_WHOLE_SIZE);
+    }   
 }
 
 VkBool32 vmaUtils::getSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat)

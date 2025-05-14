@@ -12,11 +12,18 @@ namespace vmaUtils
     void createVmaAllocator(Init& init);
 
     void createBufferVMA(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage,
-                         VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, VkBuffer& buffer, VmaAllocation& allocation);
+                         VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, VkBuffer& buffer, VmaAllocation& allocation,
+                         VmaAllocationInfo& outVmaAllocationInfo);
 
     void copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-    void createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool,RenderData& renderData, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
+    VkResult mapPersistenData(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize bufferSize);
+
+    void createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, RenderData& renderData, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
+
+    void createMaterialParamsSSBO(VmaAllocator vmaAllocator, vkb::DispatchTable disp, RenderData& renderData);
+
+    void createMaterialMapSSBO(VmaAllocator vmaAllocator, vkb::DispatchTable disp, RenderData& renderData);
 
     VkBool32 getSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat);
 
