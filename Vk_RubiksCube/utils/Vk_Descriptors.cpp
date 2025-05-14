@@ -2,6 +2,8 @@
 #include <vector>
 #include <stdexcept>
 #include "../structs/SceneData.h"
+#include "../structs/PushConstantBlock.h"
+#include "../structs/Buffer.h"
 
 #include "VMA_MemoryUtils.h"
 
@@ -88,31 +90,32 @@ VkDescriptorSet Vk_DescriptorUtils::allocateAndWriteDescriptorSet
     return descriptorSet;
 }
 
-void Vk_DescriptorUtils::createUniformBuffer(const Init& init, VkDeviceSize size,
-                                         VkBuffer& buffer, VmaAllocation& allocation)
+void Vk_DescriptorUtils::createSceneBuffer(const Init& init, VkDeviceSize size, Buffer& buffer)
 {
     vmaUtils::createBufferVMA(init.vmaAllocator, size,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,  
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, buffer, allocation);
+                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,  
+                              VMA_MEMORY_USAGE_AUTO,
+                              VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                              VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
+                              VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer.buffer, buffer.allocation, buffer.allocationInfo);
 }
 
 VkPipelineLayoutCreateInfo Vk_DescriptorUtils::pipelineLayoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,
-    uint32_t setLayoutCount)
+    uint32_t setLayoutCount, const VkPushConstantRange& pushConstantRange, uint32_t pushConstantCount)
 {
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
-    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = setLayoutCount;
-    pipelineLayoutCreateInfo.pSetLayouts = pSetLayouts;
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+    
+    pipelineLayoutCreateInfo.pushConstantRangeCount = pushConstantCount;
+    pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
     return pipelineLayoutCreateInfo;
 }
 
-void Vk_DescriptorUtils::mapUBO(const Init& init, VmaAllocation uboAllocation, SceneDataUBO& sceneDataUBO)
+void Vk_DescriptorUtils::mapUBO(const Init& init, SceneData& sceneDataUBO)
 {
     void* mappedData;
-    vmaMapMemory(init.vmaAllocator, uboAllocation, &mappedData);
+    vmaMapMemory(init.vmaAllocator, sceneDataUBO.sceneBuffer.allocation, &mappedData);
     memcpy(mappedData, &sceneDataUBO, sizeof(sceneDataUBO));
-    vmaUnmapMemory(init.vmaAllocator, uboAllocation);
+    vmaUnmapMemory(init.vmaAllocator, sceneDataUBO.sceneBuffer.allocation);
 }
 
 // --- Example Usage (requires a Vulkan device and a created uniform buffer) ---

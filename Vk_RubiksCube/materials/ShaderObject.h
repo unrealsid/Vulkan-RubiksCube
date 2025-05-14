@@ -29,7 +29,8 @@ public:
                size_t                       spir_size,
                const VkDescriptorSetLayout *pSetLayouts,
                uint32_t                     setLayoutCount,
-               const VkPushConstantRange   *pPushConstantRange);
+               const VkPushConstantRange   *pPushConstantRange,
+               const  uint32_t			    pPushConstantCount);
 
         std::string get_name()
         {
@@ -69,7 +70,8 @@ public:
     ShaderObject() = default;
     ~ShaderObject() = default;
 
-    void create_shaders(const Init& init, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize);
+    void create_shaders(const Init& init, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize, const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, const VkPushConstantRange *pPushConstantRange, uint32_t pPushConstantCount);
+    void destroy_shaders(VkDevice device);
 
     static void bind_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer, const ShaderObject::Shader *shader);
     void bind_material_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer) const;

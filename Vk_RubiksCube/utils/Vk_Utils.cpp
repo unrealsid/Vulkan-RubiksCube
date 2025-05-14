@@ -18,7 +18,7 @@ void vkUtils::SetVulkanObjectName(const vkb::DispatchTable& disp, uint64_t objec
         disp.setDebugUtilsObjectNameEXT(&nameInfo);
 }
 
-void vkUtils::fillSceneDataUBO(SceneDataUBO& sceneDataUBO, const glm::vec3& objectPosition,
+void vkUtils::fillSceneDataUBO(SceneData& sceneDataUBO, const glm::vec3& objectPosition,
     const glm::vec3& objectRotationAxis, float objectRotationAngleRadians, const glm::vec3& objectScale,
     const glm::vec3& cameraPosition, const glm::vec3& cameraTarget, const glm::vec3& cameraUp, float fieldOfViewRadians,
     float aspectRatio, float nearPlane, float farPlane)
@@ -39,7 +39,7 @@ void vkUtils::fillSceneDataUBO(SceneDataUBO& sceneDataUBO, const glm::vec3& obje
     sceneDataUBO.proj[1][1] *= -1;
 }
 
-void vkUtils::prepareUBO(SceneDataUBO& sceneDataUBO)
+void vkUtils::prepareUBO(SceneData& sceneDataUBO)
 {
     // Define your scene parameters
     glm::vec3 objPos = glm::vec3(2.0f, 0.5f, -3.0f);

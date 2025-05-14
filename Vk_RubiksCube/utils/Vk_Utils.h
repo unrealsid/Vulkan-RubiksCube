@@ -5,7 +5,7 @@
 
 #include "VkBootstrapDispatch.h"
 
-struct SceneDataUBO;
+struct SceneData;
 struct Init;
 
 namespace vkUtils
@@ -13,7 +13,7 @@ namespace vkUtils
     void SetVulkanObjectName(const vkb::DispatchTable& disp, uint64_t objectHandle, VkObjectType objectType, const std::string& name);
 
     void fillSceneDataUBO(
-        SceneDataUBO& sceneDataUBO,
+        SceneData& sceneDataUBO,
         const glm::vec3& objectPosition,
         const glm::vec3& objectRotationAxis,
         float objectRotationAngleRadians,
@@ -26,5 +26,5 @@ namespace vkUtils
         float nearPlane,
         float farPlane);
 
-    void prepareUBO( SceneDataUBO& sceneDataUBO);
+    void prepareUBO( SceneData& sceneDataUBO);
 }

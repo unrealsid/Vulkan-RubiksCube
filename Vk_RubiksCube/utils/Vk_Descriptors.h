@@ -4,7 +4,8 @@
 #include "VkBootstrapDispatch.h"
 #include "../structs/Vk_Init.h"
 
-struct SceneDataUBO;
+struct Buffer;
+struct SceneData;
 
 namespace Vk_DescriptorUtils
 {
@@ -20,11 +21,10 @@ namespace Vk_DescriptorUtils
         VkBuffer uniformBuffer,
         VkDeviceSize bufferSize);
 
-    void createUniformBuffer(const Init& init, VkDeviceSize size, VkBuffer& buffer, VmaAllocation& allocation);
+    void createSceneBuffer(const Init& init, VkDeviceSize size, Buffer& buffer);
 
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo(
-            const VkDescriptorSetLayout* pSetLayouts,
-            uint32_t setLayoutCount = 1);
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,
+      uint32_t setLayoutCount, const VkPushConstantRange& pushConstantRange, uint32_t pushConstantCount);
 
-    void mapUBO(const Init& init, VmaAllocation uboAllocation, SceneDataUBO& sceneDataUBO);
+    void mapUBO(const Init& init, SceneData& sceneDataUBO);
 }

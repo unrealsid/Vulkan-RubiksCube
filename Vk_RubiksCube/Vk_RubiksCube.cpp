@@ -8,6 +8,7 @@
 #include "Config.h"
 #include "materials/ShaderObject.h"
 #include "rendering/Vk_DynamicRendering.h"
+#include "structs/PushConstantBlock.h"
 #include "structs/SceneData.h"
 #include "utils/ModelUtils.h"
 #include "utils/Vk_Descriptors.h"
@@ -232,27 +233,31 @@ int create_graphics_pipeline(Init& init, RenderData& data)
     loadShader(std::string(SHADER_PATH) + "/mesh_shader.vert.spv", shaderCodes[0], shaderCodeSizes[0]);
     loadShader(std::string(SHADER_PATH) + "/mesh_shader.frag.spv", shaderCodes[1], shaderCodeSizes[1]);
 
-    //Descriptor creation 
-    VkBuffer outUboBuffer;
-    VmaAllocation outUboAllocation;
-    Vk_DescriptorUtils::createUniformBuffer(init, sizeof(SceneDataUBO), outUboBuffer, outUboAllocation);
+    //Buffer device address
+    Vk_DescriptorUtils::createSceneBuffer(init, sizeof(SceneData), data.sceneData.sceneBuffer);
+    data.sceneData.sceneBufferAddress = vmaUtils::getBufferDeviceAddress(init.disp, data.sceneData.sceneBuffer.buffer);
     
-    uint32_t maxSets = 1;
-    VkDeviceSize uniformBufferSize = sizeof(SceneDataUBO);
-    VkDescriptorPool descriptorPool = Vk_DescriptorUtils::createDescriptorPool(init.disp, maxSets);
-    init.descriptorSetLayout = Vk_DescriptorUtils::createDescriptorSetLayout(init.disp);
-    data.descriptorSet = Vk_DescriptorUtils::allocateAndWriteDescriptorSet(init.disp, descriptorPool, init.descriptorSetLayout, outUboBuffer, uniformBufferSize);
+    // uint32_t maxSets = 1;
+    // VkDeviceSize uniformBufferSize = sizeof(SceneData);
+    // VkDescriptorPool descriptorPool = Vk_DescriptorUtils::createDescriptorPool(init.disp, maxSets);
+    // init.descriptorSetLayout = Vk_DescriptorUtils::createDescriptorSetLayout(init.disp);
+    // data.descriptorSet = Vk_DescriptorUtils::allocateAndWriteDescriptorSet(init.disp, descriptorPool, init.descriptorSetLayout, outUboBuffer, uniformBufferSize);
+
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(PushConstantBlock);
     
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = Vk_DescriptorUtils::pipelineLayoutCreateInfo(&init.descriptorSetLayout, 1);
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = Vk_DescriptorUtils::pipelineLayoutCreateInfo(&init.descriptorSetLayout, 0, pushConstantRange, 1);
     init.disp.createPipelineLayout(&pipelineLayoutInfo, VK_NULL_HANDLE, &init.pipelineLayout);
 
-    SceneDataUBO sceneDataUBO;
+    SceneData sceneDataUBO;
     vkUtils::prepareUBO(sceneDataUBO);
-    
-    Vk_DescriptorUtils::mapUBO(init, outUboAllocation, sceneDataUBO);
+    vmaUtils::mapPersistenData(init.vmaAllocator, data.sceneData.sceneBuffer.allocation, data.sceneData.sceneBuffer.allocationInfo, &sceneDataUBO, sizeof(SceneData));
     
     data.shader_object = std::make_unique<ShaderObject>();
-    data.shader_object->create_shaders(init, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1]);
+    data.shader_object->create_shaders(init, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1],
+        nullptr, 0, &pushConstantRange, 1);
 
     //create depth stencil image
     vmaUtils::getSupportedDepthStencilFormat(init.physicalDevice, &data.depthStencilImage.format);
@@ -360,10 +365,15 @@ int create_command_buffers(Init& init, RenderData& data)
         VkDeviceSize offsets[] = {0};
         init.disp.cmdBindVertexBuffers(data.command_buffers[i], 0, 1, vertexBuffers, offsets);
         init.disp.cmdBindIndexBuffer(data.command_buffers[i], data.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        init.disp.cmdBindDescriptorSets(data.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, init.pipelineLayout, 0, 1, &data.descriptorSet, 0, nullptr);
+        //init.disp.cmdBindDescriptorSets(data.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, init.pipelineLayout, 0, 1, &data.descriptorSet, 0, nullptr);
         data.shader_object->bind_material_shader(init.disp, data.command_buffers[i]);
         
         //init.disp.cmdDraw(data.command_buffers[i], static_cast<uint32_t>(data.outVertices.size()), 1, 0, 0);
+
+        PushConstantBlock references{};
+        // Pass pointer to the global matrix via a buffer device address
+        references.sceneBufferAddress = data.sceneData.sceneBufferAddress;
+        init.disp.cmdPushConstants(data.command_buffers[i], init.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantBlock), &references);
         
         // Issue the draw call using the index buffer
         init.disp.cmdDrawIndexed(data.command_buffers[i], static_cast<uint32_t>(data.outIndices.size()), 1, 0, 0,0);

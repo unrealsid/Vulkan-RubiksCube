@@ -12,7 +12,12 @@ namespace vmaUtils
     void createVmaAllocator(Init& init);
 
     void createBufferVMA(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage,
-                         VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, VkBuffer& buffer, VmaAllocation& allocation);
+                         VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, VkBuffer& buffer, VmaAllocation& allocation, VmaAllocationInfo
+                         & allocationInfo);
+
+    VkResult mapPersistenData(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize bufferSize);
+
+    VkDeviceAddress getBufferDeviceAddress(const vkb::DispatchTable& disp, VkBuffer buffer);
 
     void copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
