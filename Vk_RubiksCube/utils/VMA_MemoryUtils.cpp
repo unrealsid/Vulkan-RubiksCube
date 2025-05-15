@@ -10,6 +10,7 @@
 #define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
 
+#include "Vk_Descriptors.h"
 #include "Vk_Utils.h"
 
 
@@ -192,6 +193,45 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
     vmaDestroyBuffer(vmaAllocator, stagingIndexBuffer, stagingIndexBufferAllocation);
 }
 
+void vmaUtils::createMaterialParamsBuffer(const Init& init, RenderData& renderData)
+{
+    VmaAllocationInfo outVmaAllocationInfo;
+
+    uint32_t maxMaterialIndex = 0;
+    if (!renderData.materialParams.empty())
+    {
+        // Find the element with the maximum key (material index)
+        auto max_it = std::max_element(renderData.materialParams.begin(), renderData.materialParams.end(),
+            [](const auto& a, const auto& b)
+            {
+                return a.first < b.first;
+            });
+        maxMaterialIndex = max_it->first;
+    }
+
+    // The vector size needs to be max_index + 1 to accommodate all indices from 0 to max_index
+    size_t materialCount = maxMaterialIndex + 1;
+    std::vector<MaterialParams> materialData(materialCount);
+
+    // Populate the vector using the map, placing each material at its correct index
+    for (const auto& pair : renderData.materialParams)
+    {
+        if (pair.first < materialCount)
+        {
+            materialData[pair.first] = pair.second;
+        }
+        else
+        {
+            std::cerr << "Warning: Material index " << pair.first << " is out of expected range (" << materialCount << ")" << std::endl;
+        }
+    }
+
+    VkDeviceSize bufferSize = sizeof(MaterialParams) * materialData.size();
+    Vk_DescriptorUtils::createBuffer(init, bufferSize, renderData.materialValues.materialsBuffer);
+    
+    vmaUtils::mapPersistenData(init.vmaAllocator, renderData.materialValues.materialsBuffer.allocation, renderData.materialValues.materialsBuffer.allocationInfo, materialData.data(), bufferSize);   
+}
+
 VkBool32 vmaUtils::getSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat)
 {
     std::vector<VkFormat> formatList =
@@ -266,7 +306,9 @@ VkPhysicalDeviceBufferDeviceAddressFeatures vmaUtils::create_physical_device_buf
     {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
         nullptr,
-        VK_TRUE // Enable the bufferDeviceAddress feature
+        VK_TRUE,
+        VK_TRUE,
+        VK_FALSE
     };
 
     return bufferDeviceAddressFeatures;

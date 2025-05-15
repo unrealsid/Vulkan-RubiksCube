@@ -6,14 +6,14 @@
 
 struct Vertex
 {
-    glm::vec3 pos;
+    glm::vec3 position;
     glm::vec3 normal;
-    glm::vec2 texCoord;
+    glm::vec2 texCoords;
+    uint32_t  materialIndex;
 
-    // Equality operators for use with std::unordered_map
     bool operator==(const Vertex& other) const
     {
-        return pos == other.pos && normal == other.normal && texCoord == other.texCoord;
+        return position == other.position && normal == other.normal && texCoords == other.texCoords && materialIndex == other.materialIndex;
     }
 
     static VkVertexInputBindingDescription2EXT getBindingDescription()
@@ -21,17 +21,17 @@ struct Vertex
         VkVertexInputBindingDescription2EXT bindingDescription{};
         bindingDescription.sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT;
         bindingDescription.pNext = nullptr;
-        bindingDescription.binding = 0; // We will use binding point 0
-        bindingDescription.stride = sizeof(Vertex); // The stride is the size of a single vertex
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // Data is consumed per vertex
+        bindingDescription.binding = 0; 
+        bindingDescription.stride = sizeof(Vertex); 
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescription.divisor = 1;
 
         return bindingDescription;
     }
 
-    static std::array<VkVertexInputAttributeDescription2EXT, 3> getAttributeDescriptions()
+    static std::array<VkVertexInputAttributeDescription2EXT, 4> getAttributeDescriptions()
     {
-        std::array<VkVertexInputAttributeDescription2EXT, 3> attributeDescriptions{};
+        std::array<VkVertexInputAttributeDescription2EXT, 4> attributeDescriptions{};
 
         // Position attribute
         attributeDescriptions[0].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
@@ -39,7 +39,7 @@ struct Vertex
         attributeDescriptions[0].location = 0; // Corresponds to layout(location = 0) in shader
         attributeDescriptions[0].binding = 0; // Corresponds to binding point 0
         attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; // glm::vec3 is 3 floats
-        attributeDescriptions[0].offset = offsetof(Vertex, pos); // Offset within the Vertex struct
+        attributeDescriptions[0].offset = offsetof(Vertex, position); // Offset within the Vertex struct
 
         // Normal attribute
         attributeDescriptions[1].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
@@ -55,7 +55,13 @@ struct Vertex
         attributeDescriptions[2].location = 2; // Corresponds to layout(location = 2) in shader
         attributeDescriptions[2].binding = 0; // Corresponds to binding point 0
         attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT; // glm::vec2 is 2 floats
-        attributeDescriptions[2].offset = offsetof(Vertex, texCoord); // Offset within the Vertex struct
+        attributeDescriptions[2].offset = offsetof(Vertex, texCoords); // Offset within the Vertex struct
+
+        attributeDescriptions[3].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+        attributeDescriptions[3].binding = 0; 
+        attributeDescriptions[3].location = 3; // Shader location
+        attributeDescriptions[3].format = VK_FORMAT_R32_UINT; // uint32_t
+        attributeDescriptions[3].offset = offsetof(Vertex, materialIndex);
 
         return attributeDescriptions;
     }
@@ -78,12 +84,13 @@ namespace std
                 return hash<float>()(v.x) ^ (hash<float>()(v.y) << 1);
             };
 
-            size_t h1 = hashVec3(vertex.pos);
+            size_t h1 = hashVec3(vertex.position);
             size_t h2 = hashVec3(vertex.normal);
-            size_t h3 = hashVec2(vertex.texCoord);
+            size_t h3 = hashVec2(vertex.texCoords);
+            size_t h4 = hash<uint32_t>()(vertex.materialIndex); // Add material index to hash
 
-            // Combine hashes - you can use a better hash combining function if needed
-            return h1 ^ (h2 << 1) ^ (h3 << 2);
+            // Combine all hashes
+            return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3);
         }
     };
 }

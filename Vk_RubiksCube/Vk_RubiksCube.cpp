@@ -234,8 +234,12 @@ int create_graphics_pipeline(Init& init, RenderData& data)
     loadShader(std::string(SHADER_PATH) + "/mesh_shader.frag.spv", shaderCodes[1], shaderCodeSizes[1]);
 
     //Buffer device address
-    Vk_DescriptorUtils::createSceneBuffer(init, sizeof(SceneData), data.sceneData.sceneBuffer);
+    Vk_DescriptorUtils::createBuffer(init, sizeof(SceneData), data.sceneData.sceneBuffer);
     data.sceneData.sceneBufferAddress = vmaUtils::getBufferDeviceAddress(init.disp, data.sceneData.sceneBuffer.buffer);
+
+    //Materials Buffer
+    vmaUtils::createMaterialParamsBuffer(init, data);
+    data.materialValues.materialParamsBufferAddress = vmaUtils::getBufferDeviceAddress(init.disp, data.materialValues.materialsBuffer.buffer);
     
     // uint32_t maxSets = 1;
     // VkDeviceSize uniformBufferSize = sizeof(SceneData);
@@ -244,7 +248,7 @@ int create_graphics_pipeline(Init& init, RenderData& data)
     // data.descriptorSet = Vk_DescriptorUtils::allocateAndWriteDescriptorSet(init.disp, descriptorPool, init.descriptorSetLayout, outUboBuffer, uniformBufferSize);
 
     VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstantRange.offset = 0;
     pushConstantRange.size = sizeof(PushConstantBlock);
     
@@ -373,7 +377,9 @@ int create_command_buffers(Init& init, RenderData& data)
         PushConstantBlock references{};
         // Pass pointer to the global matrix via a buffer device address
         references.sceneBufferAddress = data.sceneData.sceneBufferAddress;
-        init.disp.cmdPushConstants(data.command_buffers[i], init.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantBlock), &references);
+        references.materialParamsAddress = data.materialValues.materialParamsBufferAddress;
+        
+        init.disp.cmdPushConstants(data.command_buffers[i], init.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantBlock), &references);
         
         // Issue the draw call using the index buffer
         init.disp.cmdDrawIndexed(data.command_buffers[i], static_cast<uint32_t>(data.outIndices.size()), 1, 0, 0,0);
@@ -536,7 +542,8 @@ void cleanup(Init& init, RenderData& data)
 
 void loadModel(RenderData& data)
 {
-    vkUtils::loadModel(std::string(RESOURCE_PATH) + "/models/rubiks_cube/rubiks_cube.obj", data.outVertices, data.outIndices);
+    VkUtils::ModelUtils modelUtils;
+    modelUtils.loadObj(std::string(RESOURCE_PATH) + "/models/rubiks_cube/rubiks_cube.obj", data.outVertices, data.outIndices, data.primitiveMaterialIndices, data.materialParams);
     
     std::cout << "Vertices: " << data.outVertices.size() << std::endl;
     std::cout << "Indices: " << data.outIndices.size() << std::endl;
@@ -589,14 +596,13 @@ int main()
     
     vmaUtils::createVmaAllocator(init);
     
-    if (0 != create_graphics_pipeline(init, render_data)) return -1;
     if (0 != create_command_pool(init, render_data)) return -1;
 
     //load model
     loadModel(render_data);
     vmaUtils::createVertexAndIndexBuffersVMA(init.vmaAllocator, init.disp, render_data.graphics_queue, render_data.command_pool, render_data, render_data.outVertices, render_data.outIndices);
     
-    
+    if (0 != create_graphics_pipeline(init, render_data)) return -1;
     if (0 != create_command_buffers(init, render_data)) return -1;
     if (0 != create_sync_objects(init, render_data)) return -1;
 

@@ -4,4 +4,5 @@
 struct PushConstantBlock
 {
     VkDeviceAddress sceneBufferAddress;
+    VkDeviceAddress materialParamsAddress;
 };

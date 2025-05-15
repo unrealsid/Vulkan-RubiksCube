@@ -28,5 +28,7 @@ namespace vmaUtils
     void setupDepthStencil(vkb::DispatchTable disp, VkExtent2D extents, VmaAllocator
                            allocator, DepthStencil_Image& depthImage);
 
+    void createMaterialParamsBuffer(const Init& init, RenderData& renderData);
+
     VkPhysicalDeviceBufferDeviceAddressFeatures create_physical_device_buffer_address();
 }

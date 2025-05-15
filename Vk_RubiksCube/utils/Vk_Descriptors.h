@@ -21,7 +21,7 @@ namespace Vk_DescriptorUtils
         VkBuffer uniformBuffer,
         VkDeviceSize bufferSize);
 
-    void createSceneBuffer(const Init& init, VkDeviceSize size, Buffer& buffer);
+    void createBuffer(const Init& init, VkDeviceSize size, Buffer& buffer);
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,
       uint32_t setLayoutCount, const VkPushConstantRange& pushConstantRange, uint32_t pushConstantCount);

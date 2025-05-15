@@ -90,7 +90,7 @@ VkDescriptorSet Vk_DescriptorUtils::allocateAndWriteDescriptorSet
     return descriptorSet;
 }
 
-void Vk_DescriptorUtils::createSceneBuffer(const Init& init, VkDeviceSize size, Buffer& buffer)
+void Vk_DescriptorUtils::createBuffer(const Init& init, VkDeviceSize size, Buffer& buffer)
 {
     vmaUtils::createBufferVMA(init.vmaAllocator, size,
                               VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,  
@@ -101,7 +101,7 @@ void Vk_DescriptorUtils::createSceneBuffer(const Init& init, VkDeviceSize size, 
 }
 
 VkPipelineLayoutCreateInfo Vk_DescriptorUtils::pipelineLayoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,
-    uint32_t setLayoutCount, const VkPushConstantRange& pushConstantRange, uint32_t pushConstantCount)
+                                                                        uint32_t setLayoutCount, const VkPushConstantRange& pushConstantRange, uint32_t pushConstantCount)
 {
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
     

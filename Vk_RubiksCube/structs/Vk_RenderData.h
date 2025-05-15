@@ -4,10 +4,13 @@
 #define VK_RENDER_DATA_H
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 #include <vk_mem_alloc.h>
 #include <vulkan_core.h>
 
+#include "MaterialParams.h"
+#include "MaterialValues.h"
 #include "SceneData.h"
 #include "Vk_DepthStencil_Image.h"
 
@@ -47,6 +50,10 @@ struct RenderData
     VkDescriptorSet descriptorSet;
 
     SceneData sceneData;
+    MaterialValues materialValues;
+
+    std::vector<uint32_t> primitiveMaterialIndices;
+    std::unordered_map<uint32_t, MaterialParams> materialParams;
 
     DepthStencil_Image depthStencilImage;
 };
