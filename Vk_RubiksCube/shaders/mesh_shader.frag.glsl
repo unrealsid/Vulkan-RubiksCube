@@ -2,10 +2,18 @@
 
 #extension GL_EXT_scalar_block_layout: require
 #extension GL_EXT_buffer_reference : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+//Fragment shader
 
 layout(location = 0) in vec3 inColor; 
+layout(location = 1) in vec2 inUV;
+layout(location = 2) flat in uint inMaterialIndex;
+layout(location = 3) flat in uint inTexIndex;
+
 layout(location = 0) out vec4 outColor;
-layout(location = 1) flat in uint inMaterialIndex;
+
+layout (set = 0, binding = 0) uniform sampler2D textures[];
 
 layout(buffer_reference, scalar) buffer UniformBufferObject
 {
@@ -45,6 +53,14 @@ void main()
     vec4 emissiveColor = materialRef.emissive;
     float shininess = materialRef.shininess.x;
     float alpha = materialRef.alpha.x;
-    
-    outColor = vec4(diffuseColor.rgb, 1.0);
+
+    vec4 texColor = texture(textures[nonuniformEXT(inTexIndex)], inUV);
+    vec4 finalColor = texColor * diffuseColor;
+
+    //finalColor.rgb += emissiveColor.rgb;
+
+    // Set alpha from material if needed, or you can use the texture's alpha
+    finalColor.a = 1.0;
+
+    outColor = finalColor;
 }

@@ -10,10 +10,11 @@ struct Vertex
     glm::vec3 normal;
     glm::vec2 texCoords;
     uint32_t  materialIndex;
+    uint32_t  textureIndex;
 
     bool operator==(const Vertex& other) const
     {
-        return position == other.position && normal == other.normal && texCoords == other.texCoords && materialIndex == other.materialIndex;
+        return position == other.position && normal == other.normal && texCoords == other.texCoords && materialIndex == other.materialIndex &&  textureIndex == other.textureIndex;
     }
 
     static VkVertexInputBindingDescription2EXT getBindingDescription()
@@ -29,9 +30,9 @@ struct Vertex
         return bindingDescription;
     }
 
-    static std::array<VkVertexInputAttributeDescription2EXT, 4> getAttributeDescriptions()
+    static std::array<VkVertexInputAttributeDescription2EXT, 5> getAttributeDescriptions()
     {
-        std::array<VkVertexInputAttributeDescription2EXT, 4> attributeDescriptions{};
+        std::array<VkVertexInputAttributeDescription2EXT, 5> attributeDescriptions{};
 
         // Position attribute
         attributeDescriptions[0].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
@@ -63,6 +64,14 @@ struct Vertex
         attributeDescriptions[3].format = VK_FORMAT_R32_UINT; // uint32_t
         attributeDescriptions[3].offset = offsetof(Vertex, materialIndex);
 
+        // Texture index attribute
+        attributeDescriptions[4].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+        attributeDescriptions[4].pNext = nullptr;
+        attributeDescriptions[4].binding = 0; 
+        attributeDescriptions[4].location = 4; // Shader location
+        attributeDescriptions[4].format = VK_FORMAT_R32_UINT; // uint32_t
+        attributeDescriptions[4].offset = offsetof(Vertex, textureIndex);
+
         return attributeDescriptions;
     }
 };
@@ -87,10 +96,11 @@ namespace std
             size_t h1 = hashVec3(vertex.position);
             size_t h2 = hashVec3(vertex.normal);
             size_t h3 = hashVec2(vertex.texCoords);
-            size_t h4 = hash<uint32_t>()(vertex.materialIndex); // Add material index to hash
+            size_t h4 = hash<uint32_t>()(vertex.materialIndex);
+            size_t h5 = hash<uint32_t>()(vertex.textureIndex);
 
             // Combine all hashes
-            return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3);
+            return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3) ^ (h5 << 4);
         }
     };
 }

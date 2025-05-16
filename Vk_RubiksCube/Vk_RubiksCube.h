@@ -44,7 +44,7 @@ int recreate_swapchain(Init& init, RenderData& data);
 int draw_frame(Init& init, RenderData& data);
 void cleanup(Init& init, RenderData& data);
 
-void loadModel(RenderData& data);
+void loadModel(Init& init, RenderData& renderData);
 std::vector<uint32_t> convert_char_to_uint32(const std::vector<char>& char_vec);
 
 #endif // VK_TRIANGLE_H

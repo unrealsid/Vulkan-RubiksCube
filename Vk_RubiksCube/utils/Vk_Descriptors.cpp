@@ -1,11 +1,99 @@
 #include "Vk_Descriptors.h"
 #include <vector>
 #include <stdexcept>
+
+#include "VMA_ImageUtils.h"
 #include "../structs/SceneData.h"
 #include "../structs/PushConstantBlock.h"
 #include "../structs/Buffer.h"
 
 #include "VMA_MemoryUtils.h"
+
+VkPhysicalDeviceDescriptorIndexingFeatures Vk_DescriptorUtils::createPhysicalDeviceDescriptorIndexingFeatures()
+{
+    VkPhysicalDeviceDescriptorIndexingFeatures features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES};
+    features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+    features.runtimeDescriptorArray = VK_TRUE;
+    features.descriptorBindingVariableDescriptorCount = VK_TRUE;
+
+    return features;
+}
+
+void Vk_DescriptorUtils::setupDescriptors(Init& init, RenderData& renderData)
+{
+    //Descriptor Pool
+    std::vector<VkDescriptorPoolSize> poolSizes = { Vk_Initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(VMA_ImageUtils::textures.size())) };
+    VkDescriptorPoolCreateInfo descriptorPoolInfo = Vk_Initializers::descriptorPoolCreateInfo(poolSizes, 1);
+
+    VkDescriptorPool descriptorPool;
+    init.disp.createDescriptorPool(&descriptorPoolInfo, nullptr, &descriptorPool);
+
+    //Descriptor set layout
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
+    setLayoutBindings.push_back(Vk_Initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0, static_cast<uint32_t>(VMA_ImageUtils::textures.size())));
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo setLayoutBindingFlags{};
+    setLayoutBindingFlags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    setLayoutBindingFlags.bindingCount = 1;
+
+    // Enable variable descriptor count feature
+    std::vector<VkDescriptorBindingFlags> descriptorBindingFlags =
+    {
+        0,
+        VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT
+    };
+    setLayoutBindingFlags.pBindingFlags = descriptorBindingFlags.data();
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCI = Vk_Initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
+    descriptorSetLayoutCI.pNext = &setLayoutBindingFlags;
+
+    //@TODO: Make global
+    VkDescriptorSetLayout descriptorSetLayout;
+    init.disp.createDescriptorSetLayout(&descriptorSetLayoutCI, nullptr, &descriptorSetLayout);
+
+    init.descriptorSetLayout = descriptorSetLayout;
+    
+    // We need to provide the descriptor counts for bindings with variable counts using a new structure
+    std::vector<uint32_t> variableDescriptorCounts =
+    {
+        static_cast<uint32_t>(VMA_ImageUtils::textures.size())
+    };
+
+    VkDescriptorSetVariableDescriptorCountAllocateInfo   variableDescriptorCountAllocInfo = {};
+    variableDescriptorCountAllocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+    variableDescriptorCountAllocInfo.descriptorSetCount = static_cast<uint32_t>(variableDescriptorCounts.size());
+    variableDescriptorCountAllocInfo.pDescriptorCounts  = variableDescriptorCounts.data();
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = Vk_Initializers::descriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
+    descriptorSetAllocateInfo.pNext = &variableDescriptorCountAllocInfo;
+
+    VkDescriptorSet descriptorSet;
+    init.disp.allocateDescriptorSets(&descriptorSetAllocateInfo, &descriptorSet);
+
+    renderData.descriptorSet = descriptorSet;
+
+    std::vector<VkWriteDescriptorSet> writeDescriptorSets(1);
+
+    std::vector<VkDescriptorImageInfo> textureDescriptors(VMA_ImageUtils::textures.size());
+    for (size_t i = 0; i < VMA_ImageUtils::textures.size(); i++)
+    {
+        textureDescriptors[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        textureDescriptors[i].sampler = VMA_ImageUtils::textures[i].sampler;
+        textureDescriptors[i].imageView = VMA_ImageUtils::textures[i].view;
+    }
+
+    writeDescriptorSets[0] = {};
+    writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSets[0].dstBinding = 0;
+    writeDescriptorSets[0].dstArrayElement = 0;
+    writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSets[0].descriptorCount = static_cast<uint32_t>(VMA_ImageUtils::textures.size());
+    writeDescriptorSets[0].pBufferInfo = 0;
+    writeDescriptorSets[0].dstSet = renderData.descriptorSet;
+    writeDescriptorSets[0].pImageInfo = textureDescriptors.data();
+
+    init.disp.updateDescriptorSets(static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+}
 
 VkDescriptorSetLayout Vk_DescriptorUtils::createDescriptorSetLayout(const vkb::DispatchTable& disp)
 {
@@ -104,7 +192,9 @@ VkPipelineLayoutCreateInfo Vk_DescriptorUtils::pipelineLayoutCreateInfo(const Vk
                                                                         uint32_t setLayoutCount, const VkPushConstantRange& pushConstantRange, uint32_t pushConstantCount)
 {
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-    
+
+    pipelineLayoutCreateInfo.setLayoutCount = setLayoutCount;
+    pipelineLayoutCreateInfo.pSetLayouts = pSetLayouts;
     pipelineLayoutCreateInfo.pushConstantRangeCount = pushConstantCount;
     pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
     return pipelineLayoutCreateInfo;

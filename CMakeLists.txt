@@ -73,16 +73,6 @@ endif()
 # ------------------------------------------------------
 # 3. Add GLM (assuming it's in Vulkan SDK include or system paths)
 # ------------------------------------------------------
-# Since find_package doesn't work and it's not in ext, assuming it's in a standard include path or VULKAN_SDK_PATH/glm
-# If GLM is part of the Vulkan SDK includes, it will be covered by including VULKAN_SDK_PATH/Include.
-# If it's elsewhere, you might need to add another include_directories line here.
-# For now, we won't explicitly add a GLM include unless it's separate from the main SDK include.
-# If GLM is a header-only library (which it is), you only need to include its path.
-# Assuming GLM headers are in VULKAN_SDK_PATH/Include/glm or a system path.
-# A common location might be ${VULKAN_SDK_PATH}/glm if it's distributed separately but alongside.
-# Let's add a specific check/include for GLM if a path is provided, otherwise assume it's findable.
-# Alternatively, if GLM is *always* in a standard system location, no specific include is needed here.
-# Given the user stated GLM is in the Vulkan directory, let's add an include relative to VULKAN_SDK_PATH.
 if (NOT "${VULKAN_SDK_PATH}" STREQUAL "")
     target_include_directories(Vulkan_RubiksCube PUBLIC "${VULKAN_SDK_PATH}/glm") # Assuming glm is directly under SDK
 else()
@@ -131,20 +121,25 @@ target_include_directories(Vulkan_RubiksCube PRIVATE
 target_link_libraries(Vulkan_RubiksCube imgui)
 
 # ------------------------------------------------------
-# 5. Add stbi (keeping in ext folder as requested)
+# 5. Add stbi
 # ------------------------------------------------------
-target_include_directories(Vulkan_RubiksCube PUBLIC ${CMAKE_SOURCE_DIR}/ext/stb-master)
+
+set(STBI_DIR ${EXT_DIR}/stb-master)
+
 
 # ------------------------------------------------------
+
 # 6. Add vk bootstrapper
 # ------------------------------------------------------
 set(VK_BOOTSTRAP ${EXT_DIR}/vk-bootstrap)
 
+target_include_directories(Vulkan_RubiksCube PRIVATE ${STBI_DIR})
+
 # *** IMPORTANT: Find all .cpp files in the vk_bootstrap directory and add them to source files ***
 # Corrected: Use VK_BOOTSTRAP to glob within the vk-bootstrap directory
 file(GLOB VK_BOOTSTRAP_SRC_FILES
-    "${VK_BOOTSTRAP}/*.cpp"
-    "${VK_BOOTSTRAP}/*.h"
+    "${VK_BOOTSTRAP}/*.cpp"
+    "${VK_BOOTSTRAP}/*.h"
 )
 
 # Add the found source files directly to the executable target
@@ -186,17 +181,13 @@ if(TINYOBJLOADER_SRC_FILES)
     target_compile_definitions(tinyobjloader PRIVATE TINYOBJLOADER_IMPLEMENTATION)
 
     # Add the tinyobjloader include directory to the library
-    target_include_directories(tinyobjloader PUBLIC
-        ${TINYOBJLOADER_DIR}
-    )
+    target_include_directories(tinyobjloader PUBLIC ${TINYOBJLOADER_DIR})
 
     # Link the main executable against the tinyobjloader library
     target_link_libraries(Vulkan_RubiksCube tinyobjloader)
 
     # Add the tinyobjloader include directory to the main executable for header access
-    target_include_directories(Vulkan_RubiksCube PUBLIC
-        ${TINYOBJLOADER_DIR}
-    )
+    target_include_directories(Vulkan_RubiksCube PUBLIC ${TINYOBJLOADER_DIR} )
 else()
     message(FATAL_ERROR "tiny_obj_loader.cc not found in ${TINYOBJLOADER_DIR}. Please ensure tinyobjloader is in the correct location.")
 endif()

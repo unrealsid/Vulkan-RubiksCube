@@ -13,6 +13,7 @@
 #include "utils/ModelUtils.h"
 #include "utils/Vk_Descriptors.h"
 #include "utils/Vk_Utils.h"
+#include "utils/VMA_ImageUtils.h"
 #include "utils/VMA_MemoryUtils.h"
 
 GLFWwindow* create_window_glfw(const char* window_name, bool resize)
@@ -100,7 +101,10 @@ int device_initialization(Init& init)
         .add_required_extension(VK_KHR_DEVICE_GROUP_EXTENSION_NAME)
         .add_required_extension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME) 
         .add_required_extension(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_MAINTENANCE1_EXTENSION_NAME)
+        .add_required_extension(VK_KHR_MAINTENANCE3_EXTENSION_NAME)
         .add_required_extension(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
+        .add_required_extension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)
         //.add_required_extension(VK_KHR_MAINTENANCE_6_EXTENSION_NAME)
         .set_required_features(features)
         .set_surface(init.surface)
@@ -109,6 +113,7 @@ int device_initialization(Init& init)
     auto dynamic_rendering_features = Vk_DynamicRendering::create_dynamic_rendering_features();
     auto shader_object_features = ShaderObject::create_shader_object_features();
     auto device_memory_features = vmaUtils::create_physical_device_buffer_address();
+    auto descriptorIndexingFeatures = Vk_DescriptorUtils::createPhysicalDeviceDescriptorIndexingFeatures();
     
     if (!phys_device_ret)
     {
@@ -122,6 +127,7 @@ int device_initialization(Init& init)
         .add_pNext(&dynamic_rendering_features)
         .add_pNext(&shader_object_features)
         .add_pNext(&device_memory_features)
+        .add_pNext(&descriptorIndexingFeatures)
         .build();
     
     if (!device_ret)
@@ -240,6 +246,8 @@ int create_graphics_pipeline(Init& init, RenderData& data)
     //Materials Buffer
     vmaUtils::createMaterialParamsBuffer(init, data);
     data.materialValues.materialParamsBufferAddress = vmaUtils::getBufferDeviceAddress(init.disp, data.materialValues.materialsBuffer.buffer);
+
+    Vk_DescriptorUtils::setupDescriptors(init, data);
     
     // uint32_t maxSets = 1;
     // VkDeviceSize uniformBufferSize = sizeof(SceneData);
@@ -252,7 +260,7 @@ int create_graphics_pipeline(Init& init, RenderData& data)
     pushConstantRange.offset = 0;
     pushConstantRange.size = sizeof(PushConstantBlock);
     
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = Vk_DescriptorUtils::pipelineLayoutCreateInfo(&init.descriptorSetLayout, 0, pushConstantRange, 1);
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = Vk_DescriptorUtils::pipelineLayoutCreateInfo(&init.descriptorSetLayout, 1, pushConstantRange, 1);
     init.disp.createPipelineLayout(&pipelineLayoutInfo, VK_NULL_HANDLE, &init.pipelineLayout);
 
     SceneData sceneDataUBO;
@@ -261,7 +269,7 @@ int create_graphics_pipeline(Init& init, RenderData& data)
     
     data.shader_object = std::make_unique<ShaderObject>();
     data.shader_object->create_shaders(init, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1],
-        nullptr, 0, &pushConstantRange, 1);
+        &init.descriptorSetLayout, 1, &pushConstantRange, 1);
 
     //create depth stencil image
     vmaUtils::getSupportedDepthStencilFormat(init.physicalDevice, &data.depthStencilImage.format);
@@ -339,7 +347,7 @@ int create_command_buffers(Init& init, RenderData& data)
         color_attachment_info.resolveMode                  = VK_RESOLVE_MODE_NONE;
         color_attachment_info.loadOp                       = VK_ATTACHMENT_LOAD_OP_CLEAR;
         color_attachment_info.storeOp                      = VK_ATTACHMENT_STORE_OP_STORE;
-        color_attachment_info.clearValue                   = {0.5f, 0.2f, 0.3f, 1.0f};
+        color_attachment_info.clearValue                   = {0.1f, 0.1f, 0.1f, 1.0f};
 
         //Depth Stencil
         VkRenderingAttachmentInfoKHR depth_attachment_info = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
@@ -369,11 +377,10 @@ int create_command_buffers(Init& init, RenderData& data)
         VkDeviceSize offsets[] = {0};
         init.disp.cmdBindVertexBuffers(data.command_buffers[i], 0, 1, vertexBuffers, offsets);
         init.disp.cmdBindIndexBuffer(data.command_buffers[i], data.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        //init.disp.cmdBindDescriptorSets(data.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, init.pipelineLayout, 0, 1, &data.descriptorSet, 0, nullptr);
+        init.disp.cmdBindDescriptorSets(data.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, init.pipelineLayout, 0, 1, &data.descriptorSet, 0, nullptr);
         data.shader_object->bind_material_shader(init.disp, data.command_buffers[i]);
-        
-        //init.disp.cmdDraw(data.command_buffers[i], static_cast<uint32_t>(data.outVertices.size()), 1, 0, 0);
 
+        //Passing Buffer Addresses
         PushConstantBlock references{};
         // Pass pointer to the global matrix via a buffer device address
         references.sceneBufferAddress = data.sceneData.sceneBufferAddress;
@@ -540,13 +547,19 @@ void cleanup(Init& init, RenderData& data)
     destroy_window_glfw(init.window);
 }
 
-void loadModel(RenderData& data)
+void loadModel(Init& init, RenderData& renderData)
 {
     VkUtils::ModelUtils modelUtils;
-    modelUtils.loadObj(std::string(RESOURCE_PATH) + "/models/rubiks_cube/rubiks_cube.obj", data.outVertices, data.outIndices, data.primitiveMaterialIndices, data.materialParams);
+    modelUtils.loadObj(std::string(RESOURCE_PATH) + "/models/rubiks_cube/RubiksCubeTextures/rubiksCubeTexture.obj", renderData.outVertices, renderData.outIndices, renderData.primitiveMaterialIndices, renderData.materialParams, renderData.textureInfo);
+
+    for (const auto& texture : renderData.textureInfo)
+    {
+        LoadedImageData imgData = VMA_ImageUtils::loadImageFromFile(texture.second.path);
+        VMA_ImageUtils::textures.push_back(VMA_ImageUtils::createAndUploadImage(init, renderData, imgData));
+    }
     
-    std::cout << "Vertices: " << data.outVertices.size() << std::endl;
-    std::cout << "Indices: " << data.outIndices.size() << std::endl;
+    std::cout << "Vertices: " << renderData.outVertices.size() << std::endl;
+    std::cout << "Indices: " << renderData.outIndices.size() << std::endl;
 
 
     // data.outVertices = {
@@ -599,7 +612,7 @@ int main()
     if (0 != create_command_pool(init, render_data)) return -1;
 
     //load model
-    loadModel(render_data);
+    loadModel(init, render_data);
     vmaUtils::createVertexAndIndexBuffersVMA(init.vmaAllocator, init.disp, render_data.graphics_queue, render_data.command_pool, render_data, render_data.outVertices, render_data.outIndices);
     
     if (0 != create_graphics_pipeline(init, render_data)) return -1;

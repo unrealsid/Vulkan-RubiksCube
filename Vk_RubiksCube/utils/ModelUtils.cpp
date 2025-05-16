@@ -1,22 +1,22 @@
 #include "ModelUtils.h"
 #include <iostream>
+#include "../structs/TextureInfo.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 bool VkUtils::ModelUtils::loadObj(const std::string& path,
                                std::vector<Vertex>& outVertices,
                                std::vector<uint32_t>& outIndices,
                                std::vector<uint32_t>& outPrimitiveMaterialIndices,
-                               std::unordered_map<uint32_t, MaterialParams>& outMaterialParams)
+                               std::unordered_map<uint32_t, MaterialParams>& outMaterialParams,
+                               std::unordered_map<uint32_t, TextureInfo>& outTextureInfo)
 {
-    // Add materialIndex to Vertex struct if it's not already there
-    // struct Vertex {
-    //     glm::vec3 position;
-    //     glm::vec3 normal;
-    //     glm::vec2 texCoords;
-    //     uint32_t materialIndex; // Add this field to your Vertex struct
-    // };
+    // Extract the directory from the path for loading textures
+    std::string textureDirectory = path.substr(0, path.find_last_of('/') + 1);
 
     tinyobj::ObjReaderConfig reader_config;
     tinyobj::ObjReader reader;
@@ -41,9 +41,12 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
     outVertices.clear();
     outIndices.clear();
     outMaterialParams.clear();
+    outTextureInfo.clear();
     outPrimitiveMaterialIndices.clear();
     tinyObjMaterialIdToBufferIndex.clear();
+    texturePathToIndex.clear();
     nextMaterialBufferIndex = 0;
+    nextTextureIndex = 0;
 
     // Handle the case of faces with no material assigned (-1 in tinyobjloader)
     int tiny_obj_no_material_id = -1;
@@ -52,6 +55,9 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
 
     // Create a default MaterialParams for this index 0 (or the index assigned to -1)
     outMaterialParams[default_buffer_index] = MaterialParams(); // Default constructed MaterialParams
+    
+    // Create a default texture index for faces with no texture
+    uint32_t defaultTextureIndex = UINT32_MAX;
 
     // Map all materials found in the MTL file(s)
     for (size_t i = 0; i < materials.size(); ++i)
@@ -60,12 +66,16 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
         uint32_t bufferIndex = nextMaterialBufferIndex++;
         tinyObjMaterialIdToBufferIndex[tinyObjId] = bufferIndex;
 
-        //Get material params
+        // Get material params
         MaterialParams matParams;
         getMaterialParams(tinyObjId, matParams);
 
         // Store using contiguous index
         outMaterialParams[bufferIndex] = matParams;
+        
+        // Load texture info 
+        uint32_t textureIndex = defaultTextureIndex;
+        getTextureInfo(tinyObjId, textureDirectory, textureIndex, outTextureInfo);
     }
 
     // Loop over shapes
@@ -83,6 +93,22 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
 
             // Get our contiguous buffer index using the map
             uint32_t materialBufferIndex = tinyObjMaterialIdToBufferIndex.at(tiny_obj_material_id);
+            
+            // Get texture index for this material
+            uint32_t textureIndex = defaultTextureIndex;
+            if (tiny_obj_material_id >= 0) {
+                // Try to find texture for this material
+                const tinyobj::material_t& mat = materials[tiny_obj_material_id];
+                
+                // Check for diffuse texture (prioritizing diffuse texture)
+                if (!mat.diffuse_texname.empty()) {
+                    std::string texPath = textureDirectory + mat.diffuse_texname;
+                    auto it = texturePathToIndex.find(texPath);
+                    if (it != texturePathToIndex.end()) {
+                        textureIndex = it->second;
+                    }
+                }
+            }
 
             // We'll create a triangle for each face (triangulation)
             for (size_t v = 0; v < fv; v++)
@@ -116,17 +142,18 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
                     vertex.texCoords = glm::vec2(tx, ty);
                 }
 
-                // Set material index for the provoking vertex (this is the key change)
-                // For each triangle (3 vertices), only the first vertex (the provoking vertex)
-                // will store the material index; other vertices will have a default value
+                // Set material and texture indices for the provoking vertex (first vertex of each triangle)
                 if (v % 3 == 0)
                 {
                     // First vertex of each triangle is the provoking vertex
                     vertex.materialIndex = materialBufferIndex;
+                    vertex.textureIndex = textureIndex;
                 }
                 else
                 {
-                    vertex.materialIndex = UINT32_MAX; // Use a sentinel value for non-provoking vertices
+                    // Use sentinel values for non-provoking vertices
+                    vertex.materialIndex = UINT32_MAX;
+                    vertex.textureIndex = UINT32_MAX;
                 }
 
                 if (uniqueVertices.count(vertex) == 0)
@@ -166,57 +193,78 @@ bool VkUtils::ModelUtils::getMaterialParams(uint32_t materialIndex, MaterialPara
     return true;
 }
 
-/*bool ModelUtils::getTextureParams(uint32_t materialIndex, const std::string& textureDirectory, TextureParams& outTextureParams, std::unordered_map<std::string, GLuint>& outLoadedTextures) const
+bool VkUtils::ModelUtils::getTextureInfo(uint32_t materialIndex, const std::string& textureDirectory,
+    uint32_t& outTextureIndex, std::unordered_map<uint32_t, TextureInfo>& outTextureInfo)
 {
-    if (materialIndex < materials.size() &&
-        !textureDirectory.empty())
+    bool foundTexture = false;
+    
+    if (materialIndex >= materials.size())
     {
-        const tinyobj::material_t& mat = materials[materialIndex];
-
-        // Load textures (diffuse, specular, normal, etc.)
-        if (!mat.diffuse_texname.empty() &&
-            outLoadedTextures.find(mat.diffuse_texname) == outLoadedTextures.end())
+        return false;
+    }
+    
+    const tinyobj::material_t& mat = materials[materialIndex];
+    
+    // Handle diffuse texture
+    if (!mat.diffuse_texname.empty()) {
+        std::string texPath = textureDirectory + mat.diffuse_texname;
+        
+        // Check if we've already processed this texture
+        auto it = texturePathToIndex.find(texPath);
+        if (it != texturePathToIndex.end())
         {
-            outTextureParams.bIsValid = true;
-
-            auto texturePath = textureDirectory + mat.diffuse_texname;
-            
-            GLuint diffuseTexture = TextureManager::getTexture(texturePath);
-            outLoadedTextures[texturePath] = diffuseTexture;
-                        
-            outTextureParams.diffuseTexturePath = texturePath;
-            outTextureParams.diffuseTextureID = new GLuint(diffuseTexture);
+            // We already have this texture, just use its index
+            outTextureIndex = it->second;
         }
-
-        if (!mat.specular_texname.empty() &&
-            outLoadedTextures.find(mat.specular_texname) == outLoadedTextures.end())
+        else
         {
-            outTextureParams.bIsValid = true;
-
-            auto texturePath = textureDirectory + mat.specular_texname;
-            
-            GLuint specularTexture = TextureManager::getTexture(texturePath);
-            outLoadedTextures[texturePath] = specularTexture;
-
-            outTextureParams.specularTexturePath = texturePath;
-            outTextureParams.specularTextureID = new GLuint(specularTexture);
+            // New texture, assign a new index
+            uint32_t texIndex = nextTextureIndex++;
+            texturePathToIndex[texPath] = texIndex;
+            outTextureInfo[texIndex] = TextureInfo(texPath, TextureInfo::Type::Diffuse);
+            outTextureIndex = texIndex;
         }
-
-        if (!mat.normal_texname.empty() &&
-            outLoadedTextures.find(mat.normal_texname) == outLoadedTextures.end())
-        {
-            outTextureParams.bIsValid = true;
-
-            auto texturePath = textureDirectory + mat.normal_texname;
+        
+        foundTexture = true;
+    }
+    
+    // Similarly handle specular texture (just store the info, don't set as primary)
+    if (!mat.specular_texname.empty()) {
+        std::string texPath = textureDirectory + mat.specular_texname;
+        
+        // Only add if not already present
+        auto it = texturePathToIndex.find(texPath);
+        if (it == texturePathToIndex.end()) {
+            uint32_t texIndex = nextTextureIndex++;
+            texturePathToIndex[texPath] = texIndex;
+            outTextureInfo[texIndex] = TextureInfo(texPath, TextureInfo::Type::Specular);
             
-            GLuint normalTexture = TextureManager::getTexture(texturePath);
-            outLoadedTextures[texturePath] = normalTexture;
-
-            outTextureParams.normalTexturePath = texturePath;
-            outTextureParams.normalTextureID = new GLuint(normalTexture);
+            // If we didn't find a diffuse texture, use this one as primary
+            if (!foundTexture) {
+                outTextureIndex = texIndex;
+                foundTexture = true;
+            }
         }
     }
-
-    return outTextureParams.bIsValid;
+    
+    // Handle normal map
+    if (!mat.normal_texname.empty()) {
+        std::string texPath = textureDirectory + mat.normal_texname;
+        
+        // Only add if not already present
+        auto it = texturePathToIndex.find(texPath);
+        if (it == texturePathToIndex.end()) {
+            uint32_t texIndex = nextTextureIndex++;
+            texturePathToIndex[texPath] = texIndex;
+            outTextureInfo[texIndex] = TextureInfo(texPath, TextureInfo::Type::Normal);
+            
+            // If we didn't find any texture yet, use this one as primary
+            if (!foundTexture) {
+                outTextureIndex = texIndex;
+                foundTexture = true;
+            }
+        }
+    }
+    
+    return foundTexture;
 }
-*/

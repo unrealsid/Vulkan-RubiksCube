@@ -93,13 +93,13 @@ void ShaderObject::create_shaders(const Init& init, char* vertexShader, size_t v
 	triangle_vert_shader = new Shader(VK_SHADER_STAGE_VERTEX_BIT,
                                         VK_SHADER_STAGE_FRAGMENT_BIT,
                                         "MeshShader", vertexShader,
-                                        vertShaderSize, nullptr, 0, pPushConstantRange, pPushConstantCount);
+                                        vertShaderSize, pSetLayouts, setLayoutCount, pPushConstantRange, pPushConstantCount);
                                         
     triangle_frag_shader = new Shader(VK_SHADER_STAGE_FRAGMENT_BIT,
                                     0,
                                     "MeshShader",
                                     fragmentShader,
-                                    fragShaderSize, nullptr, 0, pPushConstantRange, pPushConstantCount);
+                                    fragShaderSize, pSetLayouts, setLayoutCount, pPushConstantRange, pPushConstantCount);
 
     build_linked_shaders(init.disp, triangle_vert_shader, triangle_frag_shader);
 }
