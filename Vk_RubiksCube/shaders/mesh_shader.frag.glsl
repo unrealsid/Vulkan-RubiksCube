@@ -44,6 +44,33 @@ layout (push_constant) uniform PushConstants
     MaterialBuffer materialsDataReference;
 } pushConstants;
 
+vec2 transformUV(vec2 uv, uint texIndex) 
+{
+    // Hardcoded transformation parameters
+    // Scale, translation, and rotation for each texture index
+    vec2 scale = vec2(5.0, 5.0);
+    vec2 translate = vec2(0.0, 0.0);
+    float rotation = -3.14 / 2.0;
+
+    // First center the UV for rotation and scaling
+    vec2 centeredUV = uv - vec2(0.5, 0.5);
+
+    // Apply rotation
+    float cosAngle = cos(rotation);
+    float sinAngle = sin(rotation);
+    vec2 rotatedUV = vec2(
+    centeredUV.x * cosAngle - centeredUV.y * sinAngle,
+    centeredUV.x * sinAngle + centeredUV.y * cosAngle
+    );
+
+    // Apply scaling
+    vec2 scaledUV = rotatedUV * scale;
+
+    // Move back from center and apply translation
+    return scaledUV + vec2(0.5, 0.5) + translate;
+}
+
+
 void main() 
 {
     Material materialRef = pushConstants.materialsDataReference.materialParams[inMaterialIndex];
@@ -54,7 +81,8 @@ void main()
     float shininess = materialRef.shininess.x;
     float alpha = materialRef.alpha.x;
 
-    vec4 texColor = texture(textures[nonuniformEXT(inTexIndex)], inUV);
+    vec2 uv = transformUV(inUV, 0);
+    vec4 texColor = texture(textures[nonuniformEXT(inTexIndex)], uv);
     vec4 finalColor = texColor * diffuseColor;
 
     //finalColor.rgb += emissiveColor.rgb;
