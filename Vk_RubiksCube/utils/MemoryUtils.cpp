@@ -1,4 +1,4 @@
-#include "VMA_MemoryUtils.h"
+#include "MemoryUtils.h"
 #include <iostream>
 #include "../structs/Vk_RenderData.h"
 #include "../structs/Vertex.h"
@@ -12,9 +12,10 @@
 
 #include "Vk_Descriptors.h"
 #include "Vk_Utils.h"
+#include "../vulkan/DeviceManager.h"
 
 
-void vmaUtils::createVmaAllocator(Init& init)
+void utils::MemoryUtils::createVmaAllocator(vulkan::DeviceManager& device_manager)
 {
     PFN_vkGetInstanceProcAddr fnGetInstanceProcAddr = (vkGetInstanceProcAddr);
     PFN_vkGetDeviceProcAddr fnGetDeviceProcAddr = (vkGetDeviceProcAddr);
@@ -24,22 +25,22 @@ void vmaUtils::createVmaAllocator(Init& init)
     vulkanFunctions.vkGetDeviceProcAddr = fnGetDeviceProcAddr;
 
     //TODO: Change later Needed to run with NVIDIA NSights
-    vulkanFunctions.vkGetBufferMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetInstanceProcAddr(init.instance, "vkGetBufferMemoryRequirements2KHR"));
-    vulkanFunctions.vkGetImageMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetImageMemoryRequirements2KHR>(vkGetInstanceProcAddr(init.instance, "vkGetImageMemoryRequirements2KHR"));
-    vulkanFunctions.vkGetBufferMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetInstanceProcAddr(init.instance, "vkGetBufferMemoryRequirements2KHR"));
-    vulkanFunctions.vkBindBufferMemory2KHR = reinterpret_cast<PFN_vkBindBufferMemory2KHR>(vkGetInstanceProcAddr(init.instance, "vkBindBufferMemory2KHR"));
-    vulkanFunctions.vkBindImageMemory2KHR = reinterpret_cast<PFN_vkBindImageMemory2KHR>(vkGetInstanceProcAddr(init.instance, "vkBindImageMemory2KHR"));
+    vulkanFunctions.vkGetBufferMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetInstanceProcAddr(device_manager.getInstance(), "vkGetBufferMemoryRequirements2KHR"));
+    vulkanFunctions.vkGetImageMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetImageMemoryRequirements2KHR>(vkGetInstanceProcAddr(device_manager.getInstance(), "vkGetImageMemoryRequirements2KHR"));
+    vulkanFunctions.vkGetBufferMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetInstanceProcAddr(device_manager.getInstance(), "vkGetBufferMemoryRequirements2KHR"));
+    vulkanFunctions.vkBindBufferMemory2KHR = reinterpret_cast<PFN_vkBindBufferMemory2KHR>(vkGetInstanceProcAddr(device_manager.getInstance(), "vkBindBufferMemory2KHR"));
+    vulkanFunctions.vkBindImageMemory2KHR = reinterpret_cast<PFN_vkBindImageMemory2KHR>(vkGetInstanceProcAddr(device_manager.getInstance(), "vkBindImageMemory2KHR"));
     
-    static VmaAllocatorCreateInfo allocatorInfo;
+    VmaAllocatorCreateInfo allocatorInfo;
 
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-    allocatorInfo.physicalDevice = init.device.physical_device;
-    allocatorInfo.instance = init.instance;
-    allocatorInfo.device = init.device.device;
+    allocatorInfo.physicalDevice = device_manager.getDevice().physical_device;
+    allocatorInfo.instance = device_manager.getInstance();
+    allocatorInfo.device = device_manager.getDevice();
     allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_4;
     allocatorInfo.pVulkanFunctions = &vulkanFunctions;
     
-    VkResult result = vmaCreateAllocator(&allocatorInfo, &init.vmaAllocator);
+    VkResult result = vmaCreateAllocator(&allocatorInfo, &device_manager.getAllocator());
     if (result != VK_SUCCESS)
     {
         std::cerr << "Failed to create VMA allocator: " << result << std::endl;
@@ -49,7 +50,7 @@ void vmaUtils::createVmaAllocator(Init& init)
     std::cout << "VMA allocator created successfully." << std::endl;
 }
 
-void vmaUtils::createBufferVMA(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage,
+void utils::MemoryUtils::createBufferVMA(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage,
                                VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, VkBuffer& buffer, VmaAllocation& allocation, VmaAllocationInfo& allocationInfo)
 {
     VkBufferCreateInfo bufferInfo{};
@@ -68,7 +69,7 @@ void vmaUtils::createBufferVMA(VmaAllocator allocator, VkDeviceSize size, VkBuff
     }
 }
 
-VkResult vmaUtils::mapPersistenData(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize bufferSize)
+VkResult utils::MemoryUtils::mapPersistenData(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize bufferSize)
 {
     VkMemoryPropertyFlags memPropFlags;
     vmaGetAllocationMemoryProperties(vmaAllocator, allocation, &memPropFlags);
@@ -83,7 +84,7 @@ VkResult vmaUtils::mapPersistenData(VmaAllocator vmaAllocator, VmaAllocation all
      return VK_ERROR_UNKNOWN;
 }
 
-VkDeviceAddress vmaUtils::getBufferDeviceAddress(const vkb::DispatchTable& disp, VkBuffer buffer)
+VkDeviceAddress utils::MemoryUtils::getBufferDeviceAddress(const vkb::DispatchTable& disp, VkBuffer buffer)
 {
     VkBufferDeviceAddressInfoEXT bufferDeviceAI{};
     bufferDeviceAI.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
@@ -96,7 +97,7 @@ VkDeviceAddress vmaUtils::getBufferDeviceAddress(const vkb::DispatchTable& disp,
 }
 
 
-void vmaUtils::copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, VkBuffer srcBuffer,
+void utils::MemoryUtils::copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, VkBuffer srcBuffer,
                           VkBuffer dstBuffer, VkDeviceSize size)
 {
     VkCommandBufferAllocateInfo allocInfo{};
@@ -131,7 +132,7 @@ void vmaUtils::copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool 
     disp.freeCommandBuffers(command_pool, 1, &commandBuffer);
 }
 
-void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, RenderData& renderData, const
+void utils::MemoryUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, RenderData& renderData, const
                                               std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
 {
     VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
@@ -193,19 +194,17 @@ void vmaUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::Di
     vmaDestroyBuffer(vmaAllocator, stagingIndexBuffer, stagingIndexBufferAllocation);
 }
 
-void vmaUtils::createMaterialParamsBuffer(const Init& init, RenderData& renderData)
+void utils::MemoryUtils::createMaterialParamsBuffer(vulkan::DeviceManager& device_manager, const std::unordered_map<uint32_t, MaterialParams>& materialParams)
 {
-    VmaAllocationInfo outVmaAllocationInfo;
-
     uint32_t maxMaterialIndex = 0;
-    if (!renderData.materialParams.empty())
+    if (!materialParams.empty())
     {
         // Find the element with the maximum key (material index)
-        auto max_it = std::max_element(renderData.materialParams.begin(), renderData.materialParams.end(),
-            [](const auto& a, const auto& b)
-            {
-                return a.first < b.first;
-            });
+        auto max_it = std::ranges::max_element(materialParams,
+                                               [](const auto& a, const auto& b)
+                                               {
+                                                   return a.first < b.first;
+                                               });
         maxMaterialIndex = max_it->first;
     }
 
@@ -214,7 +213,7 @@ void vmaUtils::createMaterialParamsBuffer(const Init& init, RenderData& renderDa
     std::vector<MaterialParams> materialData(materialCount);
 
     // Populate the vector using the map, placing each material at its correct index
-    for (const auto& pair : renderData.materialParams)
+    for (const auto& pair : materialParams)
     {
         if (pair.first < materialCount)
         {
@@ -227,12 +226,12 @@ void vmaUtils::createMaterialParamsBuffer(const Init& init, RenderData& renderDa
     }
 
     VkDeviceSize bufferSize = sizeof(MaterialParams) * materialData.size();
-    Vk_DescriptorUtils::createBuffer(init, bufferSize, renderData.materialValues.materialsBuffer);
+    DescriptorUtils::createBuffer(device_manager.getAllocator(), bufferSize, materialValues.materialsBuffer);
     
-    vmaUtils::mapPersistenData(init.vmaAllocator, renderData.materialValues.materialsBuffer.allocation, renderData.materialValues.materialsBuffer.allocationInfo, materialData.data(), bufferSize);   
+    mapPersistenData(device_manager.getAllocator(), renderData.materialValues.materialsBuffer.allocation, renderData.materialValues.materialsBuffer.allocationInfo, materialData.data(), bufferSize);
 }
 
-VkBool32 vmaUtils::getSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat)
+VkBool32 utils::MemoryUtils::getSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat)
 {
     std::vector<VkFormat> formatList =
     {
@@ -255,7 +254,7 @@ VkBool32 vmaUtils::getSupportedDepthStencilFormat(VkPhysicalDevice physicalDevic
     return false;
 }
 
-void vmaUtils::setupDepthStencil(vkb::DispatchTable disp, VkExtent2D extents, VmaAllocator allocator, DepthStencil_Image& depthImage)
+void utils::MemoryUtils::setupDepthStencil(vkb::DispatchTable disp, VkExtent2D extents, VmaAllocator allocator, DepthStencil_Image& depthImage)
 {
     VkImageCreateInfo imageCI{};
     imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -297,19 +296,4 @@ void vmaUtils::setupDepthStencil(vkb::DispatchTable disp, VkExtent2D extents, Vm
     {
         throw std::runtime_error("failed to create depth stencil image view!");
     }
-}
-
-
-VkPhysicalDeviceBufferDeviceAddressFeatures vmaUtils::create_physical_device_buffer_address()
-{
-    VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures = 
-    {
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
-        nullptr,
-        VK_TRUE,
-        VK_TRUE,
-        VK_FALSE
-    };
-
-    return bufferDeviceAddressFeatures;
 }

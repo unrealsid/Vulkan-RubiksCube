@@ -3,7 +3,7 @@
 #include <glm/fwd.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
-#include "../structs/SceneData.h""
+#include "../structs/SceneData.h"
 #include "../structs/Vk_Init.h"
 
 void vkUtils::SetVulkanObjectName(const vkb::DispatchTable& disp, uint64_t objectHandle,

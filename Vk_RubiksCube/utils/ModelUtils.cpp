@@ -8,10 +8,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-bool VkUtils::ModelUtils::loadObj(const std::string& path,
+bool utils::ModelUtils::loadObj(const std::string& path,
                                std::vector<Vertex>& outVertices,
                                std::vector<uint32_t>& outIndices,
-                               std::vector<uint32_t>& outPrimitiveMaterialIndices,
                                std::unordered_map<uint32_t, MaterialParams>& outMaterialParams,
                                std::unordered_map<uint32_t, TextureInfo>& outTextureInfo)
 {
@@ -21,14 +20,17 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
     tinyobj::ObjReaderConfig reader_config;
     tinyobj::ObjReader reader;
 
-    if (!reader.ParseFromFile(path, reader_config)) {
-        if (!reader.Error().empty()) {
+    if (!reader.ParseFromFile(path, reader_config))
+    {
+        if (!reader.Error().empty())
+        {
             std::cerr << "TinyObjReader: " << reader.Error();
         }
         return false;
     }
 
-    if (!reader.Warning().empty()) {
+    if (!reader.Warning().empty())
+    {
         std::cout << "TinyObjReader: " << reader.Warning();
     }
 
@@ -42,7 +44,6 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
     outIndices.clear();
     outMaterialParams.clear();
     outTextureInfo.clear();
-    outPrimitiveMaterialIndices.clear();
     tinyObjMaterialIdToBufferIndex.clear();
     texturePathToIndex.clear();
     nextMaterialBufferIndex = 0;
@@ -96,15 +97,18 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
             
             // Get texture index for this material
             uint32_t textureIndex = defaultTextureIndex;
-            if (tiny_obj_material_id >= 0) {
+            if (tiny_obj_material_id >= 0)
+            {
                 // Try to find texture for this material
                 const tinyobj::material_t& mat = materials[tiny_obj_material_id];
                 
                 // Check for diffuse texture (prioritizing diffuse texture)
-                if (!mat.diffuse_texname.empty()) {
+                if (!mat.diffuse_texname.empty())
+                {
                     std::string texPath = textureDirectory + mat.diffuse_texname;
                     auto it = texturePathToIndex.find(texPath);
-                    if (it != texturePathToIndex.end()) {
+                    if (it != texturePathToIndex.end())
+                    {
                         textureIndex = it->second;
                     }
                 }
@@ -166,13 +170,6 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
                 outIndices.push_back(uniqueVertices[vertex]);
             }
 
-            // We still maintain outPrimitiveMaterialIndices for compatibility
-            size_t num_triangles_in_face = fv / 3;
-            for (size_t i = 0; i < num_triangles_in_face; ++i)
-            {
-                outPrimitiveMaterialIndices.push_back(materialBufferIndex);
-            }
-
             index_offset += fv;
         }
     }
@@ -180,7 +177,7 @@ bool VkUtils::ModelUtils::loadObj(const std::string& path,
     return true;
 }
 
-bool VkUtils::ModelUtils::getMaterialParams(uint32_t materialIndex, MaterialParams& outMaterialParams) const
+bool utils::ModelUtils::getMaterialParams(uint32_t materialIndex, MaterialParams& outMaterialParams) const
 {
     auto materialValues = materials[materialIndex];
 
@@ -193,7 +190,7 @@ bool VkUtils::ModelUtils::getMaterialParams(uint32_t materialIndex, MaterialPara
     return true;
 }
 
-bool VkUtils::ModelUtils::getTextureInfo(uint32_t materialIndex, const std::string& textureDirectory,
+bool utils::ModelUtils::getTextureInfo(uint32_t materialIndex, const std::string& textureDirectory,
     uint32_t& outTextureIndex, std::unordered_map<uint32_t, TextureInfo>& outTextureInfo)
 {
     bool foundTexture = false;

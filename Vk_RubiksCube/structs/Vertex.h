@@ -14,7 +14,7 @@ struct Vertex
 
     bool operator==(const Vertex& other) const
     {
-        return position == other.position && normal == other.normal && texCoords == other.texCoords && materialIndex == other.materialIndex &&  textureIndex == other.textureIndex;
+        return position == other.position && normal == other.normal && texCoords == other.texCoords && materialIndex == other.materialIndex && textureIndex == other.textureIndex;
     }
 
     static VkVertexInputBindingDescription2EXT getBindingDescription()

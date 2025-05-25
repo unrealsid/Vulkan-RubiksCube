@@ -1,9 +1,15 @@
 #pragma once
+#include <memory>
 #include <string>
 #include <vector>
 #include <vulkan_core.h>
 
 #include "VkBootstrapDispatch.h"
+
+namespace vulkan
+{
+    class SwapchainManager;
+}
 
 struct Init;
 
@@ -64,23 +70,26 @@ public:
 
         void destroy(VkDevice device);
     };
-    
-    static VkPhysicalDeviceShaderObjectFeaturesEXT create_shader_object_features();
 
     ShaderObject() = default;
     ~ShaderObject() = default;
 
-    void create_shaders(const Init& init, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize, const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, const VkPushConstantRange *pPushConstantRange, uint32_t pPushConstantCount);
+    void create_shaders(const vkb::DispatchTable& disp,
+        char* vertexShader, size_t vertShaderSize,
+        char* fragmentShader, size_t fragShaderSize,
+        const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
+        const VkPushConstantRange *pPushConstantRange, uint32_t pPushConstantCount);
+    
     void destroy_shaders(VkDevice device);
 
     static void bind_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer, const ShaderObject::Shader *shader);
     void bind_material_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer) const;
 
-    void set_initial_state(const Init& init, VkCommandBuffer cmd_buffer);
+    static void set_initial_state(vkb::DispatchTable& disp, const vulkan::SwapchainManager& swapchainManager, VkCommandBuffer cmd_buffer);
 
 private:
     static void build_linked_shaders(const vkb::DispatchTable& disp, ShaderObject::Shader* vert, ShaderObject::Shader* frag);
     
-    Shader* triangle_vert_shader;
-    Shader* triangle_frag_shader;
+    std::unique_ptr<Shader> vert_shader;
+    std::unique_ptr<Shader> frag_shader;
 };

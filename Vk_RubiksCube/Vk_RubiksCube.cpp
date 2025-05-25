@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "Config.h"
+#include "core/Engine.h"
 #include "materials/ShaderObject.h"
 #include "rendering/Vk_DynamicRendering.h"
 #include "structs/PushConstantBlock.h"
@@ -13,284 +14,10 @@
 #include "utils/ModelUtils.h"
 #include "utils/Vk_Descriptors.h"
 #include "utils/Vk_Utils.h"
-#include "utils/VMA_ImageUtils.h"
-#include "utils/VMA_MemoryUtils.h"
-
-GLFWwindow* create_window_glfw(const char* window_name, bool resize)
-{
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    if (!resize) glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-    return glfwCreateWindow(1024, 1024, window_name, NULL, NULL);
-}
-
-void destroy_window_glfw(GLFWwindow* window)
-{
-    glfwDestroyWindow(window);
-    glfwTerminate();
-}
-
-VkSurfaceKHR create_surface_glfw(VkInstance instance, GLFWwindow* window, VkAllocationCallbacks* allocator)
-{
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
-    VkResult err = glfwCreateWindowSurface(instance, window, allocator, &surface);
-    if (err)
-    {
-        const char* error_msg;
-        int ret = glfwGetError(&error_msg);
-        if (ret != 0)
-        {
-            std::cout << ret << " ";
-            if (error_msg != nullptr) std::cout << error_msg;
-            std::cout << "\n";
-        }
-        surface = VK_NULL_HANDLE;
-    }
-    return surface;
-}
-
-int device_initialization(Init& init)
-{
-    init.window = create_window_glfw("Rubik's Cube", true);
-
-    // Create the disable feature struct
-    VkValidationFeatureDisableEXT disables[] =
-    {
-        VK_VALIDATION_FEATURE_DISABLE_UNIQUE_HANDLES_EXT
-    };
-    
-    vkb::InstanceBuilder instance_builder;
-    auto instance_ret = instance_builder.
-        set_minimum_instance_version(VK_API_VERSION_1_4)
-        .use_default_debug_messenger()
-        .add_validation_feature_disable(*disables)
-        //.enable_layer("VK_LAYER_KHRONOS_shader_object")
-        .enable_extension(VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME)
-        .enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
-        .enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-        .request_validation_layers()
-        .build();
-    
-    if (!instance_ret)
-    {
-        std::cout << instance_ret.error().message() << "\n";
-        return -1;
-    }
-    init.instance = instance_ret.value();
-
-    init.inst_disp = init.instance.make_table();
-
-    init.surface = create_surface_glfw(init.instance, init.window);
-
-    VkPhysicalDeviceFeatures features = {};
-    features.geometryShader = VK_FALSE;
-    features.tessellationShader = VK_FALSE;
-
-    vkb::PhysicalDeviceSelector phys_device_selector(init.instance);
-    auto phys_device_ret = phys_device_selector
-        .add_required_extension(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
-        .add_required_extension(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
-        .add_required_extension(VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
-        .add_required_extension(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_MULTIVIEW_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_MAINTENANCE_2_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_DEVICE_GROUP_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME) 
-        .add_required_extension(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_MAINTENANCE1_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_MAINTENANCE3_EXTENSION_NAME)
-        .add_required_extension(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
-        .add_required_extension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)
-        //.add_required_extension(VK_KHR_MAINTENANCE_6_EXTENSION_NAME)
-        .set_required_features(features)
-        .set_surface(init.surface)
-        .select();
-
-    auto dynamic_rendering_features = Vk_DynamicRendering::create_dynamic_rendering_features();
-    auto shader_object_features = ShaderObject::create_shader_object_features();
-    auto device_memory_features = vmaUtils::create_physical_device_buffer_address();
-    auto descriptorIndexingFeatures = Vk_DescriptorUtils::createPhysicalDeviceDescriptorIndexingFeatures();
-    
-    if (!phys_device_ret)
-    {
-        std::cout << phys_device_ret.error().message() << "\n";
-        return -1;
-    }
-    const vkb::PhysicalDevice& physical_device = phys_device_ret.value();
-
-    vkb::DeviceBuilder device_builder{ physical_device };
-    auto device_ret = device_builder
-        .add_pNext(&dynamic_rendering_features)
-        .add_pNext(&shader_object_features)
-        .add_pNext(&device_memory_features)
-        .add_pNext(&descriptorIndexingFeatures)
-        .build();
-    
-    if (!device_ret)
-    {
-        std::cout << device_ret.error().message() << "\n";
-        return -1;
-    }
-    init.device = device_ret.value();
-    init.physicalDevice = physical_device;
-    init.disp = init.device.make_table();
-
-    return 0;
-}
-
-int create_swapchain(Init& init)
-{
-    vkb::SwapchainBuilder swapchain_builder{ init.device };
-    auto swap_ret = swapchain_builder.set_old_swapchain(init.swapchain).build();
-    if (!swap_ret)
-    {
-        std::cout << swap_ret.error().message() << " " << swap_ret.vk_result() << "\n";
-        return -1;
-    }
-    vkb::destroy_swapchain(init.swapchain);
-    init.swapchain = swap_ret.value();
-    return 0;
-}
-
-int get_queues(Init& init, RenderData& data)
-{
-    auto gq = init.device.get_queue(vkb::QueueType::graphics);
-    if (!gq.has_value())
-    {
-        std::cout << "failed to get graphics queue: " << gq.error().message() << "\n";
-        return -1;
-    }
-    data.graphics_queue = gq.value();
-
-    auto pq = init.device.get_queue(vkb::QueueType::present);
-    if (!pq.has_value()) {
-        std::cout << "failed to get present queue: " << pq.error().message() << "\n";
-        return -1;
-    }
-    data.present_queue = pq.value();
-    return 0;
-}
-
-void loadShader(std::string filename, char* &code, size_t &size)
-{
-    std::ifstream is(filename, std::ios::binary | std::ios::in | std::ios::ate);
-    if (is.is_open())
-    {
-        size = is.tellg();
-        is.seekg(0, std::ios::beg);
-        code = new char[size];
-        is.read(code, size);
-        is.close();
-        assert(size > 0);
-    }
-    else
-    {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-    }
-}
-
-VkShaderModule createShaderModule(Init& init, const std::vector<char>& code)
-{
-    VkShaderModuleCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    create_info.codeSize = code.size();
-    create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-    VkShaderModule shaderModule;
-    if (init.disp.createShaderModule(&create_info, nullptr, &shaderModule) != VK_SUCCESS)
-    {
-        return VK_NULL_HANDLE;
-        // failed to create shader module
-    }
-
-    return shaderModule;
-}
-
-std::vector<uint32_t> convert_char_to_uint32(const std::vector<char>& char_vec)
-{
-    // Ensure the size of the byte vector is a multiple of 4 (size of uint32_t)
-    if (char_vec.size() % sizeof(uint32_t) != 0) {
-        throw std::runtime_error("Raw SPIR-V size is not a multiple of 4 bytes!");
-    }
-
-    // Calculate the number of uint32_t elements
-    size_t uint32_count = char_vec.size() / sizeof(uint32_t);
-
-    // Create the destination vector
-    std::vector<uint32_t> uint32_vec(uint32_count);
-
-    // Reinterpret the data. Using memcpy is generally safer than a direct reinterpret_cast
-    // for potentially unaligned data, although vector data is usually aligned.
-    std::memcpy(uint32_vec.data(), char_vec.data(), char_vec.size());
-
-    return uint32_vec;
-}
+#include "utils/ImageUtils.h"
+#include "utils/MemoryUtils.h"
 
 
-int create_graphics_pipeline(Init& init, RenderData& data) 
-{
-    size_t shaderCodeSizes[2]{};
-    char* shaderCodes[2]{};
-    
-    loadShader(std::string(SHADER_PATH) + "/mesh_shader.vert.spv", shaderCodes[0], shaderCodeSizes[0]);
-    loadShader(std::string(SHADER_PATH) + "/mesh_shader.frag.spv", shaderCodes[1], shaderCodeSizes[1]);
-
-    //Buffer device address
-    Vk_DescriptorUtils::createBuffer(init, sizeof(SceneData), data.sceneData.sceneBuffer);
-    data.sceneData.sceneBufferAddress = vmaUtils::getBufferDeviceAddress(init.disp, data.sceneData.sceneBuffer.buffer);
-
-    //Materials Buffer
-    vmaUtils::createMaterialParamsBuffer(init, data);
-    data.materialValues.materialParamsBufferAddress = vmaUtils::getBufferDeviceAddress(init.disp, data.materialValues.materialsBuffer.buffer);
-
-    Vk_DescriptorUtils::setupDescriptors(init, data);
-    
-    // uint32_t maxSets = 1;
-    // VkDeviceSize uniformBufferSize = sizeof(SceneData);
-    // VkDescriptorPool descriptorPool = Vk_DescriptorUtils::createDescriptorPool(init.disp, maxSets);
-    // init.descriptorSetLayout = Vk_DescriptorUtils::createDescriptorSetLayout(init.disp);
-    // data.descriptorSet = Vk_DescriptorUtils::allocateAndWriteDescriptorSet(init.disp, descriptorPool, init.descriptorSetLayout, outUboBuffer, uniformBufferSize);
-
-    VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    pushConstantRange.offset = 0;
-    pushConstantRange.size = sizeof(PushConstantBlock);
-    
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = Vk_DescriptorUtils::pipelineLayoutCreateInfo(&init.descriptorSetLayout, 1, pushConstantRange, 1);
-    init.disp.createPipelineLayout(&pipelineLayoutInfo, VK_NULL_HANDLE, &init.pipelineLayout);
-
-    SceneData sceneDataUBO;
-    vkUtils::prepareUBO(sceneDataUBO);
-    vmaUtils::mapPersistenData(init.vmaAllocator, data.sceneData.sceneBuffer.allocation, data.sceneData.sceneBuffer.allocationInfo, &sceneDataUBO, sizeof(SceneData));
-    
-    data.shader_object = std::make_unique<ShaderObject>();
-    data.shader_object->create_shaders(init, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1],
-        &init.descriptorSetLayout, 1, &pushConstantRange, 1);
-
-    //create depth stencil image
-    vmaUtils::getSupportedDepthStencilFormat(init.physicalDevice, &data.depthStencilImage.format);
-
-    vmaUtils::setupDepthStencil(init.disp, init.swapchain.extent, init.vmaAllocator, data.depthStencilImage);
-    
-    return 0;
-}
-
-int create_command_pool(Init& init, RenderData& data) 
-{
-    VkCommandPoolCreateInfo pool_info = {};
-    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    pool_info.queueFamilyIndex = init.device.get_queue_index(vkb::QueueType::graphics).value();
-    if (init.disp.createCommandPool(&pool_info, nullptr, &data.command_pool) != VK_SUCCESS)
-    {
-        std::cout << "failed to create command pool\n";
-        return -1; // failed to create command pool
-    }
-    return 0;
-}
 
 int create_command_buffers(Init& init, RenderData& data)
 {
@@ -436,19 +163,6 @@ int create_sync_objects(Init& init, RenderData& data)
             return -1; // failed to create synchronization objects for a frame
         }
     }
-    return 0;
-}
-
-int recreate_swapchain(Init& init, RenderData& data)
-{
-    init.disp.deviceWaitIdle();
-
-    init.disp.destroyCommandPool(data.command_pool, nullptr);
-
-    init.swapchain.destroy_image_views(data.swapchain_image_views);
-    if (0 != create_swapchain(init)) return -1;
-    if (0 != create_command_pool(init, data)) return -1;
-    if (0 != create_command_buffers(init, data)) return -1;
     return 0;
 }
 
@@ -598,11 +312,13 @@ void loadModel(Init& init, RenderData& renderData)
 int main()
 {
 
+    Engine engine;
+    engine.init();
+
+    engine.run();
+    engine.cleanup();
     //std::this_thread::sleep_for(std::chrono::seconds(10));
     
-    Init init;
-    RenderData render_data;
-
     if (0 != device_initialization(init)) return -1;
     if (0 != create_swapchain(init)) return -1;
     if (0 != get_queues(init, render_data)) return -1;

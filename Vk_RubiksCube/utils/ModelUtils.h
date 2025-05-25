@@ -10,7 +10,7 @@
 
 struct TextureInfo;
 
-namespace VkUtils
+namespace utils
 {
     class ModelUtils
     {
@@ -20,7 +20,6 @@ namespace VkUtils
                      std::vector<Vertex>& outVertices,
                      std::vector<uint32_t>& outIndices,
 
-                     std::vector<uint32_t>& outPrimitiveMaterialIndices,
                      std::unordered_map<uint32_t, MaterialParams>& outMaterialParams, std::unordered_map<uint32_t, TextureInfo>&
                      outTextureInfo);
 

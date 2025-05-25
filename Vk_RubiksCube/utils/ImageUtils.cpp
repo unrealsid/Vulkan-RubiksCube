@@ -1,13 +1,13 @@
-#include "VMA_ImageUtils.h"
+#include "ImageUtils.h"
 #include <stb_image.h>
 #include <vk_mem_alloc.h>
 
 #include "VkBootstrapDispatch.h"
-#include "VMA_MemoryUtils.h"
+#include "MemoryUtils.h"
 #include "../structs/Image.h"
 #include "../structs/Vk_Init.h"
 
-LoadedImageData VMA_ImageUtils::loadImageFromFile(const std::string& filePath, int desiredChannels)
+LoadedImageData utils::ImageUtils::loadImageFromFile(const std::string& filePath, int desiredChannels)
 {
     LoadedImageData imageData;
 
@@ -35,7 +35,7 @@ LoadedImageData VMA_ImageUtils::loadImageFromFile(const std::string& filePath, i
     return imageData;
 }
 
-Image VMA_ImageUtils::createAndUploadImage(const Init& init, const RenderData& renderData, const LoadedImageData& imageData)
+Image utils::ImageUtils::createAndUploadImage(const Init& init, const RenderData& renderData, const LoadedImageData& imageData)
 {
     if (imageData.pixels)
     {
@@ -85,7 +85,7 @@ Image VMA_ImageUtils::createAndUploadImage(const Init& init, const RenderData& r
     return {};
 }
 
-VkImageCreateInfo VMA_ImageUtils::imageCreateInfo(VkFormat imageFormat, VkImageUsageFlags imageUsageFlags, VkExtent3D imageExtent)
+VkImageCreateInfo utils::ImageUtils::imageCreateInfo(VkFormat imageFormat, VkImageUsageFlags imageUsageFlags, VkExtent3D imageExtent)
 {
     VkImageCreateInfo imgInfo = {};
     imgInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -107,7 +107,7 @@ VkImageCreateInfo VMA_ImageUtils::imageCreateInfo(VkFormat imageFormat, VkImageU
     return imgInfo;
 }
 
-void VMA_ImageUtils::copyImage(const Init& init, VkQueue queue, VkCommandPool command_pool, Buffer srcBuffer, Image dstImage, VkDeviceSize size, VkExtent3D
+void utils::ImageUtils::copyImage(const Init& init, VkQueue queue, VkCommandPool command_pool, Buffer srcBuffer, Image dstImage, VkDeviceSize size, VkExtent3D
                                extend, const LoadedImageData& imageData)
 {
     VkCommandBufferAllocateInfo allocInfo{};
@@ -190,7 +190,7 @@ void VMA_ImageUtils::copyImage(const Init& init, VkQueue queue, VkCommandPool co
     vmaDestroyBuffer(init.vmaAllocator, srcBuffer.buffer, srcBuffer.allocation);
 }
 
-void VMA_ImageUtils::createImageSampler(const Init& init, Image& image, VkFilter filter)
+void utils::ImageUtils::createImageSampler(const Init& init, Image& image, VkFilter filter)
 {
     VkSamplerCreateInfo samplerCreateInfo = {};
     samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -208,7 +208,7 @@ void VMA_ImageUtils::createImageSampler(const Init& init, Image& image, VkFilter
     init.disp.createSampler(&samplerCreateInfo, nullptr, &image.sampler);
 }
 
-void VMA_ImageUtils::createImageView(const Init& init, Image& image, VkFormat format)
+void utils::ImageUtils::createImageView(const Init& init, Image& image, VkFormat format)
 {
     VkImageViewCreateInfo viewCreateInfo = {};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

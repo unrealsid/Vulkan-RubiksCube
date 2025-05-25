@@ -48,7 +48,7 @@ vec2 transformUV(vec2 uv, uint texIndex)
 {
     // Hardcoded transformation parameters
     // Scale, translation, and rotation for each texture index
-    vec2 scale = vec2(5.0, 5.0);
+    vec2 scale = vec2(-5.0, 5.0);
     vec2 translate = vec2(0.0, 0.0);
     float rotation = -3.14 / 2.0;
 

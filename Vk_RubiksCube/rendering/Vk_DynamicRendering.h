@@ -4,8 +4,6 @@
 class Vk_DynamicRendering
 {
 public:
-    static VkPhysicalDeviceDynamicRenderingFeaturesKHR create_dynamic_rendering_features();
-
     static VkRenderingInfoKHR rendering_info(VkRect2D render_area = {},
                                       uint32_t color_attachment_count = 0,
                                       const VkRenderingAttachmentInfoKHR *pColorAttachments = VK_NULL_HANDLE,

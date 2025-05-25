@@ -3,23 +3,22 @@
 #ifndef VK_INIT_H
 #define VK_INIT_H
 
+#include <memory>
 #include <GLFW/glfw3.h>
 #include "VkBootstrap.h"
 #include <vma/vk_mem_alloc.h>
 
+
+namespace window
+{
+    class WindowManager;
+}
+
 struct Init
 {
-    GLFWwindow* window;
-    vkb::Instance instance;
-    vkb::InstanceDispatchTable inst_disp;
-    VkSurfaceKHR surface;
-    vkb::Device device;
-    vkb::PhysicalDevice physicalDevice;
-    vkb::DispatchTable disp;
+    std::unique_ptr<window::WindowManager> window;
+   
     
-    vkb::Swapchain swapchain;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkPipelineLayout pipelineLayout { VK_NULL_HANDLE };
 
     VmaAllocator vmaAllocator;
 };

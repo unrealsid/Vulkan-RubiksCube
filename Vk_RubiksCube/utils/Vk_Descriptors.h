@@ -1,40 +1,30 @@
 #pragma once
+#include <vector>
 #include <vk_mem_alloc.h>
 
 #include "VkBootstrapDispatch.h"
 #include "../structs/Vk_Init.h"
 #include "../structs/Vk_RenderData.h"
+#include "../structs/Image.h"
 
 struct Buffer;
 struct SceneData;
 
-namespace Vk_DescriptorUtils
+namespace utils
 {
-    VkPhysicalDeviceDescriptorIndexingFeatures createPhysicalDeviceDescriptorIndexingFeatures();
+    class DescriptorUtils
+    {
+    public:
+        static void setupTextureDescriptors(const ::vkb::DispatchTable& disp, const std::vector<Image>& textures, VkDescriptorSetLayout& outDescriptorSetLayout, VkDescriptorSet&
+                                            outDescriptorSet);
 
-    void setupDescriptors(Init& init, RenderData& renderData);
-    
-    VkDescriptorSetLayout createDescriptorSetLayout(const vkb::DispatchTable& disp);
-    
-    VkDescriptorPool createDescriptorPool(const vkb::DispatchTable& disp, uint32_t maxSets);
-    
-    VkDescriptorSet allocateAndWriteDescriptorSet
-    (
-        const vkb::DispatchTable& disp,
-        VkDescriptorPool descriptorPool,
-        VkDescriptorSetLayout descriptorSetLayout,
-        VkBuffer uniformBuffer,
-        VkDeviceSize bufferSize);
+        static void createBuffer(VmaAllocator allocator, VkDeviceSize size, Buffer& buffer);
 
-    void createBuffer(const Init& init, VkDeviceSize size, Buffer& buffer);
-
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,
-      uint32_t setLayoutCount, const VkPushConstantRange& pushConstantRange, uint32_t pushConstantCount);
-
-    void mapUBO(const Init& init, SceneData& sceneDataUBO);
+        static void mapUBO(const Init& init, SceneData& sceneDataUBO);
+    };
 }
 
-namespace Vk_Initializers
+namespace initializers
 {
     inline VkDescriptorPoolSize descriptorPoolSize(
             VkDescriptorType type,

@@ -1,15 +1,5 @@
 #include "Vk_DynamicRendering.h"
 
-VkPhysicalDeviceDynamicRenderingFeaturesKHR Vk_DynamicRendering::create_dynamic_rendering_features()
-{
-    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features{};
-    dynamic_rendering_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-    dynamic_rendering_features.pNext = nullptr;
-    dynamic_rendering_features.dynamicRendering = VK_TRUE;
-
-    return dynamic_rendering_features;
-}
-
 VkRenderingInfoKHR Vk_DynamicRendering::rendering_info(VkRect2D render_area, uint32_t color_attachment_count,
     const VkRenderingAttachmentInfoKHR* pColorAttachments, VkRenderingFlagsKHR flags)
 {
