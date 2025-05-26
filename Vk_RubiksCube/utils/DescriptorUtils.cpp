@@ -1,16 +1,22 @@
-#include "Vk_Descriptors.h"
+#include "DescriptorUtils.h"
 #include <vector>
 #include <stdexcept>
 
 #include "ImageUtils.h"
 #include "../structs/SceneData.h"
 #include "../structs/PushConstantBlock.h"
-#include "../structs/Buffer.h"
+#include "../structs/Vk_Buffer.h"
 
 #include "MemoryUtils.h"
 
 void utils::DescriptorUtils::setupTextureDescriptors(const vkb::DispatchTable& disp, const std::vector<Image>& textures, VkDescriptorSetLayout& outDescriptorSetLayout, VkDescriptorSet& outDescriptorSet)
 {
+    if (textures.empty())
+    {
+        std::cout << "No textures to load" << std::endl;
+        return;    
+    }
+    
     //Descriptor Pool
     std::vector<VkDescriptorPoolSize> poolSizes = { initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(textures.size())) };
     VkDescriptorPoolCreateInfo descriptorPoolInfo = initializers::descriptorPoolCreateInfo(poolSizes, 1);
@@ -83,16 +89,6 @@ void utils::DescriptorUtils::setupTextureDescriptors(const vkb::DispatchTable& d
     writeDescriptorSets[0].pImageInfo = textureDescriptors.data();
 
     disp.updateDescriptorSets(static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
-}
-
-void utils::DescriptorUtils::createBuffer(VmaAllocator allocator, VkDeviceSize size, Buffer& buffer)
-{
-    MemoryUtils::createBufferVMA(allocator, size,
-                              VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,  
-                              VMA_MEMORY_USAGE_AUTO,
-                              VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                              VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
-                              VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer.buffer, buffer.allocation, buffer.allocationInfo);
 }
 
 void utils::DescriptorUtils::mapUBO(const Init& init, SceneData& sceneDataUBO)

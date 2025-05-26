@@ -1,6 +1,6 @@
 #include "FileUtils.h"
 
-void FileUtils::loadShader(std::string filename, char*& code, size_t& size)
+void utils::FileUtils::loadShader(std::string filename, char*& code, size_t& size)
 {
     std::ifstream is(filename, std::ios::binary | std::ios::in | std::ios::ate);
     if (is.is_open())

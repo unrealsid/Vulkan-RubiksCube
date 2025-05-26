@@ -9,14 +9,14 @@ namespace window
     class WindowManager;
 }
 
-struct Init;
-
 namespace vulkan
 {
+    constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+    
     class DeviceManager
     {
     public:
-        constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+        
         
         DeviceManager();
         ~DeviceManager();
@@ -27,7 +27,7 @@ namespace vulkan
 
         bool createCommandPool();
         bool createCommandBuffers();
-        int createGraphicsPipeline();
+        //int createGraphicsPipeline();
         bool createSyncObjects();
         
     private:
@@ -76,7 +76,9 @@ namespace vulkan
         [[nodiscard]] VkQueue getGraphicsQueue() const { return graphics_queue; }
         [[nodiscard]] VkQueue getPresentQueue() const { return present_queue; }
         [[nodiscard]] VkDescriptorSet getDescriptorSet() const { return descriptor_set; }
-        [[nodiscard]] VmaAllocator& getAllocator() { return vmaAllocator; }
+        [[nodiscard]] VmaAllocator getAllocator() const { return vmaAllocator; }
+
+        void setAllocator(VmaAllocator allocator) { vmaAllocator = allocator; }
     };
 }
 

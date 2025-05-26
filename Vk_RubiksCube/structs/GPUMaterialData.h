@@ -1,13 +1,13 @@
 #pragma once
 #include <vector>
 
-#include "Buffer.h"
+#include "Vk_Buffer.h"
 #include "MaterialParams.h"
 
-struct MaterialValues
+struct GPUMaterialData
 {
     std::vector<MaterialParams> materialParams;
 
-    Buffer materialsBuffer;
+    Vk_Buffer materialsBuffer;
     VkDeviceAddress materialParamsBufferAddress;
 };

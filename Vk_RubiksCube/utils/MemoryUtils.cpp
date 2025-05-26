@@ -10,7 +10,7 @@
 #define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
 
-#include "Vk_Descriptors.h"
+#include "DescriptorUtils.h"
 #include "Vk_Utils.h"
 #include "../vulkan/DeviceManager.h"
 
@@ -31,7 +31,7 @@ void utils::MemoryUtils::createVmaAllocator(vulkan::DeviceManager& device_manage
     vulkanFunctions.vkBindBufferMemory2KHR = reinterpret_cast<PFN_vkBindBufferMemory2KHR>(vkGetInstanceProcAddr(device_manager.getInstance(), "vkBindBufferMemory2KHR"));
     vulkanFunctions.vkBindImageMemory2KHR = reinterpret_cast<PFN_vkBindImageMemory2KHR>(vkGetInstanceProcAddr(device_manager.getInstance(), "vkBindImageMemory2KHR"));
     
-    VmaAllocatorCreateInfo allocatorInfo;
+    static VmaAllocatorCreateInfo allocatorInfo;
 
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
     allocatorInfo.physicalDevice = device_manager.getDevice().physical_device;
@@ -39,19 +39,23 @@ void utils::MemoryUtils::createVmaAllocator(vulkan::DeviceManager& device_manage
     allocatorInfo.device = device_manager.getDevice();
     allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_4;
     allocatorInfo.pVulkanFunctions = &vulkanFunctions;
+
+    VmaAllocator allocator;
     
-    VkResult result = vmaCreateAllocator(&allocatorInfo, &device_manager.getAllocator());
+    VkResult result = vmaCreateAllocator(&allocatorInfo, &allocator);
     if (result != VK_SUCCESS)
     {
         std::cerr << "Failed to create VMA allocator: " << result << std::endl;
         throw std::runtime_error("Failed to create VMA allocator!");
     }
 
+    device_manager.setAllocator(allocator);
+
     std::cout << "VMA allocator created successfully." << std::endl;
 }
 
-void utils::MemoryUtils::createBufferVMA(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage,
-                               VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, VkBuffer& buffer, VmaAllocation& allocation, VmaAllocationInfo& allocationInfo)
+void utils::MemoryUtils::create_buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage,
+                               VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, Vk_Buffer& outBuffer) 
 {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -63,7 +67,7 @@ void utils::MemoryUtils::createBufferVMA(VmaAllocator allocator, VkDeviceSize si
     allocCreateInfo.usage = memoryUsage;  
     allocCreateInfo.flags = vmaAllocationFlags;
 
-    if (VkResult result = vmaCreateBuffer(allocator, &bufferInfo, &allocCreateInfo, &buffer, &allocation, &allocationInfo); result != VK_SUCCESS)
+    if (VkResult result = vmaCreateBuffer(allocator, &bufferInfo, &allocCreateInfo, &outBuffer.buffer, &outBuffer.allocation, &outBuffer.allocationInfo); result != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create buffer with VMA!");
     }
@@ -132,75 +136,75 @@ void utils::MemoryUtils::copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCo
     disp.freeCommandBuffers(command_pool, 1, &commandBuffer);
 }
 
-void utils::MemoryUtils::createVertexAndIndexBuffersVMA(VmaAllocator vmaAllocator, vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, RenderData& renderData, const
-                                              std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+void utils::MemoryUtils::create_vertex_and_index_buffers(const vulkan::DeviceManager& device_manager,
+                                                        const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices,
+                                                        Vk_Buffer& out_vertex_buffer, Vk_Buffer& out_index_buffer)
 {
     VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
     VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
 
     // Create Staging Buffer for Vertices using VMA
-    VkBuffer stagingVertexBuffer;
-    VmaAllocation stagingVertexBufferAllocation;
-    VmaAllocationInfo allocationInfo;
-    createBufferVMA(vmaAllocator, vertexBufferSize,
+    Vk_Buffer staging_vertex_buffer;
+    create_buffer(device_manager.getAllocator(), vertexBufferSize,
                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                     VMA_MEMORY_USAGE_AUTO,
                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                    stagingVertexBuffer, stagingVertexBufferAllocation, allocationInfo);
+                    staging_vertex_buffer);
 
     // Copy Vertex Data to Staging Buffer using VMA mapping
     assert(vertices.size() != 0, "Vertex Data is empty!");
     
     void* data;
-    vmaMapMemory(vmaAllocator, stagingVertexBufferAllocation, &data);
-    memcpy(data, vertices.data(), (size_t) vertexBufferSize);
-    vmaUnmapMemory(vmaAllocator, stagingVertexBufferAllocation);
+    vmaMapMemory(device_manager.getAllocator(), staging_vertex_buffer.allocation, &data);
+    memcpy(data, vertices.data(),  vertexBufferSize);
+    vmaUnmapMemory(device_manager.getAllocator(), staging_vertex_buffer.allocation);
 
     // Create Vertex Buffer (Device Local) using VMA
-    createBufferVMA(vmaAllocator, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+    create_buffer(device_manager.getAllocator(), vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                     VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                    VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,renderData.vertexBuffer, renderData.vertexBufferAllocation, allocationInfo);
+                    VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,out_vertex_buffer);
 
     // Copy from Staging Vertex Buffer to Device Local Vertex Buffer
-    copyBuffer(disp, queue, command_pool, stagingVertexBuffer, renderData.vertexBuffer, vertexBufferSize);
-    vkUtils::SetVulkanObjectName(disp, (uint64_t) renderData.vertexBuffer, VK_OBJECT_TYPE_BUFFER, "Vertex Buffer");
+    copyBuffer(device_manager.getDispatchTable(), device_manager.getGraphicsQueue(), device_manager.getCommandPool(), staging_vertex_buffer.buffer, out_vertex_buffer.buffer, vertexBufferSize);
+    vkUtils::SetVulkanObjectName(device_manager.getDispatchTable(), (uint64_t) out_vertex_buffer.buffer, VK_OBJECT_TYPE_BUFFER, "Vertex Buffer");
 
     // Clean up Staging Vertex Buffer using VMA
-    vmaDestroyBuffer(vmaAllocator, stagingVertexBuffer, stagingVertexBufferAllocation);
+    vmaDestroyBuffer(device_manager.getAllocator(), staging_vertex_buffer.buffer, out_vertex_buffer.allocation);
 
     // Create Staging Buffer for Indices using VMA
-    VkBuffer stagingIndexBuffer;
-    VmaAllocation stagingIndexBufferAllocation;
-    createBufferVMA(vmaAllocator, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO,
+    Vk_Buffer staging_index_buffer;
+    create_buffer(device_manager.getAllocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO,
                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                    stagingIndexBuffer, stagingIndexBufferAllocation, allocationInfo);
+                    staging_index_buffer);
 
     // Copy Index Data to Staging Buffer using VMA mapping
-    vmaMapMemory(vmaAllocator, stagingIndexBufferAllocation, &data);
+    vmaMapMemory(device_manager.getAllocator(), staging_index_buffer.allocation, &data);
     memcpy(data, indices.data(), (size_t) indexBufferSize);
-    vmaUnmapMemory(vmaAllocator, stagingIndexBufferAllocation);
+    vmaUnmapMemory(device_manager.getAllocator(), staging_index_buffer.allocation);
 
     // Create Index Buffer (Device Local) using VMA
-    createBufferVMA(vmaAllocator, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+    create_buffer(device_manager.getAllocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_AUTO,
-                    VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, renderData.indexBuffer, renderData.indexBufferAllocation, allocationInfo);
+                    VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, out_index_buffer);
     
-    vkUtils::SetVulkanObjectName(disp, (uint64_t) renderData.indexBuffer, VK_OBJECT_TYPE_BUFFER, "Index Buffer");
+    vkUtils::SetVulkanObjectName(device_manager.getDispatchTable(), (uint64_t) out_index_buffer.buffer, VK_OBJECT_TYPE_BUFFER, "Index Buffer");
 
     // Copy from Staging Index Buffer to Device Local Index Buffer
-    copyBuffer(disp, queue, command_pool, stagingIndexBuffer, renderData.indexBuffer, indexBufferSize);
+    copyBuffer(device_manager.getDispatchTable(), device_manager.getGraphicsQueue(), device_manager.getCommandPool(), staging_index_buffer.buffer, out_index_buffer.buffer, indexBufferSize);
 
     // Clean up Staging Index Buffer using VMA
-    vmaDestroyBuffer(vmaAllocator, stagingIndexBuffer, stagingIndexBufferAllocation);
+    vmaDestroyBuffer(device_manager.getAllocator(), staging_index_buffer.buffer, staging_index_buffer.allocation);
 }
 
-void utils::MemoryUtils::createMaterialParamsBuffer(vulkan::DeviceManager& device_manager, const std::unordered_map<uint32_t, MaterialParams>& materialParams)
+void utils::MemoryUtils::createMaterialParamsBuffer(const vulkan::DeviceManager& device_manager,
+                                                    const std::unordered_map<uint32_t, MaterialParams>& material_params,
+                                                    Vk_Buffer& out_material_params_buffer)
 {
     uint32_t maxMaterialIndex = 0;
-    if (!materialParams.empty())
+    if (!material_params.empty())
     {
         // Find the element with the maximum key (material index)
-        auto max_it = std::ranges::max_element(materialParams,
+        auto max_it = std::ranges::max_element(material_params,
                                                [](const auto& a, const auto& b)
                                                {
                                                    return a.first < b.first;
@@ -213,7 +217,7 @@ void utils::MemoryUtils::createMaterialParamsBuffer(vulkan::DeviceManager& devic
     std::vector<MaterialParams> materialData(materialCount);
 
     // Populate the vector using the map, placing each material at its correct index
-    for (const auto& pair : materialParams)
+    for (const auto& pair : material_params)
     {
         if (pair.first < materialCount)
         {
@@ -226,9 +230,9 @@ void utils::MemoryUtils::createMaterialParamsBuffer(vulkan::DeviceManager& devic
     }
 
     VkDeviceSize bufferSize = sizeof(MaterialParams) * materialData.size();
-    DescriptorUtils::createBuffer(device_manager.getAllocator(), bufferSize, materialValues.materialsBuffer);
+    //allocate_buffer_with_mapped_access(device_manager.getAllocator(), bufferSize, out_material_params_buffer);
     
-    mapPersistenData(device_manager.getAllocator(), renderData.materialValues.materialsBuffer.allocation, renderData.materialValues.materialsBuffer.allocationInfo, materialData.data(), bufferSize);
+    mapPersistenData(device_manager.getAllocator(), out_material_params_buffer.allocation, out_material_params_buffer.allocationInfo, materialData.data(), bufferSize);
 }
 
 VkBool32 utils::MemoryUtils::getSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat)
@@ -296,4 +300,14 @@ void utils::MemoryUtils::setupDepthStencil(vkb::DispatchTable disp, VkExtent2D e
     {
         throw std::runtime_error("failed to create depth stencil image view!");
     }
+}
+
+void utils::MemoryUtils::allocate_buffer_with_mapped_access(VmaAllocator allocator, VkDeviceSize size, Vk_Buffer& buffer)
+{
+    create_buffer(allocator, size,
+                     VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,  
+                     VMA_MEMORY_USAGE_AUTO,
+                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                     VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
+                     VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer);
 }

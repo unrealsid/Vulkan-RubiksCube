@@ -7,7 +7,7 @@
 #include "../structs/Vk_RenderData.h"
 #include "../structs/Image.h"
 
-struct Buffer;
+struct Vk_Buffer;
 struct SceneData;
 
 namespace utils
@@ -17,8 +17,6 @@ namespace utils
     public:
         static void setupTextureDescriptors(const ::vkb::DispatchTable& disp, const std::vector<Image>& textures, VkDescriptorSetLayout& outDescriptorSetLayout, VkDescriptorSet&
                                             outDescriptorSet);
-
-        static void createBuffer(VmaAllocator allocator, VkDeviceSize size, Buffer& buffer);
 
         static void mapUBO(const Init& init, SceneData& sceneDataUBO);
     };

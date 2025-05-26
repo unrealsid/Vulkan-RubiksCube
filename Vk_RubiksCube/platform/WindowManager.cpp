@@ -49,6 +49,11 @@ VkSurfaceKHR window::WindowManager::createSurfaceGLFW(VkInstance instance, VkAll
     return surface;
 }
 
+bool window::WindowManager::shouldCloseWindow() const
+{
+    return glfwWindowShouldClose(window);  
+}
+
 GLFWwindow* window::WindowManager::getWindow() const
 {
     return window;

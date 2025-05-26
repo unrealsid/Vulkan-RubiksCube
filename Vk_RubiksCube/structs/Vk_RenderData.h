@@ -10,7 +10,7 @@
 #include <vulkan_core.h>
 
 #include "MaterialParams.h"
-#include "MaterialValues.h"
+#include "GPUMaterialData.h"
 #include "SceneData.h"
 #include "TextureInfo.h"
 #include "Vk_DepthStencil_Image.h"
@@ -31,7 +31,7 @@ struct RenderData
     std::vector<Vertex> outVertices;
 
     SceneData sceneData;
-    MaterialValues materialValues;
+    GPUMaterialData materialValues;
 
     std::vector<uint32_t> primitiveMaterialIndices;
     std::unordered_map<uint32_t, MaterialParams> materialParams;

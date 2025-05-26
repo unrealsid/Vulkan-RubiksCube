@@ -7,7 +7,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-#include "Buffer.h"
+#include "Vk_Buffer.h"
 
 struct SceneData
 {
@@ -15,6 +15,6 @@ struct SceneData
     glm::mat4 view;
     glm::mat4 proj;
 
-    Buffer sceneBuffer;
+    Vk_Buffer sceneBuffer;
     VkDeviceAddress sceneBufferAddress;
 };

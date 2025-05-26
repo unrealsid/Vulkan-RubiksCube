@@ -5,7 +5,7 @@
 #include <iostream>
 #include <utility>
 
-ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
+material::ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
                              VkShaderStageFlags           next_stage_,
                              std::string                  shader_name_,
                              char*						  glsl_source,
@@ -38,12 +38,12 @@ ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
 }
 
 
-void ShaderObject::Shader::destroy(VkDevice device)
+void material::ShaderObject::Shader::destroy(VkDevice device)
 {
     
 }
 
-void ShaderObject::build_linked_shaders(const vkb::DispatchTable& disp, ShaderObject::Shader* vert, ShaderObject::Shader* frag)
+void material::ShaderObject::build_linked_shaders(const vkb::DispatchTable& disp, ShaderObject::Shader* vert, ShaderObject::Shader* frag)
 {
     VkShaderCreateInfoEXT shader_create_infos[2];
 
@@ -78,7 +78,7 @@ void ShaderObject::build_linked_shaders(const vkb::DispatchTable& disp, ShaderOb
     frag->set_shader(shaderEXTs[1]);
 }
 
-void ShaderObject::create_shaders(const vkb::DispatchTable& disp, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize,
+void material::ShaderObject::create_shaders(const vkb::DispatchTable& disp, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize,
 	const VkDescriptorSetLayout* pSetLayouts, uint32_t setLayoutCount,
 	const VkPushConstantRange* pPushConstantRange, uint32_t pPushConstantCount)
 {
@@ -96,22 +96,22 @@ void ShaderObject::create_shaders(const vkb::DispatchTable& disp, char* vertexSh
     build_linked_shaders(disp, vert_shader.get(), frag_shader.get());
 }
 
-void ShaderObject::destroy_shaders(VkDevice device)
+void material::ShaderObject::destroy_shaders(VkDevice device)
 {
 }
 
-void ShaderObject::bind_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer, const ShaderObject::Shader* shader)
+void material::ShaderObject::bind_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer, const ShaderObject::Shader* shader)
 {
     disp.cmdBindShadersEXT(cmd_buffer, 1, shader->get_stage(), shader->get_shader());
 }
 
-void ShaderObject::bind_material_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer) const
+void material::ShaderObject::bind_material_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer) const
 {
     bind_shader(disp, cmd_buffer, vert_shader.get());
     bind_shader(disp, cmd_buffer, frag_shader.get());
 }
 
-void ShaderObject::set_initial_state(vkb::DispatchTable& disp, const vulkan::SwapchainManager& swapchainManager, VkCommandBuffer cmd_buffer)
+void material::ShaderObject::set_initial_state(vkb::DispatchTable& disp, const vulkan::SwapchainManager& swapchainManager, VkCommandBuffer cmd_buffer)
 {
     {
 		// Set viewport and scissor to screen size

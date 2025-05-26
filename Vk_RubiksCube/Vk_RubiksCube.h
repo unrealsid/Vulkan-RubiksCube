@@ -1,13 +1,6 @@
-﻿// Vk_RubiksCube.h : Include file for standard system include files,
-// or project specific include files.
-
-#pragma once
+﻿#pragma once
 
 #include <iostream>
-
-// VkTriangle.h
-#ifndef VK_TRIANGLE_H
-#define VK_TRIANGLE_H
 
 #include <stdio.h>
 #include <memory>
@@ -26,12 +19,8 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 #include "structs/Vk_Init.h"
 #include "structs/Vk_RenderData.h"
 
-int create_graphics_pipeline(Init& init, RenderData& data);
+// int draw_frame(Init& init, RenderData& data);
+// void cleanup(Init& init, RenderData& data);
+//
+// void loadModel(Init& init, RenderData& renderData);
 
-
-int draw_frame(Init& init, RenderData& data);
-void cleanup(Init& init, RenderData& data);
-
-void loadModel(Init& init, RenderData& renderData);
-
-#endif // VK_TRIANGLE_H

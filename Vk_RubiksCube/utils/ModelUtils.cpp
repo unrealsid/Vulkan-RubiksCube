@@ -5,14 +5,25 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include <stb_image.h>
+
+#include "ImageUtils.h"
+#include "MemoryUtils.h"
+
+
+#include "../Config.h"
+#include "../materials/MaterialManager.h"
+#include "../structs/LoadedImageData.h"
+#include "../vulkan/DeviceManager.h"
 
 bool utils::ModelUtils::loadObj(const std::string& path,
-                               std::vector<Vertex>& outVertices,
-                               std::vector<uint32_t>& outIndices,
-                               std::unordered_map<uint32_t, MaterialParams>& outMaterialParams,
-                               std::unordered_map<uint32_t, TextureInfo>& outTextureInfo)
+                                std::vector<Vertex>& outVertices,
+                                std::vector<uint32_t>& outIndices,
+
+                                std::unordered_map<std::string, uint32_t>& material_name_to_index,
+                                
+                                std::unordered_map<uint32_t, MaterialParams>& material_params,
+                                std::unordered_map<uint32_t, TextureInfo>& outTextureInfo)
 {
     // Extract the directory from the path for loading textures
     std::string textureDirectory = path.substr(0, path.find_last_of('/') + 1);
@@ -42,41 +53,62 @@ bool utils::ModelUtils::loadObj(const std::string& path,
 
     outVertices.clear();
     outIndices.clear();
-    outMaterialParams.clear();
     outTextureInfo.clear();
-    tinyObjMaterialIdToBufferIndex.clear();
-    texturePathToIndex.clear();
+    tiny_obj_material_id_to_buffer_index.clear();
+    texture_path_to_index.clear();
     nextMaterialBufferIndex = 0;
     nextTextureIndex = 0;
 
     // Handle the case of faces with no material assigned (-1 in tinyobjloader)
     int tiny_obj_no_material_id = -1;
-    uint32_t default_buffer_index = nextMaterialBufferIndex++;
-    tinyObjMaterialIdToBufferIndex[tiny_obj_no_material_id] = default_buffer_index;
+
+    //We need to start the next objects counter from the last objects index (Needed for muli-object renderings)
+    nextMaterialBufferIndex = material_params.size();
+
+    uint32_t default_buffer_index = 0;
+    if (material_params.empty())
+    {
+         default_buffer_index = nextMaterialBufferIndex++;
+    }
+    tiny_obj_material_id_to_buffer_index[tiny_obj_no_material_id] = default_buffer_index;
 
     // Create a default MaterialParams for this index 0 (or the index assigned to -1)
-    outMaterialParams[default_buffer_index] = MaterialParams(); // Default constructed MaterialParams
+    material_params[default_buffer_index] = MaterialParams(); // Default constructed MaterialParams
     
     // Create a default texture index for faces with no texture
     uint32_t defaultTextureIndex = UINT32_MAX;
 
     // Map all materials found in the MTL file(s)
-    for (size_t i = 0; i < materials.size(); ++i)
+    for (int tinyObjId = 0; tinyObjId < materials.size(); ++tinyObjId)
     {
-        int tinyObjId = static_cast<int>(i);
-        uint32_t bufferIndex = nextMaterialBufferIndex++;
-        tinyObjMaterialIdToBufferIndex[tinyObjId] = bufferIndex;
+        std::string materialName = materials[tinyObjId].name;
+        uint32_t bufferIndex = 0;
 
-        // Get material params
-        MaterialParams matParams;
-        getMaterialParams(tinyObjId, matParams);
+        //Use an already stored buffer so we can reuse elements
+        //Material was already loaded previously
+        if (auto it = material_name_to_index.find(materialName); it != material_name_to_index.end())
+        {
+            bufferIndex = it->second;
+        }
+        else
+        {
+            bufferIndex = nextMaterialBufferIndex++;
 
-        // Store using contiguous index
-        outMaterialParams[bufferIndex] = matParams;
+            // Get material params
+            MaterialParams matParams;
+            getMaterialParams(tinyObjId, matParams);
+
+            // Store using contiguous index
+            material_params[bufferIndex] = matParams;
         
-        // Load texture info 
-        uint32_t textureIndex = defaultTextureIndex;
-        getTextureInfo(tinyObjId, textureDirectory, textureIndex, outTextureInfo);
+            // Load texture info 
+            uint32_t textureIndex = defaultTextureIndex;
+            get_texture_indices(tinyObjId, textureDirectory, textureIndex, outTextureInfo);
+
+            material_name_to_index[materialName] = bufferIndex;
+        }
+
+        tiny_obj_material_id_to_buffer_index[tinyObjId] = bufferIndex;
     }
 
     // Loop over shapes
@@ -93,7 +125,7 @@ bool utils::ModelUtils::loadObj(const std::string& path,
             int tiny_obj_material_id = shapes[s].mesh.material_ids[f];
 
             // Get our contiguous buffer index using the map
-            uint32_t materialBufferIndex = tinyObjMaterialIdToBufferIndex.at(tiny_obj_material_id);
+            uint32_t materialBufferIndex = tiny_obj_material_id_to_buffer_index.at(tiny_obj_material_id);
             
             // Get texture index for this material
             uint32_t textureIndex = defaultTextureIndex;
@@ -106,8 +138,8 @@ bool utils::ModelUtils::loadObj(const std::string& path,
                 if (!mat.diffuse_texname.empty())
                 {
                     std::string texPath = textureDirectory + mat.diffuse_texname;
-                    auto it = texturePathToIndex.find(texPath);
-                    if (it != texturePathToIndex.end())
+                    auto it = texture_path_to_index.find(texPath);
+                    if (it != texture_path_to_index.end())
                     {
                         textureIndex = it->second;
                     }
@@ -149,7 +181,7 @@ bool utils::ModelUtils::loadObj(const std::string& path,
                 // Set material and texture indices for the provoking vertex (first vertex of each triangle)
                 if (v % 3 == 0)
                 {
-                    // First vertex of each triangle is the provoking vertex
+                    // The first vertex of each triangle is the provoking vertex
                     vertex.materialIndex = materialBufferIndex;
                     vertex.textureIndex = textureIndex;
                 }
@@ -177,6 +209,43 @@ bool utils::ModelUtils::loadObj(const std::string& path,
     return true;
 }
 
+bool utils::ModelUtils::set_texture_path_to_index(const std::unordered_map<std::string, uint32_t>& texture_path_to_index_)
+{
+    texture_path_to_index = texture_path_to_index_;
+    return true;
+}
+
+bool utils::ModelUtils::load_model_from_obj(const std::string& path,
+                                            const vulkan::DeviceManager& device_manager,
+                                            material::MaterialManager& material_manager)
+{
+    //Texture data
+    std::unordered_map<uint32_t, TextureInfo> out_texture_info;
+
+    //Load the object from the obj file
+    loadObj(std::string(RESOURCE_PATH) + path, vertices, indices, material_manager.get_material_name_to_index(), material_manager.get_material_params(), out_texture_info);
+
+    //Process textures
+    for (const auto& texture : out_texture_info)
+    {
+        LoadedImageData image_data = ImageUtils::load_image_data(texture.second.path);
+        material_manager.add_texture(ImageUtils::create_texture_image(device_manager, image_data));
+    }
+    
+    std::cout << "Vertices: " << vertices.size() << std::endl;
+    std::cout << "Indices: " << indices.size() << std::endl;
+
+    //Create Model index and vertex buffer
+    MemoryUtils::create_vertex_and_index_buffers(device_manager, vertices, indices, vertex_buffer, index_buffer);
+
+    if (!vertices.empty() && !indices.empty())
+    {
+        return true;    
+    }
+
+    return false;   
+}
+
 bool utils::ModelUtils::getMaterialParams(uint32_t materialIndex, MaterialParams& outMaterialParams) const
 {
     auto materialValues = materials[materialIndex];
@@ -190,7 +259,7 @@ bool utils::ModelUtils::getMaterialParams(uint32_t materialIndex, MaterialParams
     return true;
 }
 
-bool utils::ModelUtils::getTextureInfo(uint32_t materialIndex, const std::string& textureDirectory,
+bool utils::ModelUtils::get_texture_indices(uint32_t materialIndex, const std::string& textureDirectory,
     uint32_t& outTextureIndex, std::unordered_map<uint32_t, TextureInfo>& outTextureInfo)
 {
     bool foundTexture = false;
@@ -203,12 +272,13 @@ bool utils::ModelUtils::getTextureInfo(uint32_t materialIndex, const std::string
     const tinyobj::material_t& mat = materials[materialIndex];
     
     // Handle diffuse texture
-    if (!mat.diffuse_texname.empty()) {
+    if (!mat.diffuse_texname.empty())
+    {
         std::string texPath = textureDirectory + mat.diffuse_texname;
         
         // Check if we've already processed this texture
-        auto it = texturePathToIndex.find(texPath);
-        if (it != texturePathToIndex.end())
+        auto it = texture_path_to_index.find(texPath);
+        if (it != texture_path_to_index.end())
         {
             // We already have this texture, just use its index
             outTextureIndex = it->second;
@@ -217,7 +287,7 @@ bool utils::ModelUtils::getTextureInfo(uint32_t materialIndex, const std::string
         {
             // New texture, assign a new index
             uint32_t texIndex = nextTextureIndex++;
-            texturePathToIndex[texPath] = texIndex;
+            texture_path_to_index[texPath] = texIndex;
             outTextureInfo[texIndex] = TextureInfo(texPath, TextureInfo::Type::Diffuse);
             outTextureIndex = texIndex;
         }
@@ -230,10 +300,10 @@ bool utils::ModelUtils::getTextureInfo(uint32_t materialIndex, const std::string
         std::string texPath = textureDirectory + mat.specular_texname;
         
         // Only add if not already present
-        auto it = texturePathToIndex.find(texPath);
-        if (it == texturePathToIndex.end()) {
+        auto it = texture_path_to_index.find(texPath);
+        if (it == texture_path_to_index.end()) {
             uint32_t texIndex = nextTextureIndex++;
-            texturePathToIndex[texPath] = texIndex;
+            texture_path_to_index[texPath] = texIndex;
             outTextureInfo[texIndex] = TextureInfo(texPath, TextureInfo::Type::Specular);
             
             // If we didn't find a diffuse texture, use this one as primary
@@ -245,14 +315,16 @@ bool utils::ModelUtils::getTextureInfo(uint32_t materialIndex, const std::string
     }
     
     // Handle normal map
-    if (!mat.normal_texname.empty()) {
+    if (!mat.normal_texname.empty())
+    {
         std::string texPath = textureDirectory + mat.normal_texname;
         
         // Only add if not already present
-        auto it = texturePathToIndex.find(texPath);
-        if (it == texturePathToIndex.end()) {
+        auto it = texture_path_to_index.find(texPath);
+        if (it == texture_path_to_index.end())
+        {
             uint32_t texIndex = nextTextureIndex++;
-            texturePathToIndex[texPath] = texIndex;
+            texture_path_to_index[texPath] = texIndex;
             outTextureInfo[texIndex] = TextureInfo(texPath, TextureInfo::Type::Normal);
             
             // If we didn't find any texture yet, use this one as primary

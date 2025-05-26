@@ -5,8 +5,11 @@
 #include <iostream>
 #include <string>
 
-class FileUtils
+namespace utils
 {
-public:
-    static void loadShader(std::string filename, char* &code, size_t &size);
-};
+    class FileUtils
+    {
+    public:
+        static void loadShader(std::string filename, char* &code, size_t &size);
+    };
+}

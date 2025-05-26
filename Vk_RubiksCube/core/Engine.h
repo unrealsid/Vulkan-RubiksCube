@@ -1,9 +1,15 @@
 #pragma once
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "../materials/Material.h"
 
-class MaterialManager;
+namespace material
+{
+    class MaterialManager;
+}
+
 
 namespace window
 {
@@ -15,18 +21,23 @@ namespace vulkan
     class DeviceManager;
 }
 
-class Engine
+namespace core
 {
-public:
-    Engine();
-    ~Engine();
+    class Engine
+    {
+    public:
+        Engine();
+        ~Engine();
     
-    void init();
-    void run();
-    void cleanup();
+        void init();
+        void run();
+        void cleanup();
 
-private:
-    std::unique_ptr<window::WindowManager> window_manager;
-    std::unique_ptr<vulkan::DeviceManager> device_manager;
-    std::unique_ptr<MaterialManager> material_manager;
-};
+    private:
+        std::unique_ptr<window::WindowManager> window_manager;
+        std::unique_ptr<vulkan::DeviceManager> device_manager;
+        std::unique_ptr<material::MaterialManager> material_manager;
+
+        void loadModels();
+    };
+}

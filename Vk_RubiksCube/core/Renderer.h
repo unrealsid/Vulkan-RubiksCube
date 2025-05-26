@@ -5,6 +5,6 @@ namespace core
     class Renderer
     {
     public:
-        bool drawFrame();
+        //bool drawFrame();
     };
 }

@@ -4,7 +4,7 @@
 #include <glm/vec3.hpp>
 
 #include "VkBootstrapDispatch.h"
-#include "../structs/MaterialValues.h"
+#include "../structs/GPUMaterialData.h"
 
 struct SceneData;
 struct Init;

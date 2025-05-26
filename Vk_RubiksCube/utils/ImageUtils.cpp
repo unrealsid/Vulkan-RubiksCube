@@ -1,13 +1,18 @@
 #include "ImageUtils.h"
+
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
 #include <vk_mem_alloc.h>
 
+#include "DescriptorUtils.h"
 #include "VkBootstrapDispatch.h"
 #include "MemoryUtils.h"
 #include "../structs/Image.h"
 #include "../structs/Vk_Init.h"
+#include "../vulkan/DeviceManager.h"
 
-LoadedImageData utils::ImageUtils::loadImageFromFile(const std::string& filePath, int desiredChannels)
+LoadedImageData utils::ImageUtils::load_image_data(const std::string& filePath, int desiredChannels)
 {
     LoadedImageData imageData;
 
@@ -35,7 +40,7 @@ LoadedImageData utils::ImageUtils::loadImageFromFile(const std::string& filePath
     return imageData;
 }
 
-Image utils::ImageUtils::createAndUploadImage(const Init& init, const RenderData& renderData, const LoadedImageData& imageData)
+Image utils::ImageUtils::create_texture_image(const vulkan::DeviceManager& device_manager, const LoadedImageData& imageData)
 {
     if (imageData.pixels)
     {
@@ -44,18 +49,18 @@ Image utils::ImageUtils::createAndUploadImage(const Init& init, const RenderData
 
         //allocate temporary buffer for holding texture data to upload
         //create staging buffer for image
-        Buffer stagingImageBuffer;
+        Vk_Buffer stagingImageBuffer;
 
-        vmaUtils::createBufferVMA(init.vmaAllocator, imageSize,
-                                  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                  VMA_MEMORY_USAGE_AUTO,
-                                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                                  stagingImageBuffer.buffer, stagingImageBuffer.allocation, stagingImageBuffer.allocationInfo);
+        MemoryUtils::create_buffer(device_manager.getAllocator(), imageSize,
+                                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                     VMA_MEMORY_USAGE_AUTO,
+                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                                     stagingImageBuffer);
     
         void* data;
-        vmaMapMemory(init.vmaAllocator, stagingImageBuffer.allocation, &data);
+        vmaMapMemory(device_manager.getAllocator(), stagingImageBuffer.allocation, &data);
         memcpy(data, imageData.pixels, imageSize);
-        vmaUnmapMemory(init.vmaAllocator, stagingImageBuffer.allocation);
+        vmaUnmapMemory(device_manager.getAllocator(), stagingImageBuffer.allocation);
 
         //Create image on the gpu
         VkExtent3D imageExtent;
@@ -70,14 +75,14 @@ Image utils::ImageUtils::createAndUploadImage(const Init& init, const RenderData
         imgAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
         
         Image textureImage;
-        vmaCreateImage(init.vmaAllocator, &imgIfo, &imgAllocInfo, &textureImage.image, &textureImage.allocation, &textureImage.allocationInfo);
+        vmaCreateImage(device_manager.getAllocator(), &imgIfo, &imgAllocInfo, &textureImage.image, &textureImage.allocation, &textureImage.allocationInfo);
 
         //TODO: Copy image to device Memory
-        copyImage(init, renderData.graphics_queue, renderData.command_pool, stagingImageBuffer, textureImage, imageSize, imageExtent, imageData);
+        copyImage(device_manager, device_manager.getGraphicsQueue(), device_manager.getCommandPool(), stagingImageBuffer, textureImage, imageSize, imageExtent, imageData);
 
-        createImageSampler(init, textureImage, VK_FILTER_LINEAR);
+        createImageSampler(device_manager.getDispatchTable(), textureImage, VK_FILTER_LINEAR);
 
-        createImageView(init, textureImage, imageFormat);
+        createImageView(device_manager.getDispatchTable(), textureImage, imageFormat);
         
         return textureImage;
     }
@@ -107,8 +112,9 @@ VkImageCreateInfo utils::ImageUtils::imageCreateInfo(VkFormat imageFormat, VkIma
     return imgInfo;
 }
 
-void utils::ImageUtils::copyImage(const Init& init, VkQueue queue, VkCommandPool command_pool, Buffer srcBuffer, Image dstImage, VkDeviceSize size, VkExtent3D
-                               extend, const LoadedImageData& imageData)
+void utils::ImageUtils::copyImage(const vulkan::DeviceManager& device_manager, VkQueue queue, VkCommandPool command_pool, Vk_Buffer srcBuffer, Image
+                                  dstImage, VkDeviceSize size, VkExtent3D
+                                  extend, const LoadedImageData& imageData)
 {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -117,13 +123,13 @@ void utils::ImageUtils::copyImage(const Init& init, VkQueue queue, VkCommandPool
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
-    init.disp.allocateCommandBuffers(&allocInfo, &commandBuffer);
+    device_manager.getDispatchTable().allocateCommandBuffers(&allocInfo, &commandBuffer);
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    init.disp.beginCommandBuffer(commandBuffer, &beginInfo);
+    device_manager.getDispatchTable().beginCommandBuffer(commandBuffer, &beginInfo);
 
     //Layout transition
     //1. convert image to Transfer dst. Image now ready to receive data
@@ -147,7 +153,7 @@ void utils::ImageUtils::copyImage(const Init& init, VkQueue queue, VkCommandPool
 
     //barrier the image into the transfer-receive layout
     //1.1 barrier
-    init.disp.cmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toTransfer);
+    device_manager.getDispatchTable().cmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toTransfer);
 
     VkBufferImageCopy copyRegion = {};
     copyRegion.bufferOffset = 0;
@@ -161,7 +167,7 @@ void utils::ImageUtils::copyImage(const Init& init, VkQueue queue, VkCommandPool
     copyRegion.imageExtent = extend;
 
     //2. copy the buffer into the image
-    init.disp.cmdCopyBufferToImage(commandBuffer, srcBuffer.buffer, dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+    device_manager.getDispatchTable().cmdCopyBufferToImage(commandBuffer, srcBuffer.buffer, dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
     //3. Put barrier for image after copy
     VkImageMemoryBarrier imageBarrier_toReadable = imageBarrier_toTransfer;
@@ -175,22 +181,22 @@ void utils::ImageUtils::copyImage(const Init& init, VkQueue queue, VkCommandPool
     //barrier the image into the shader readable layout
     vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toReadable);
     
-    init.disp.endCommandBuffer(commandBuffer);
+    device_manager.getDispatchTable().endCommandBuffer(commandBuffer);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
 
-    init.disp.queueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-    init.disp.queueWaitIdle(queue);
+    device_manager.getDispatchTable().queueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+    device_manager.getDispatchTable().queueWaitIdle(queue);
 
-    init.disp.freeCommandBuffers(command_pool, 1, &commandBuffer);
+    device_manager.getDispatchTable().freeCommandBuffers(command_pool, 1, &commandBuffer);
 
-    vmaDestroyBuffer(init.vmaAllocator, srcBuffer.buffer, srcBuffer.allocation);
+    vmaDestroyBuffer(device_manager.getAllocator(), srcBuffer.buffer, srcBuffer.allocation);
 }
 
-void utils::ImageUtils::createImageSampler(const Init& init, Image& image, VkFilter filter)
+void utils::ImageUtils::createImageSampler(const vkb::DispatchTable& disp, Image& image, VkFilter filter)
 {
     VkSamplerCreateInfo samplerCreateInfo = {};
     samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -205,18 +211,18 @@ void utils::ImageUtils::createImageSampler(const Init& init, Image& image, VkFil
     samplerCreateInfo.minLod = 0.0f;
     samplerCreateInfo.maxLod = 0.0f;
     samplerCreateInfo.maxAnisotropy = 1.0f;
-    init.disp.createSampler(&samplerCreateInfo, nullptr, &image.sampler);
+    disp.createSampler(&samplerCreateInfo, nullptr, &image.sampler);
 }
 
-void utils::ImageUtils::createImageView(const Init& init, Image& image, VkFormat format)
+void utils::ImageUtils::createImageView(const vkb::DispatchTable& disp, Image& image, VkFormat format)
 {
     VkImageViewCreateInfo viewCreateInfo = {};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewCreateInfo.pNext = NULL;
+    viewCreateInfo.pNext = nullptr;
     viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     viewCreateInfo.format = format;
     viewCreateInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
     viewCreateInfo.subresourceRange.levelCount = 1;
     viewCreateInfo.image = image.image;
-    init.disp.createImageView(&viewCreateInfo, nullptr, &image.view);
+    disp.createImageView(&viewCreateInfo, nullptr, &image.view);
 }
