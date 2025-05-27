@@ -10,10 +10,10 @@
 #include <vulkan_core.h>
 
 #include "MaterialParams.h"
-#include "GPUMaterialData.h"
-#include "SceneData.h"
+#include "Vk_MaterialData.h"
+#include "Vk_SceneData.h"
 #include "TextureInfo.h"
-#include "Vk_DepthStencil_Image.h"
+#include "Vk_DepthStencilImage.h"
 
 struct Vertex;
 class ShaderObject;
@@ -21,23 +21,9 @@ class ShaderObject;
 struct RenderData
 {
     
-    
-    VkBuffer vertexBuffer;
-    VmaAllocation vertexBufferAllocation;
-    VkBuffer indexBuffer;
-    VmaAllocation indexBufferAllocation;
-
-    std::vector<uint32_t> outIndices;
-    std::vector<Vertex> outVertices;
-
-    SceneData sceneData;
-    GPUMaterialData materialValues;
-
     std::vector<uint32_t> primitiveMaterialIndices;
     std::unordered_map<uint32_t, MaterialParams> materialParams;
     std::unordered_map<uint32_t, TextureInfo> textureInfo;
-
-    DepthStencil_Image depthStencilImage;
 };
 
 #endif

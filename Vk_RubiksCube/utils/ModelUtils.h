@@ -67,8 +67,8 @@ namespace utils
 
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
-        Vk_Buffer vertex_buffer = {};
-        Vk_Buffer index_buffer = {}; 
+        GPU_Buffer vertex_buffer = {};
+        GPU_Buffer index_buffer = {}; 
         
         uint32_t nextMaterialBufferIndex = 0;
         uint32_t nextTextureIndex = 0;

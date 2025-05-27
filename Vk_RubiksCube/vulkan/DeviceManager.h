@@ -11,28 +11,21 @@ namespace window
 
 namespace vulkan
 {
-    constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-    
     class DeviceManager
     {
     public:
-        
-        
         DeviceManager();
         ~DeviceManager();
         
-        bool deviceInit(window::WindowManager& windowManager);
-        VkSurfaceKHR createSurfaceGLFW(window::WindowManager& windowManager, VkAllocationCallbacks* allocator = nullptr);
-        bool getQueues();
+        bool device_init(window::WindowManager& windowManager);
+        VkSurfaceKHR create_surface_GLFW(window::WindowManager& windowManager, VkAllocationCallbacks* allocator = nullptr);
+        bool get_queues();
 
-        bool createCommandPool();
-        bool createCommandBuffers();
-        //int createGraphicsPipeline();
-        bool createSyncObjects();
+        bool create_command_pool();
+        bool create_command_buffers();
+        //bool create_graphics_pipeline();
         
     private:
-        //calls loaded vulkan
-        
         vkb::Instance instance;
         vkb::InstanceDispatchTable instance_dispatch_table;
         VkSurfaceKHR surface;
@@ -45,40 +38,26 @@ namespace vulkan
         VkCommandPool command_pool;
         std::vector<VkCommandBuffer> command_buffers;
 
-        std::vector<VkSemaphore> available_semaphores;
-        std::vector<VkSemaphore> finished_semaphores;
-        std::vector<VkFence> in_flight_fences;
-        std::vector<VkFence> image_in_flight;
-        size_t current_frame = 0;
-
-        VkDescriptorSet descriptor_set;
-
         VkQueue graphics_queue;
         VkQueue present_queue;
 
         VmaAllocator vmaAllocator;
         
     public:
-        [[nodiscard]] vkb::Instance getInstance() const { return instance; }
+        [[nodiscard]] vkb::Instance get_instance() const { return instance; }
         [[nodiscard]] vkb::InstanceDispatchTable getInstanceDispatchTable() const { return instance_dispatch_table; }
-        [[nodiscard]] VkSurfaceKHR getSurface() const { return surface; }
-        [[nodiscard]] vkb::Device getDevice() const { return device; }
-        [[nodiscard]] vkb::PhysicalDevice getPhysicalDevice() const { return physical_device; }
-        [[nodiscard]] vkb::DispatchTable getDispatchTable() const { return dispatch_table; }
-        [[nodiscard]] SwapchainManager getSwapchainManager() const { return swapchain_manager; }
-        [[nodiscard]] VkCommandPool getCommandPool() const { return command_pool; }
-        [[nodiscard]] std::vector<VkCommandBuffer> getCommandBuffers() const { return command_buffers; }
-        [[nodiscard]] std::vector<VkSemaphore> getAvailableSemaphores() const { return available_semaphores; }
-        [[nodiscard]] std::vector<VkSemaphore> getFinishedSemaphores() const { return finished_semaphores; }
-        [[nodiscard]] std::vector<VkFence> getInFlightFences() const { return in_flight_fences; }
-        [[nodiscard]] std::vector<VkFence> getImageInFlight() const { return image_in_flight; }
-        [[nodiscard]] size_t getCurrentFrame() const { return current_frame; }
-        [[nodiscard]] VkQueue getGraphicsQueue() const { return graphics_queue; }
-        [[nodiscard]] VkQueue getPresentQueue() const { return present_queue; }
-        [[nodiscard]] VkDescriptorSet getDescriptorSet() const { return descriptor_set; }
-        [[nodiscard]] VmaAllocator getAllocator() const { return vmaAllocator; }
+        [[nodiscard]] VkSurfaceKHR get_surface() const { return surface; }
+        [[nodiscard]] vkb::Device get_device() const { return device; }
+        [[nodiscard]] vkb::PhysicalDevice get_physical_device() const { return physical_device; }
+        [[nodiscard]] vkb::DispatchTable get_dispatch_table() const { return dispatch_table; }
+        [[nodiscard]] SwapchainManager get_swapchain_manager() const { return swapchain_manager; }
+        [[nodiscard]] VkCommandPool get_command_pool() const { return command_pool; }
+        [[nodiscard]] std::vector<VkCommandBuffer> get_command_buffers() const { return command_buffers; }
+        [[nodiscard]] VkQueue get_graphics_queue() const { return graphics_queue; }
+        [[nodiscard]] VkQueue get_present_queue() const { return present_queue; }
+        [[nodiscard]] VmaAllocator get_allocator() const { return vmaAllocator; }
 
-        void setAllocator(VmaAllocator allocator) { vmaAllocator = allocator; }
+        void set_vma_allocator(VmaAllocator allocator) { vmaAllocator = allocator; }
     };
 }
 

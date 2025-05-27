@@ -10,7 +10,6 @@
 
 vulkan::DeviceManager::DeviceManager()
 {
-    descriptor_set = nullptr;
 }
 
 vulkan::DeviceManager::~DeviceManager()
@@ -18,7 +17,7 @@ vulkan::DeviceManager::~DeviceManager()
     
 }
 
-bool vulkan::DeviceManager::deviceInit(window::WindowManager& windowManager)
+bool vulkan::DeviceManager::device_init(window::WindowManager& windowManager)
 {
     // Create the disable feature struct
     VkValidationFeatureDisableEXT disables[] =
@@ -47,7 +46,7 @@ bool vulkan::DeviceManager::deviceInit(window::WindowManager& windowManager)
 
     instance_dispatch_table = instance.make_table();
 
-    surface = createSurfaceGLFW(windowManager);
+    surface = create_surface_GLFW(windowManager);
 
     VkPhysicalDeviceFeatures features = {};
     features.geometryShader = VK_FALSE;
@@ -109,7 +108,7 @@ bool vulkan::DeviceManager::deviceInit(window::WindowManager& windowManager)
     return true;
 }
 
-VkSurfaceKHR vulkan::DeviceManager::createSurfaceGLFW(window::WindowManager& windowManager, VkAllocationCallbacks* allocator)
+VkSurfaceKHR vulkan::DeviceManager::create_surface_GLFW(window::WindowManager& windowManager, VkAllocationCallbacks* allocator)
 {
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     VkResult err = glfwCreateWindowSurface(instance, windowManager.getWindow(), allocator, &surface);
@@ -128,7 +127,7 @@ VkSurfaceKHR vulkan::DeviceManager::createSurfaceGLFW(window::WindowManager& win
     return surface;
 }
 
-bool vulkan::DeviceManager::getQueues()
+bool vulkan::DeviceManager::get_queues()
 {
     auto gq = device.get_queue(vkb::QueueType::graphics);
     if (!gq.has_value())
@@ -148,7 +147,7 @@ bool vulkan::DeviceManager::getQueues()
     return true;
 }
 
-bool vulkan::DeviceManager::createCommandPool()
+bool vulkan::DeviceManager::create_command_pool()
 {
     VkCommandPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -163,42 +162,14 @@ bool vulkan::DeviceManager::createCommandPool()
     return true;
 }
 
-bool vulkan::DeviceManager::createSyncObjects()
-{
-    available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
-    image_in_flight.resize(swapchain_manager.getSwapchain().image_count, VK_NULL_HANDLE);
-
-    VkSemaphoreCreateInfo semaphore_info = {};
-    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-    VkFenceCreateInfo fence_info = {};
-    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        if (dispatch_table.createSemaphore(&semaphore_info, nullptr, &available_semaphores[i]) != VK_SUCCESS ||
-            dispatch_table.createSemaphore(&semaphore_info, nullptr, &finished_semaphores[i]) != VK_SUCCESS ||
-            dispatch_table.createFence(&fence_info, nullptr, &in_flight_fences[i]) != VK_SUCCESS)
-        {
-            std::cout << "failed to create sync objects\n";
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool vulkan::DeviceManager::createCommandBuffers()
+bool vulkan::DeviceManager::create_command_buffers()
 {
     return false;
 }
 
-// int vulkan::DeviceManager::createGraphicsPipeline() 
+// bool vulkan::DeviceManager::create_graphics_pipeline()
 // {
-//     //Buffer device address
+//      //Buffer device address
 //     Vk_DescriptorUtils::createBuffer(init, sizeof(SceneData), data.sceneData.sceneBuffer);
 //     data.sceneData.sceneBufferAddress = vmaUtils::getBufferDeviceAddress(init.disp, data.sceneData.sceneBuffer.buffer);
 //

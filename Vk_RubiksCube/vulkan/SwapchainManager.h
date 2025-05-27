@@ -14,10 +14,10 @@ namespace vulkan
     class SwapchainManager
     {
     public:
-        bool createSwapchain( const DeviceManager& deviceManager);
-        bool recreateSwapchain( DeviceManager& deviceManager);
+        bool create_swapchain( const DeviceManager& deviceManager);
+        bool recreate_swapchain( DeviceManager& deviceManager);
 
-        [[nodiscard]] vkb::Swapchain getSwapchain() const { return swapchain; }
+        [[nodiscard]] vkb::Swapchain get_swapchain() const { return swapchain; }
 
     private:    
         vkb::Swapchain swapchain;

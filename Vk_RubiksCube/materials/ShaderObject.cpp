@@ -118,14 +118,14 @@ void material::ShaderObject::set_initial_state(vkb::DispatchTable& disp, const v
     	VkViewport viewport = {};
     	viewport.x = 0.0f;
     	viewport.y = 0.0f;
-    	viewport.width = static_cast<float>(swapchainManager.getSwapchain().extent.width);
-    	viewport.height = static_cast<float>(swapchainManager.getSwapchain().extent.height);
+    	viewport.width = static_cast<float>(swapchainManager.get_swapchain().extent.width);
+    	viewport.height = static_cast<float>(swapchainManager.get_swapchain().extent.height);
     	viewport.minDepth = 0.0f;
     	viewport.maxDepth = 1.0f;
 
     	VkRect2D scissor = {};
     	scissor.offset = {.x = 0, .y = 0 };
-    	scissor.extent = swapchainManager.getSwapchain().extent;
+    	scissor.extent = swapchainManager.get_swapchain().extent;
     	
 		disp.cmdSetViewportWithCountEXT(cmd_buffer, 1, &viewport);
 		disp.cmdSetScissorWithCountEXT(cmd_buffer, 1, &scissor);

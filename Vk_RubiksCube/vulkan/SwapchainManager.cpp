@@ -3,9 +3,9 @@
 
 #include "DeviceManager.h"
 
-bool vulkan::SwapchainManager::createSwapchain(const vulkan::DeviceManager& deviceManager)
+bool vulkan::SwapchainManager::create_swapchain(const vulkan::DeviceManager& deviceManager)
 {
-    vkb::SwapchainBuilder swapchain_builder{ deviceManager.getDevice() };
+    vkb::SwapchainBuilder swapchain_builder{ deviceManager.get_device() };
     auto swap_ret = swapchain_builder.set_old_swapchain(swapchain).build();
     if (!swap_ret)
     {
@@ -17,15 +17,15 @@ bool vulkan::SwapchainManager::createSwapchain(const vulkan::DeviceManager& devi
     return true;
 }
 
-bool vulkan::SwapchainManager::recreateSwapchain(vulkan::DeviceManager& deviceManager)
+bool vulkan::SwapchainManager::recreate_swapchain(vulkan::DeviceManager& deviceManager)
 {
-    deviceManager.getDispatchTable().deviceWaitIdle();
+    deviceManager.get_dispatch_table().deviceWaitIdle();
 
-    deviceManager.getDispatchTable().destroyCommandPool(deviceManager.getCommandPool(), nullptr);
+    deviceManager.get_dispatch_table().destroyCommandPool(deviceManager.get_command_pool(), nullptr);
 
     swapchain.destroy_image_views(swapchain_image_views);
-    if (createSwapchain(deviceManager) == false) return false;
-    if (deviceManager.createCommandPool() == false) return false;
-    if (deviceManager.createCommandBuffers() == false) return false;
+    if (create_swapchain(deviceManager) == false) return false;
+    if (deviceManager.create_command_pool() == false) return false;
+    if (deviceManager.create_command_buffers() == false) return false;
     return true;
 }

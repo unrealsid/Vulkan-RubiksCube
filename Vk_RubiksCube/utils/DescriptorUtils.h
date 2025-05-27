@@ -5,20 +5,22 @@
 #include "VkBootstrapDispatch.h"
 #include "../structs/Vk_Init.h"
 #include "../structs/Vk_RenderData.h"
-#include "../structs/Image.h"
+#include "../structs/Vk_Image.h"
 
-struct Vk_Buffer;
-struct SceneData;
+struct GPU_Buffer;
+struct Vk_SceneData;
 
 namespace utils
 {
     class DescriptorUtils
     {
     public:
-        static void setupTextureDescriptors(const ::vkb::DispatchTable& disp, const std::vector<Image>& textures, VkDescriptorSetLayout& outDescriptorSetLayout, VkDescriptorSet&
-                                            outDescriptorSet);
+        static void setup_texture_descriptors(const vkb::DispatchTable& disp,
+                                            const std::vector<Vk_Image>& textures,
+                                            VkDescriptorSetLayout& outDescriptorSetLayout,
+                                            VkDescriptorSet& outDescriptorSet);
 
-        static void mapUBO(const Init& init, SceneData& sceneDataUBO);
+        static void map_ubo(const Init& init, const Vk_SceneData& sceneDataUBO, GPU_SceneData& gpu_scene_data);
     };
 }
 
@@ -99,4 +101,23 @@ namespace initializers
         descriptorPoolInfo.maxSets = maxSets;
         return descriptorPoolInfo;
     }
+
+    inline VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo(
+                                    const VkDescriptorSetLayout* pSetLayouts,
+                                    uint32_t setLayoutCount,
+                                    const VkPushConstantRange* pPushConstantRanges = nullptr,
+                                    uint32_t pushConstantRangeCount = 0)
+    {
+        VkPipelineLayoutCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        info.pNext = nullptr;
+        info.flags = 0;
+        info.setLayoutCount = setLayoutCount;
+        info.pSetLayouts = pSetLayouts;
+        info.pushConstantRangeCount = pushConstantRangeCount;
+        info.pPushConstantRanges = pPushConstantRanges;
+        return info;
+    }
+
 }
+

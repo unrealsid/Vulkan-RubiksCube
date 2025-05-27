@@ -4,17 +4,17 @@
 #include <glm/vec3.hpp>
 
 #include "VkBootstrapDispatch.h"
-#include "../structs/GPUMaterialData.h"
+#include "../structs/Vk_MaterialData.h"
 
-struct SceneData;
+struct Vk_SceneData;
 struct Init;
 
-namespace vkUtils
+namespace utils
 {
-    void SetVulkanObjectName(const vkb::DispatchTable& disp, uint64_t objectHandle, VkObjectType objectType, const std::string& name);
+    void set_vulkan_object_Name(const vkb::DispatchTable& disp, uint64_t objectHandle, VkObjectType objectType, const std::string& name);
 
-    void fillSceneDataUBO(
-        SceneData& sceneDataUBO,
+    void fill_scene_data_ubo(
+        Vk_SceneData& sceneDataUBO,
         const glm::vec3& objectPosition,
         const glm::vec3& objectRotationAxis,
         float objectRotationAngleRadians,
@@ -27,5 +27,5 @@ namespace vkUtils
         float nearPlane,
         float farPlane);
 
-    void prepareUBO( SceneData& sceneDataUBO);
+    void prepare_ubo( Vk_SceneData& sceneDataUBO);
 }

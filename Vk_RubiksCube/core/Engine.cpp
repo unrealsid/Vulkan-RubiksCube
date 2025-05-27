@@ -3,6 +3,7 @@
 #include <iostream>
 #include <GLFW/glfw3.h>
 
+#include "Renderer.h"
 #include "../platform/WindowManager.h"
 #include "../utils/MemoryUtils.h"
 #include "../utils/ModelUtils.h"
@@ -22,24 +23,26 @@ void core::Engine::init()
     //1. Init window and vulkan objects
     window_manager = std::make_unique<window::WindowManager>();
     device_manager = std::make_unique<vulkan::DeviceManager>();
-    material_manager = std::make_unique<material::MaterialManager>(device_manager.get());
     
     window_manager->createWindowGLFW("Rubik's Cube", true);
-    
-    device_manager->deviceInit(*window_manager);
-    device_manager->getSwapchainManager().createSwapchain(*device_manager);
-    device_manager->getQueues();
-    utils::MemoryUtils::createVmaAllocator(*device_manager);
-    device_manager->createCommandPool();
+    device_manager->device_init(*window_manager);
+
+    material_manager = std::make_unique<material::MaterialManager>(device_manager.get());
+
+    auto swapchain_manager = device_manager->get_swapchain_manager();
+    swapchain_manager.create_swapchain(*device_manager);
+
+    renderer = std::make_unique<Renderer>(device_manager.get(), &swapchain_manager);
+
+    device_manager->get_queues();
+    utils::MemoryUtils::create_vma_allocator(*device_manager);
+    device_manager->create_command_pool();
 
     loadModels();
 
     //device_manager->createGraphicsPipeline();
-    device_manager->createCommandBuffers();
-
-    device_manager->createSyncObjects();
-
-    
+    device_manager->create_command_buffers();
+    renderer->init();
 }
 
 void core::Engine::run()

@@ -8,7 +8,7 @@
 #include "DescriptorUtils.h"
 #include "VkBootstrapDispatch.h"
 #include "MemoryUtils.h"
-#include "../structs/Image.h"
+#include "../structs/Vk_Image.h"
 #include "../structs/Vk_Init.h"
 #include "../vulkan/DeviceManager.h"
 
@@ -21,7 +21,7 @@ LoadedImageData utils::ImageUtils::load_image_data(const std::string& filePath, 
     imageData.pixels = stbi_load(filePath.c_str(), &imageData.width, &imageData.height, &tempOriginalChannels, desiredChannels);
 
     imageData.channels = desiredChannels; // Store the number of channels we requested
-    imageData.originalChannels = tempOriginalChannels; // Store the original channels from the file
+    imageData.original_channels = tempOriginalChannels; // Store the original channels from the file
 
     if (!imageData.pixels)
     {
@@ -30,7 +30,7 @@ LoadedImageData utils::ImageUtils::load_image_data(const std::string& filePath, 
         imageData.width = 0;
         imageData.height = 0;
         imageData.channels = 0;
-        imageData.originalChannels = 0;
+        imageData.original_channels = 0;
     }
     else
     {
@@ -40,7 +40,7 @@ LoadedImageData utils::ImageUtils::load_image_data(const std::string& filePath, 
     return imageData;
 }
 
-Image utils::ImageUtils::create_texture_image(const vulkan::DeviceManager& device_manager, const LoadedImageData& imageData)
+Vk_Image utils::ImageUtils::create_texture_image(const vulkan::DeviceManager& device_manager, const LoadedImageData& imageData)
 {
     if (imageData.pixels)
     {
@@ -49,18 +49,18 @@ Image utils::ImageUtils::create_texture_image(const vulkan::DeviceManager& devic
 
         //allocate temporary buffer for holding texture data to upload
         //create staging buffer for image
-        Vk_Buffer stagingImageBuffer;
+        GPU_Buffer stagingImageBuffer;
 
-        MemoryUtils::create_buffer(device_manager.getAllocator(), imageSize,
+        MemoryUtils::create_buffer(device_manager.get_allocator(), imageSize,
                                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                      VMA_MEMORY_USAGE_AUTO,
                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
                                      stagingImageBuffer);
     
         void* data;
-        vmaMapMemory(device_manager.getAllocator(), stagingImageBuffer.allocation, &data);
+        vmaMapMemory(device_manager.get_allocator(), stagingImageBuffer.allocation, &data);
         memcpy(data, imageData.pixels, imageSize);
-        vmaUnmapMemory(device_manager.getAllocator(), stagingImageBuffer.allocation);
+        vmaUnmapMemory(device_manager.get_allocator(), stagingImageBuffer.allocation);
 
         //Create image on the gpu
         VkExtent3D imageExtent;
@@ -74,15 +74,15 @@ Image utils::ImageUtils::create_texture_image(const vulkan::DeviceManager& devic
         VmaAllocationCreateInfo imgAllocInfo = {};
         imgAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
         
-        Image textureImage;
-        vmaCreateImage(device_manager.getAllocator(), &imgIfo, &imgAllocInfo, &textureImage.image, &textureImage.allocation, &textureImage.allocationInfo);
+        Vk_Image textureImage;
+        vmaCreateImage(device_manager.get_allocator(), &imgIfo, &imgAllocInfo, &textureImage.image, &textureImage.allocation, &textureImage.allocation_info);
 
         //TODO: Copy image to device Memory
-        copyImage(device_manager, device_manager.getGraphicsQueue(), device_manager.getCommandPool(), stagingImageBuffer, textureImage, imageSize, imageExtent, imageData);
+        copyImage(device_manager, device_manager.get_graphics_queue(), device_manager.get_command_pool(), stagingImageBuffer, textureImage, imageSize, imageExtent, imageData);
 
-        createImageSampler(device_manager.getDispatchTable(), textureImage, VK_FILTER_LINEAR);
+        createImageSampler(device_manager.get_dispatch_table(), textureImage, VK_FILTER_LINEAR);
 
-        createImageView(device_manager.getDispatchTable(), textureImage, imageFormat);
+        createImageView(device_manager.get_dispatch_table(), textureImage, imageFormat);
         
         return textureImage;
     }
@@ -112,7 +112,7 @@ VkImageCreateInfo utils::ImageUtils::imageCreateInfo(VkFormat imageFormat, VkIma
     return imgInfo;
 }
 
-void utils::ImageUtils::copyImage(const vulkan::DeviceManager& device_manager, VkQueue queue, VkCommandPool command_pool, Vk_Buffer srcBuffer, Image
+void utils::ImageUtils::copyImage(const vulkan::DeviceManager& device_manager, VkQueue queue, VkCommandPool command_pool, GPU_Buffer srcBuffer, Vk_Image
                                   dstImage, VkDeviceSize size, VkExtent3D
                                   extend, const LoadedImageData& imageData)
 {
@@ -123,16 +123,16 @@ void utils::ImageUtils::copyImage(const vulkan::DeviceManager& device_manager, V
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
-    device_manager.getDispatchTable().allocateCommandBuffers(&allocInfo, &commandBuffer);
+    device_manager.get_dispatch_table().allocateCommandBuffers(&allocInfo, &commandBuffer);
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    device_manager.getDispatchTable().beginCommandBuffer(commandBuffer, &beginInfo);
+    device_manager.get_dispatch_table().beginCommandBuffer(commandBuffer, &beginInfo);
 
     //Layout transition
-    //1. convert image to Transfer dst. Image now ready to receive data
+    //1. convert image to Transfer dst. Vk_Image now ready to receive data
     VkImageSubresourceRange range;
     range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     range.baseMipLevel = 0;
@@ -153,7 +153,7 @@ void utils::ImageUtils::copyImage(const vulkan::DeviceManager& device_manager, V
 
     //barrier the image into the transfer-receive layout
     //1.1 barrier
-    device_manager.getDispatchTable().cmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toTransfer);
+    device_manager.get_dispatch_table().cmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toTransfer);
 
     VkBufferImageCopy copyRegion = {};
     copyRegion.bufferOffset = 0;
@@ -167,7 +167,7 @@ void utils::ImageUtils::copyImage(const vulkan::DeviceManager& device_manager, V
     copyRegion.imageExtent = extend;
 
     //2. copy the buffer into the image
-    device_manager.getDispatchTable().cmdCopyBufferToImage(commandBuffer, srcBuffer.buffer, dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+    device_manager.get_dispatch_table().cmdCopyBufferToImage(commandBuffer, srcBuffer.buffer, dstImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
     //3. Put barrier for image after copy
     VkImageMemoryBarrier imageBarrier_toReadable = imageBarrier_toTransfer;
@@ -181,22 +181,22 @@ void utils::ImageUtils::copyImage(const vulkan::DeviceManager& device_manager, V
     //barrier the image into the shader readable layout
     vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toReadable);
     
-    device_manager.getDispatchTable().endCommandBuffer(commandBuffer);
+    device_manager.get_dispatch_table().endCommandBuffer(commandBuffer);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
 
-    device_manager.getDispatchTable().queueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-    device_manager.getDispatchTable().queueWaitIdle(queue);
+    device_manager.get_dispatch_table().queueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+    device_manager.get_dispatch_table().queueWaitIdle(queue);
 
-    device_manager.getDispatchTable().freeCommandBuffers(command_pool, 1, &commandBuffer);
+    device_manager.get_dispatch_table().freeCommandBuffers(command_pool, 1, &commandBuffer);
 
-    vmaDestroyBuffer(device_manager.getAllocator(), srcBuffer.buffer, srcBuffer.allocation);
+    vmaDestroyBuffer(device_manager.get_allocator(), srcBuffer.buffer, srcBuffer.allocation);
 }
 
-void utils::ImageUtils::createImageSampler(const vkb::DispatchTable& disp, Image& image, VkFilter filter)
+void utils::ImageUtils::createImageSampler(const vkb::DispatchTable& disp, Vk_Image& image, VkFilter filter)
 {
     VkSamplerCreateInfo samplerCreateInfo = {};
     samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -214,7 +214,7 @@ void utils::ImageUtils::createImageSampler(const vkb::DispatchTable& disp, Image
     disp.createSampler(&samplerCreateInfo, nullptr, &image.sampler);
 }
 
-void utils::ImageUtils::createImageView(const vkb::DispatchTable& disp, Image& image, VkFormat format)
+void utils::ImageUtils::createImageView(const vkb::DispatchTable& disp, Vk_Image& image, VkFormat format)
 {
     VkImageViewCreateInfo viewCreateInfo = {};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

@@ -9,12 +9,14 @@
 
 #include "Vk_Buffer.h"
 
-struct SceneData
+struct Vk_SceneData
 {
-    glm::mat4 model;
     glm::mat4 view;
-    glm::mat4 proj;
+    glm::mat4 projection;
+};
 
-    Vk_Buffer sceneBuffer;
-    VkDeviceAddress sceneBufferAddress;
+struct GPU_SceneData
+{
+    GPU_Buffer scene_buffer;
+    VkDeviceAddress scene_buffer_address;
 };

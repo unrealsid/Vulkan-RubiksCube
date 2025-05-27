@@ -5,7 +5,7 @@
 
 #include "ShaderObject.h"
 #include "../structs/Vk_Buffer.h"
-#include "../structs/Image.h"
+#include "../structs/Vk_Image.h"
 
 struct MaterialParams;
 
@@ -30,7 +30,7 @@ namespace material
         void init();
 
         //push a texture
-        void add_texture(const Image& texture);
+        void add_texture(const Vk_Image& texture);
 
         void add_material(const std::string& name, std::unique_ptr<Material> material);
 
@@ -47,12 +47,12 @@ namespace material
     private:
         //Store all kinds of materials (Translucent, Opaque etc)
         std::unordered_map<std::string, std::unique_ptr<Material>> materials;
-        std::vector<Image> textures;
+        std::vector<Vk_Image> textures;
         vulkan::DeviceManager* device_manager;
 
         //The buffer address for the material params
         VkDeviceAddress material_params_address;
-        Vk_Buffer material_params_buffer;
+        GPU_Buffer material_params_buffer;
 
         //Global map of loaded material name to unique ID
         std::unordered_map<std::string, uint32_t> material_name_to_index;

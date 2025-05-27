@@ -10,7 +10,7 @@
 #include "materials/ShaderObject.h"
 #include "rendering/Vk_DynamicRendering.h"
 #include "structs/PushConstantBlock.h"
-#include "structs/SceneData.h"
+#include "structs/Vk_SceneData.h"
 #include "utils/ModelUtils.h"
 #include "utils/DescriptorUtils.h"
 #include "utils/Vk_Utils.h"
@@ -111,7 +111,7 @@
 //         PushConstantBlock references{};
 //         // Pass pointer to the global matrix via a buffer device address
 //         references.sceneBufferAddress = data.sceneData.sceneBufferAddress;
-//         references.materialParamsAddress = data.materialValues.materialParamsBufferAddress;
+//         references.materialParamsAddress = data.materialValues.material_params_buffer_address;
 //         
 //         init.disp.cmdPushConstants(data.command_buffers[i], init.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantBlock), &references);
 //         
@@ -264,7 +264,7 @@
 // void loadModel(Init& init, RenderData& renderData)
 // {
 //     VkUtils::ModelUtils modelUtils;
-//     modelUtils.loadObj(std::string(RESOURCE_PATH) + "/models/rubiks_cube/RubiksCubeTextures/rubiksCubeTexture.obj", renderData.outVertices, renderData.outIndices, renderData.primitiveMaterialIndices, renderData.materialParams, renderData.textureInfo);
+//     modelUtils.loadObj(std::string(RESOURCE_PATH) + "/models/rubiks_cube/RubiksCubeTextures/rubiksCubeTexture.obj", renderData.outVertices, renderData.outIndices, renderData.primitiveMaterialIndices, renderData.material_params, renderData.textureInfo);
 //
 //     for (const auto& texture : renderData.textureInfo)
 //     {

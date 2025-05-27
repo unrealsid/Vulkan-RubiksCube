@@ -10,14 +10,15 @@
 
 material::Material::Material()
 {
-    //materialValues = GPUMaterialData();K
+    //materialValues = Vk_MaterialData();K
 }
 
-void  material::Material::init()
+void material::Material::add_shader_object(std::unique_ptr<ShaderObject> shader_object)
 {
+    this->shader_object = std::move(shader_object);
 }
 
-void material::Material::add_shader_object(std::unique_ptr<ShaderObject> shader_object_)
+void material::Material::add_pipeline_layout(VkPipelineLayout pipeline_layout)
 {
-    shader_object = std::move(shader_object_);
+    this->pipeline_layout = pipeline_layout;
 }

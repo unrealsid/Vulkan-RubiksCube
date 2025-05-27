@@ -3,13 +3,13 @@
 #include <stdexcept>
 
 #include "ImageUtils.h"
-#include "../structs/SceneData.h"
+#include "../structs/Vk_SceneData.h"
 #include "../structs/PushConstantBlock.h"
 #include "../structs/Vk_Buffer.h"
 
 #include "MemoryUtils.h"
 
-void utils::DescriptorUtils::setupTextureDescriptors(const vkb::DispatchTable& disp, const std::vector<Image>& textures, VkDescriptorSetLayout& outDescriptorSetLayout, VkDescriptorSet& outDescriptorSet)
+void utils::DescriptorUtils::setup_texture_descriptors(const vkb::DispatchTable& disp, const std::vector<Vk_Image>& textures, VkDescriptorSetLayout& outDescriptorSetLayout, VkDescriptorSet& outDescriptorSet)
 {
     if (textures.empty())
     {
@@ -91,12 +91,12 @@ void utils::DescriptorUtils::setupTextureDescriptors(const vkb::DispatchTable& d
     disp.updateDescriptorSets(static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 }
 
-void utils::DescriptorUtils::mapUBO(const Init& init, SceneData& sceneDataUBO)
+void utils::DescriptorUtils::map_ubo(const Init& init, const Vk_SceneData& sceneDataUBO, GPU_SceneData& gpu_scene_data)
 {
     void* mappedData;
-    vmaMapMemory(init.vmaAllocator, sceneDataUBO.sceneBuffer.allocation, &mappedData);
+    vmaMapMemory(init.vmaAllocator, gpu_scene_data.scene_buffer.allocation, &mappedData);
     memcpy(mappedData, &sceneDataUBO, sizeof(sceneDataUBO));
-    vmaUnmapMemory(init.vmaAllocator, sceneDataUBO.sceneBuffer.allocation);
+    vmaUnmapMemory(init.vmaAllocator, gpu_scene_data.scene_buffer.allocation);
 }
 
 // --- Example Usage (requires a Vulkan device and a created uniform buffer) ---
