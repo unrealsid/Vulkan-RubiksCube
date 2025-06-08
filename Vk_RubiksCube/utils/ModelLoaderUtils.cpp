@@ -51,19 +51,9 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
     texture_path_to_index.clear();
     next_material_buffer_index = 0;
     next_texture_index = 0;
-
-    // Handle the case of faces with no material assigned (-1 in tinyobjloader)
-    int tiny_obj_no_material_id = -1;
-
+    
     //We need to start the next objects counter from the last objects index (Needed for muli-object renderings)
     next_material_buffer_index = material_params.size();
-
-    uint32_t default_buffer_index = 0;
-    if (material_params.empty())
-    {
-         default_buffer_index = next_material_buffer_index++;
-    }
-    tiny_obj_material_id_to_buffer_index[tiny_obj_no_material_id] = default_buffer_index;
 
     // Create a default MaterialParams for this index 0 (or the index assigned to -1)
     //material_params[default_buffer_index] = MaterialParams(); // Default constructed MaterialParams
