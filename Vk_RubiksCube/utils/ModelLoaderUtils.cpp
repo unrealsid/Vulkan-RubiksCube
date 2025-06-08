@@ -5,7 +5,6 @@
 
 #include <iostream>
 #include "../structs/TextureInfo.h"
-#include <stb_image.h>
 
 #include "ImageUtils.h"
 #include "MemoryUtils.h"
@@ -17,8 +16,6 @@
 #include "../vulkan/DeviceManager.h"
 
 bool utils::ModelLoaderUtils::load_obj(const std::string& path,
-                                std::vector<Vertex>& outVertices,
-                                std::vector<uint32_t>& outIndices,
 
                                 std::unordered_map<std::string, uint32_t>& material_name_to_index,
                                 
@@ -49,10 +46,6 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
     auto shapes = reader.GetShapes();
     materials = reader.GetMaterials();
 
-    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
-
-    outVertices.clear();
-    outIndices.clear();
     out_texture_info.clear();
     tiny_obj_material_id_to_buffer_index.clear();
     texture_path_to_index.clear();
@@ -116,6 +109,12 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
     // Loop over shapes
     for (auto& shape : shapes)
     {
+        //Stores unique vertices
+        std::unordered_map<Vertex, uint32_t> unique_vertices{};
+        
+        LoadedObject loaded_object;
+        loaded_object.name = shape.name;
+        
         // Loop over faces(polygon)
         size_t index_offset = 0;
         for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++)
@@ -194,31 +193,33 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
                     vertex.textureIndex = UINT32_MAX;
                 }
 
-                if (uniqueVertices.count(vertex) == 0)
+                if (unique_vertices.count(vertex) == 0)
                 {
-                    uniqueVertices[vertex] = static_cast<uint32_t>(outVertices.size());
-                    outVertices.push_back(vertex);
+                    unique_vertices[vertex] = static_cast<uint32_t>(loaded_object.vertices.size());
+                    loaded_object.vertices.push_back(vertex);
                 }
 
                 // Add index to outIndices
-                outIndices.push_back(uniqueVertices[vertex]);
+                loaded_object.indices.push_back(unique_vertices[vertex]);
             }
 
             // Update material index ranges
-            size_t current_end_index = outIndices.size();
-            if (material_index_ranges.find(material_id) == material_index_ranges.end())
+            size_t current_end_index = loaded_object.indices.size();
+            if (loaded_object.material_index_ranges.find(material_id) == loaded_object.material_index_ranges.end())
             {
-                material_index_ranges[material_id] = { current_start_index, current_end_index };
+                loaded_object.material_index_ranges[material_id] = { current_start_index, current_end_index };
             }
             else
             {
-                material_index_ranges[material_id].second = current_end_index;
+                loaded_object.material_index_ranges[material_id].second = current_end_index;
             }
 
             current_start_index = current_end_index;
 
             index_offset += fv;
         }
+
+        loaded_objects.push_back(loaded_object);
     }
 
     return true;
@@ -231,7 +232,7 @@ bool utils::ModelLoaderUtils::set_texture_path_to_index(const std::unordered_map
 }
 
 bool utils::ModelLoaderUtils::load_model_from_obj(const std::string& path,
-                                            EngineContext& engine_context)
+                                                  EngineContext& engine_context)
 {
     auto material_manager = engine_context.material_manager.get();
     
@@ -239,7 +240,7 @@ bool utils::ModelLoaderUtils::load_model_from_obj(const std::string& path,
     std::unordered_map<uint32_t, TextureInfo> out_texture_info;
 
     //Load the object from the obj file
-    load_obj(std::string(RESOURCE_PATH) + path, vertices, indices, material_manager->get_material_name_to_index(), material_manager->get_material_params(), out_texture_info);
+    load_obj(std::string(RESOURCE_PATH) + path, material_manager->get_material_name_to_index(), material_manager->get_material_params(), out_texture_info);
 
     //Process textures
     for (const auto& texture : out_texture_info)
@@ -248,18 +249,19 @@ bool utils::ModelLoaderUtils::load_model_from_obj(const std::string& path,
         material_manager->add_texture(ImageUtils::create_texture_image(engine_context, image_data));
     }
     
-    std::cout << "Vertices: " << vertices.size() << std::endl;
-    std::cout << "Indices: " << indices.size() << std::endl;
-
-    //Create Model index and vertex buffer
-    MemoryUtils::create_vertex_and_index_buffers(engine_context, vertices, indices, vertex_buffer, index_buffer);
-
-    if (!vertices.empty() && !indices.empty())
+    //Create Model index and vertex buffers
+    for (auto& loaded_object : loaded_objects)
     {
-        return true;    
+        MemoryUtils::create_vertex_and_index_buffers(engine_context,
+            loaded_object.vertices,loaded_object.indices,
+            loaded_object.vertex_buffer, loaded_object.index_buffer);
+
+        std::cout << "Loaded object: " << loaded_object.name << std::endl;
+        std::cout << "Vertices: " << loaded_object.vertices.size() << std::endl;
+        std::cout << "Indices: " << loaded_object.indices.size() << std::endl;
     }
 
-    return false;   
+    return true;   
 }
 
 bool utils::ModelLoaderUtils::get_material_params(uint32_t materialIndex, MaterialParams& outMaterialParams) const

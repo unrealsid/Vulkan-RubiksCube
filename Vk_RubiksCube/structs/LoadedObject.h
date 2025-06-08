@@ -1,0 +1,18 @@
+#pragma once
+
+#include <string>
+#include <vector>
+#include "Vertex.h"
+
+struct LoadedObject
+{
+    std::string name;
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+
+    GPU_Buffer vertex_buffer = {};
+    GPU_Buffer index_buffer = {};
+
+    //A map of material ID to index range for rendering 
+    std::unordered_map<uint32_t, std::pair<size_t, size_t>> material_index_ranges;
+};

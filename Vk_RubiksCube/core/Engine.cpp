@@ -74,8 +74,8 @@ void core::Engine::load_models()
     std::vector<std::string> model_paths =
     {
         // "/models/rubiks_cube_texture/rubiksCubeTexture.obj",
-        //"/models/rubiks_cube/rubiks_cube.obj",
-        "/models/viper/viper.obj"
+        "/models/rubiks_cube/rubiks_cube.obj",
+        //"/models/viper/viper.obj"
     };
 
     //Load all models 
@@ -83,22 +83,25 @@ void core::Engine::load_models()
     {
         utils::ModelLoaderUtils model_utils;
         model_utils.load_model_from_obj(model_path, engine_context);
-        auto indices = model_utils.get_material_index_ranges();
+        
+        //For each shape in the obj file
+        for (const auto& loaded_object : model_utils.get_loaded_objects())
+        {
+            //Create an entity for each loaded model
+            std::unique_ptr<Entity> entity = std::make_unique<Entity>
+            (
+                RenderData
+                {
+                    .vertex_buffer = loaded_object.vertex_buffer,
+                    .index_buffer = loaded_object.index_buffer,
+                    .vertices = loaded_object.vertices,
+                    .indices = loaded_object.indices,
+                    .material_index_ranges = loaded_object.material_index_ranges,
+                }
+            );
 
-        //Create an entity for each loaded model
-        std::unique_ptr<Entity> entity = std::make_unique<Entity>
-        (
-            RenderData
-            {
-                .vertex_buffer = model_utils.get_vertex_buffer(),
-                .index_buffer = model_utils.get_index_buffer(),
-                .vertices = model_utils.get_vertices(),
-                .indices = model_utils.get_indices(),
-            },
-            indices
-        );
-
-        entities.push_back(std::move(entity));
+            entities.push_back(std::move(entity));
+        }
     }
 
     //Once all materials are loaded, we can move them to the gpu
@@ -122,17 +125,20 @@ void core::Engine::organize_draw_batches()
     {
         const auto& render_data = entity->get_render_data();
 
-        DrawItem item;
-        item.vertex_buffer = render_data.vertex_buffer.buffer;
-        item.index_buffer = render_data.index_buffer.buffer;
-        item.index_count = render_data.indices.size();
-
-        auto range = entity->get_material_index_range();
+        auto range = render_data.material_index_ranges;
 
         for (const auto& [id, pair] : range)
         {
+            DrawItem item;
+            item.vertex_buffer = render_data.vertex_buffer.buffer;
+            item.index_buffer = render_data.index_buffer.buffer;
+            item.index_range = pair;
+            item.index_count = pair.second - pair.first;
+            
             std::string shader_name = material_manager->get_material_name_from_index(id);
             draw_batches[shader_name].items.push_back(item);    
         }
     }
+
+    std::cout << "Draw batches: " << draw_batches.size() << "\n";
 }

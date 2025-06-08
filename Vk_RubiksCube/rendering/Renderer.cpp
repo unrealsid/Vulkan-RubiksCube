@@ -15,7 +15,9 @@
 #include "../materials/Material.h"
 #include "../materials/MaterialManager.h"
 
-core::Renderer::Renderer(EngineContext& engine_context) : engine_context(engine_context)
+core::Renderer::Renderer(EngineContext& engine_context) : scene_data(), gpu_scene_data(),
+                                                          engine_context(engine_context),
+                                                          command_pool(nullptr)
 {
     device_manager = engine_context.device_manager.get();
     swapchain_manager = engine_context.swapchain_manager.get();

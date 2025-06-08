@@ -6,6 +6,7 @@
 #include "GPU_Buffer.h"
 #include "Vertex.h"
 #include <vector>
+#include <unordered_map>
 
 struct RenderData
 {
@@ -14,6 +15,8 @@ struct RenderData
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
+
+    std::unordered_map<uint32_t, std::pair<size_t, size_t>> material_index_ranges;
 };
 
 #endif
