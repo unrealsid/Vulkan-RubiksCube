@@ -5,6 +5,7 @@
 
 #include "GPU_Buffer.h"
 #include "Vertex.h"
+#include <vector>
 
 struct RenderData
 {

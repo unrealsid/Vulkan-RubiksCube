@@ -7,6 +7,8 @@
 #include "../structs/GPU_Buffer.h"
 #include "../structs/Vk_Image.h"
 #include "../structs/EngineContext.h"
+#include "../structs/Vk_ShaderInfo.h"
+#include "string"
 
 struct MaterialParams;
 
@@ -45,7 +47,7 @@ namespace material
             return material_params;
         }
 
-        [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<Material>> get_materials() const
+        [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<Material>>& get_materials()
         {
             return materials;
         }
@@ -54,6 +56,8 @@ namespace material
         {
             return material_params_address;
         }
+
+        [[nodiscard]] std::string get_material_name_from_index(uint32_t index) const;
     
     private:
         //Store all kinds of materials (Translucent, Opaque etc)
@@ -65,8 +69,11 @@ namespace material
         VkDeviceAddress material_params_address;
         GPU_Buffer material_params_buffer;
 
-        //Global map of loaded material name to unique ID
+        //Stores processed materials for each model
         std::unordered_map<std::string, uint32_t> material_name_to_index;
+
+        //Stores material names to indices
+        std::unordered_map<std::string, std::vector<uint32_t>> material_name_to_indices;
         
         //All unique materials to forward to the GPU
         std::unordered_map<uint32_t, MaterialParams> material_params;
@@ -75,8 +82,13 @@ namespace material
         VkDescriptorSetLayout texture_descriptor_layout;
         VkDescriptorSet texture_descriptor_set;
 
+        std::unordered_map<std::string, Vk_ShaderInfo> shader_info;
+        EngineContext& engine_context; 
+
         void init_shaders();
 
-        EngineContext& engine_context; 
+        Material* get_or_create_material(const std::string& name);
+
+        Material* create_material(const std::string& name);
     };
 }

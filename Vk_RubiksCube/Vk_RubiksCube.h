@@ -16,9 +16,6 @@
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
-#include "structs/Vk_Init.h"
-#include "structs/Vk_RenderData.h"
-
 // int draw_frame(Init& init, RenderData& data);
 // void cleanup(Init& init, RenderData& data);
 //

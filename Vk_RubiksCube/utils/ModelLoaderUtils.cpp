@@ -73,7 +73,7 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
     tiny_obj_material_id_to_buffer_index[tiny_obj_no_material_id] = default_buffer_index;
 
     // Create a default MaterialParams for this index 0 (or the index assigned to -1)
-    material_params[default_buffer_index] = MaterialParams(); // Default constructed MaterialParams
+    //material_params[default_buffer_index] = MaterialParams(); // Default constructed MaterialParams
     
     // Create a default texture index for faces with no texture
     uint32_t defaultTextureIndex = UINT32_MAX;
@@ -205,17 +205,17 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
             }
 
             // Update material index ranges
-            size_t current_endI_index = outIndices.size();
+            size_t current_end_index = outIndices.size();
             if (material_index_ranges.find(material_id) == material_index_ranges.end())
             {
-                material_index_ranges[material_id] = { current_start_index, current_endI_index };
+                material_index_ranges[material_id] = { current_start_index, current_end_index };
             }
             else
             {
-                material_index_ranges[material_id].second = current_endI_index;
+                material_index_ranges[material_id].second = current_end_index;
             }
 
-            current_start_index = current_endI_index;
+            current_start_index = current_end_index;
 
             index_offset += fv;
         }

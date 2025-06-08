@@ -4,7 +4,6 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include "../structs/Vk_SceneData.h"
-#include "../structs/Vk_Init.h"
 
 void utils::set_vulkan_object_Name(const vkb::DispatchTable& disp, uint64_t objectHandle,
                                   VkObjectType objectType, const std::string& name)

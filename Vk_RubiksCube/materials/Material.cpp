@@ -8,9 +8,12 @@
 #include "../utils/FileUtils.h"
 #include "../Config.h"
 
-material::Material::Material()
+material::Material::Material(std::string material_name): material_name(std::move(material_name)), descriptor_set(nullptr), pipeline_layout(nullptr)
 {
-    //materialValues = Vk_MaterialData();K
+}
+
+material::Material::~Material()
+{
 }
 
 void material::Material::add_shader_object(std::unique_ptr<ShaderObject> shader_object)

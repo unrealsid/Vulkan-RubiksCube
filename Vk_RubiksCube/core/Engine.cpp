@@ -41,13 +41,13 @@ void core::Engine::init()
     utils::MemoryUtils::create_vma_allocator(*engine_context.device_manager);
 
     engine_context.renderer = std::make_unique<Renderer>(engine_context);
+    engine_context.renderer->init();
+
     engine_context.renderer->create_command_pool();
 
     load_models();
 
-    //device_manager->createGraphicsPipeline();
-    engine_context.renderer->create_command_buffers();
-    engine_context.renderer->init();
+    engine_context.renderer->create_command_buffers(); 
 }
 
 void core::Engine::run()
@@ -71,13 +71,19 @@ void core::Engine::cleanup()
 
 void core::Engine::load_models()
 {
-    std::vector<std::string> model_paths = { "/models/rubiks_cube_texture/rubiksCubeTexture.obj", "/models/rubiks_cube/rubiks_cube.obj" };
+    std::vector<std::string> model_paths =
+    {
+        // "/models/rubiks_cube_texture/rubiksCubeTexture.obj",
+        //"/models/rubiks_cube/rubiks_cube.obj",
+        "/models/viper/viper.obj"
+    };
 
     //Load all models 
     for (const auto& model_path : model_paths)
     {
         utils::ModelLoaderUtils model_utils;
         model_utils.load_model_from_obj(model_path, engine_context);
+        auto indices = model_utils.get_material_index_ranges();
 
         //Create an entity for each loaded model
         std::unique_ptr<Entity> entity = std::make_unique<Entity>
@@ -89,6 +95,7 @@ void core::Engine::load_models()
                 .vertices = model_utils.get_vertices(),
                 .indices = model_utils.get_indices(),
             },
+            indices
         );
 
         entities.push_back(std::move(entity));
@@ -119,7 +126,13 @@ void core::Engine::organize_draw_batches()
         item.vertex_buffer = render_data.vertex_buffer.buffer;
         item.index_buffer = render_data.index_buffer.buffer;
         item.index_count = render_data.indices.size();
-        
-        draw_batches[shader_name].items.push_back(item);
+
+        auto range = entity->get_material_index_range();
+
+        for (const auto& [id, pair] : range)
+        {
+            std::string shader_name = material_manager->get_material_name_from_index(id);
+            draw_batches[shader_name].items.push_back(item);    
+        }
     }
 }

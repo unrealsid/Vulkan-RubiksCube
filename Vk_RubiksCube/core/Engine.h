@@ -6,7 +6,7 @@
 #include "Entity.h"
 #include "../materials/Material.h"
 #include "../structs/EngineContext.h"
-#include "../structs/DrawBatch.h"s
+#include "../structs/DrawBatch.h"
 
 namespace renderer
 {

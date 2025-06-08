@@ -17,14 +17,13 @@
 
 core::Renderer::Renderer(EngineContext& engine_context) : engine_context(engine_context)
 {
+    device_manager = engine_context.device_manager.get();
+    swapchain_manager = engine_context.swapchain_manager.get();
+    dispatch_table = engine_context.dispatch_table;
 }
 
 void core::Renderer::init()
 {
-    device_manager = engine_context.device_manager.get();
-    swapchain_manager = engine_context.swapchain_manager.get();
-    dispatch_table = engine_context.dispatch_table;
-    
     create_sync_objects();
     setup_scene_data();
     
@@ -337,11 +336,11 @@ bool core::Renderer::create_command_buffers()
              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // New layout
               VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
 
-            if (dispatch_table.endCommandBuffer(command_buffers[i]) != VK_SUCCESS)
-            {
-                 std::cout << "failed to record command buffer\n";
-                 return false; // failed to record command buffer!
-            }
+        if (dispatch_table.endCommandBuffer(command_buffers[i]) != VK_SUCCESS)
+        {
+            std::cout << "failed to record command buffer\n";
+            return false; // failed to record command buffer!
+        }
     }
     return 0;
 }

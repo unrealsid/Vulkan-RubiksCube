@@ -25,7 +25,7 @@ bool vulkan::SwapchainManager::recreate_swapchain(const EngineContext& engine_co
     auto renderer = engine_context.renderer.get();
     engine_context.dispatch_table.deviceWaitIdle();
 
-    device_manager->get_dispatch_table().destroyCommandPool(renderer->get_command_pool(), nullptr);
+    engine_context.dispatch_table.destroyCommandPool(renderer->get_command_pool(), nullptr);
 
     swapchain.destroy_image_views(swapchain_image_views);
     if (create_swapchain(engine_context) == false)
