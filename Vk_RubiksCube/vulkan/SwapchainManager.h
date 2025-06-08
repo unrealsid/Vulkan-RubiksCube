@@ -4,6 +4,8 @@
 
 #include "VkBootstrap.h"
 
+struct EngineContext;
+
 namespace vulkan
 {
     class DeviceManager;
@@ -14,8 +16,8 @@ namespace vulkan
     class SwapchainManager
     {
     public:
-        bool create_swapchain( const DeviceManager& deviceManager);
-        bool recreate_swapchain( DeviceManager& deviceManager);
+        bool create_swapchain(const EngineContext& engine_context);
+        bool recreate_swapchain(const EngineContext& engine_context);
 
         [[nodiscard]] vkb::Swapchain get_swapchain() const { return swapchain; }
 

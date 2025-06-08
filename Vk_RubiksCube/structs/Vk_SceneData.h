@@ -7,7 +7,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-#include "Vk_Buffer.h"
+#include "GPU_Buffer.h"
 
 struct Vk_SceneData
 {

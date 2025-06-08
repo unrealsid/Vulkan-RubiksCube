@@ -5,7 +5,7 @@
 #include "ImageUtils.h"
 #include "../structs/Vk_SceneData.h"
 #include "../structs/PushConstantBlock.h"
-#include "../structs/Vk_Buffer.h"
+#include "../structs/GPU_Buffer.h"
 
 #include "MemoryUtils.h"
 

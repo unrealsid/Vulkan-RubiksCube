@@ -4,21 +4,22 @@
 #include "../structs/PushConstantBlock.h"
 #include "../utils/FileUtils.h"
 #include "../Config.h"
+#include "../rendering/Renderer.h"
 #include "../structs/Vk_ShaderInfo.h"
 #include "../utils/DescriptorUtils.h"
 #include "../utils/MemoryUtils.h"
 #include "../vulkan/DeviceManager.h"
 
-material::MaterialManager::MaterialManager(vulkan::DeviceManager* device_manager_) : texture_descriptor_layout(nullptr),
-                                                                                        texture_descriptor_set(nullptr),
-                                                                                        max_materials(1000), material_params_address(0), material_params_buffer({})
+material::MaterialManager::MaterialManager(EngineContext& engine_context) : max_materials(1000),
+                                                                            material_params_address(0), material_params_buffer({}),
+                                                                            texture_descriptor_layout(nullptr),
+                                                                            texture_descriptor_set(nullptr),
+                                                                            engine_context(engine_context)
 {
-    device_manager = device_manager_;
 }
 
 material::MaterialManager::~MaterialManager()
 {
-    
 }
 
 void material::MaterialManager::init()
@@ -27,12 +28,14 @@ void material::MaterialManager::init()
     //Assume we can create a maximum of 1000 materials
     VkDeviceSize material_buffer_size = sizeof(MaterialParams) * max_materials;
 
+    auto device_manager = engine_context.device_manager.get();
+    
     //Just create the buffer for now, but leave it empty
     utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), material_buffer_size, material_params_buffer);
-    material_params_address = utils::MemoryUtils::getBufferDeviceAddress(device_manager->get_dispatch_table(), material_params_buffer.buffer);
+    material_params_address = utils::MemoryUtils::get_buffer_device_address(engine_context.dispatch_table, material_params_buffer.buffer);
     
     //Setup Texture descriptors
-    utils::DescriptorUtils::setup_texture_descriptors(device_manager->get_dispatch_table(), textures, texture_descriptor_layout, texture_descriptor_set);
+    utils::DescriptorUtils::setup_texture_descriptors(engine_context.dispatch_table, textures, texture_descriptor_layout, texture_descriptor_set);
 
     init_shaders();
 }
@@ -49,6 +52,8 @@ void material::MaterialManager::add_material(const std::string& name, std::uniqu
 
 void material::MaterialManager::init_shaders()
 {
+    auto device_manager = engine_context.device_manager.get();
+    
     std::vector<Vk_ShaderInfo> shader_info =
     {
         {
@@ -73,7 +78,7 @@ void material::MaterialManager::init_shaders()
         utils::FileUtils::loadShader(shader.fragment_shader_path, shaderCodes[1], shaderCodeSizes[1]);
 
         auto shader_object = std::make_unique<ShaderObject>();
-        shader_object->create_shaders(device_manager->get_dispatch_table(),
+        shader_object->create_shaders(engine_context.dispatch_table,
             shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1],
             &texture_descriptor_layout, 1,
             &push_constant_range, 1);
@@ -82,7 +87,7 @@ void material::MaterialManager::init_shaders()
         
         //Create the pipeline layout
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = initializers::pipelineLayoutCreateInfo(&texture_descriptor_layout, 1, &push_constant_range, 1);
-        device_manager->get_dispatch_table().createPipelineLayout(&pipelineLayoutInfo, VK_NULL_HANDLE, &pipeline_layout);
+        engine_context.dispatch_table.createPipelineLayout(&pipelineLayoutInfo, VK_NULL_HANDLE, &pipeline_layout);
         
         //Create material 
         auto material = std::make_unique<Material>();

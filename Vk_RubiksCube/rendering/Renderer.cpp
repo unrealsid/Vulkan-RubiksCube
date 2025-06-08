@@ -1,0 +1,362 @@
+#include "Renderer.h"
+
+#include <iostream>
+
+#include "../utils/DescriptorUtils.h"
+#include "../utils/MemoryUtils.h"
+#include "../utils/Vk_Utils.h"
+#include "../vulkan/DeviceManager.h"
+#include "../rendering/Vk_DynamicRendering.h"
+#include "../structs/EngineContext.h"
+#include "../structs/PushConstantBlock.h"
+#include "../materials/ShaderObject.h"
+#include "../vulkan/SwapchainManager.h"
+#include "../structs/DrawItem.h"
+#include "../materials/Material.h"
+#include "../materials/MaterialManager.h"
+
+core::Renderer::Renderer(EngineContext& engine_context) : engine_context(engine_context)
+{
+}
+
+void core::Renderer::init()
+{
+    device_manager = engine_context.device_manager.get();
+    swapchain_manager = engine_context.swapchain_manager.get();
+    dispatch_table = engine_context.dispatch_table;
+    
+    create_sync_objects();
+    setup_scene_data();
+    
+    get_supported_depth_stencil_format(device_manager->get_physical_device(), &depth_stencil_image.format);
+    create_depth_stencil_image(swapchain_manager->get_swapchain().extent, device_manager->get_allocator(), depth_stencil_image);
+}
+
+VkBool32 core::Renderer::get_supported_depth_stencil_format(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat)
+{
+    std::vector<VkFormat> formatList =
+    {
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D16_UNORM_S8_UINT,
+    };
+
+    for (auto& format : formatList)
+    {
+        VkFormatProperties formatProps;
+        vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProps);
+        if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        {
+            *depthStencilFormat = format;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void core::Renderer::create_depth_stencil_image(VkExtent2D extents, VmaAllocator allocator, DepthStencilImage& depthImage)
+{
+    VkImageCreateInfo imageCI{};
+    imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCI.imageType = VK_IMAGE_TYPE_2D;
+    imageCI.format = depthImage.format;
+    imageCI.extent = { extents.width, extents.height, 1 };
+    imageCI.mipLevels = 1;
+    imageCI.arrayLayers = 1;
+    imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageCI.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    if (vmaCreateImage(allocator, &imageCI, &allocInfo, &depthImage.image, &depthImage.allocation, nullptr) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create depth stencil image!");
+    }
+
+    VkImageViewCreateInfo imageViewCI{};
+    imageViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    imageViewCI.image = depthImage.image;
+    imageViewCI.format = depthImage.format;
+    imageViewCI.subresourceRange.baseMipLevel = 0;
+    imageViewCI.subresourceRange.levelCount = 1;
+    imageViewCI.subresourceRange.baseArrayLayer = 0;
+    imageViewCI.subresourceRange.layerCount = 1;
+    imageViewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    
+    // Stencil aspect should only be set on depth + stencil formats (VK_FORMAT_D16_UNORM_S8_UINT..VK_FORMAT_D32_SFLOAT_S8_UINT
+    if (depthImage.format >= VK_FORMAT_D16_UNORM_S8_UINT)
+    {
+        imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+
+    if (dispatch_table.createImageView(&imageViewCI, nullptr,  &depthImage.view) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create depth stencil image view!");
+    }
+}
+
+bool core::Renderer::draw_frame()
+{
+    dispatch_table.waitForFences(1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
+    uint32_t image_index = 0;
+    VkResult result = dispatch_table.acquireNextImageKHR(
+        swapchain_manager->get_swapchain(), UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) 
+    {
+        return swapchain_manager->recreate_swapchain(engine_context);
+    } 
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) 
+    {
+        std::cout << "failed to acquire swapchain image. Error " << result << "\n";
+        return false;
+    }
+
+    if (image_in_flight[image_index] != VK_NULL_HANDLE) 
+    {
+        dispatch_table.waitForFences(1, &image_in_flight[image_index], VK_TRUE, UINT64_MAX);
+    }
+    image_in_flight[image_index] = in_flight_fences[current_frame];
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore wait_semaphores[] = { available_semaphores[current_frame] };
+    VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = wait_semaphores;
+    submitInfo.pWaitDstStageMask = wait_stages;
+
+    submitInfo.commandBufferCount = 1;
+    const auto& command_buffers = get_command_buffers();
+    submitInfo.pCommandBuffers = &command_buffers[image_index];
+
+    VkSemaphore signal_semaphores[] = { finished_semaphores[current_frame] };
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signal_semaphores;
+
+    dispatch_table.resetFences(1, &in_flight_fences[current_frame]);
+    if (dispatch_table.queueSubmit(device_manager->get_graphics_queue(), 1, &submitInfo, in_flight_fences[current_frame]) != VK_SUCCESS) 
+    {
+        std::cout << "failed to submit draw command buffer\n";
+        return false; //"failed to submit draw command buffer
+    }
+
+    VkPresentInfoKHR present_info = {};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = signal_semaphores;
+
+    VkSwapchainKHR swapChains[] = { swapchain_manager->get_swapchain().swapchain };
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swapChains;
+
+    present_info.pImageIndices = &image_index;
+
+    result = dispatch_table.queuePresentKHR(device_manager->get_present_queue(), &present_info);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+    {
+        return swapchain_manager->recreate_swapchain(engine_context);
+    }
+    else if (result != VK_SUCCESS)
+    {
+        std::cout << "failed to present swapchain image\n";
+        return false;
+    }
+
+    current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+    return true;
+}
+
+bool core::Renderer::setup_scene_data()
+{
+    //Allocate buffer for scene data
+    utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), sizeof(Vk_SceneData), gpu_scene_data.scene_buffer);
+
+    //Get it's address and other params
+    gpu_scene_data.scene_buffer_address = utils::MemoryUtils::get_buffer_device_address(dispatch_table, gpu_scene_data.scene_buffer.buffer);
+
+    //Fill and map the memory region
+    utils::prepare_ubo(scene_data);
+    utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), gpu_scene_data.scene_buffer.allocation, gpu_scene_data.scene_buffer.allocation_info, &scene_data, sizeof(Vk_SceneData));
+
+    return true;
+}
+
+bool core::Renderer::create_sync_objects()
+{
+    available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
+    image_in_flight.resize(swapchain_manager->get_swapchain().image_count, VK_NULL_HANDLE);
+
+    VkSemaphoreCreateInfo semaphore_info = {};
+    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkFenceCreateInfo fence_info = {};
+    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        if (dispatch_table.createSemaphore(&semaphore_info, nullptr, &available_semaphores[i]) != VK_SUCCESS ||
+            dispatch_table.createSemaphore(&semaphore_info, nullptr, &finished_semaphores[i]) != VK_SUCCESS ||
+            dispatch_table.createFence(&fence_info, nullptr, &in_flight_fences[i]) != VK_SUCCESS)
+        {
+            std::cout << "failed to create sync objects\n";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool core::Renderer::create_command_buffers()
+{
+    auto swapchain = engine_context.swapchain_manager->get_swapchain();
+    command_buffers.resize(swapchain.image_count);
+
+    VkCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = command_pool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = static_cast<uint32_t>(command_buffers.size());
+
+    if (dispatch_table.allocateCommandBuffers(&allocInfo, command_buffers.data()) != VK_SUCCESS)
+    {
+        // failed to allocate command buffers;
+        return false;
+    }
+
+    for (size_t i = 0; i < command_buffers.size(); i++)
+    {
+        VkCommandBufferBeginInfo begin_info = {};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+        if (dispatch_table.beginCommandBuffer(command_buffers[i], &begin_info) != VK_SUCCESS)
+        {
+            return false;
+            // failed to begin recording command buffer
+        }
+
+        Vk_DynamicRendering::image_layout_transition(command_buffers[i],
+                                      swapchain.get_images().value()[i],
+                                      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                      0,
+                                      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                      VK_IMAGE_LAYOUT_UNDEFINED,
+                                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                       VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
+
+        Vk_DynamicRendering::image_layout_transition(command_buffers[i],
+                                      depth_stencil_image.image,
+                                      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                      0,
+                                      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                                      VK_IMAGE_LAYOUT_UNDEFINED,
+                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       VkImageSubresourceRange{ VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1 });
+
+        //Color attachment
+        VkRenderingAttachmentInfoKHR color_attachment_info = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+        color_attachment_info.pNext = VK_NULL_HANDLE;
+        color_attachment_info.imageView                    = swapchain.get_image_views().value()[i];        // color_attachment.image_view;
+        color_attachment_info.imageLayout                  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        color_attachment_info.resolveMode                  = VK_RESOLVE_MODE_NONE;
+        color_attachment_info.loadOp                       = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        color_attachment_info.storeOp                      = VK_ATTACHMENT_STORE_OP_STORE;
+        color_attachment_info.clearValue                   = {0.1f, 0.1f, 0.1f, 1.0f};
+
+        //Depth Stencil
+        VkRenderingAttachmentInfoKHR depth_attachment_info = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+        depth_attachment_info.pNext = VK_NULL_HANDLE;
+        depth_attachment_info.imageView = depth_stencil_image.view;
+        depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depth_attachment_info.resolveMode = VK_RESOLVE_MODE_NONE;
+        depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        depth_attachment_info.clearValue = {1.0f };
+
+        auto render_area             = VkRect2D{VkOffset2D{}, VkExtent2D{swapchain.extent.width, swapchain.extent.height}};
+        auto render_info             = Vk_DynamicRendering::rendering_info(render_area, 1, &color_attachment_info);
+
+        render_info.layerCount       = 1;
+        render_info.pColorAttachments = &color_attachment_info;
+        render_info.pDepthAttachment = &depth_attachment_info;
+        render_info.pStencilAttachment = &depth_attachment_info;
+
+        dispatch_table.cmdBeginRenderingKHR(command_buffers[i], &render_info);
+
+        for (auto draw_batch : draw_batches)
+        {
+            //Pipeline object binding
+            draw_batch.material->get_shader_object()->set_initial_state(engine_context.dispatch_table, *engine_context.swapchain_manager, command_buffers[i]);
+            draw_batch.material->get_shader_object()->bind_material_shader(engine_context.dispatch_table, command_buffers[i]);
+
+            dispatch_table.cmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, draw_batch.material->get_pipeline_layout(), 0, 1, &draw_batch.material->get_descriptor_set(), 0, nullptr);
+
+            //Passing Buffer Addresses
+            PushConstantBlock references{};
+            // Pass pointer to the global matrix via a buffer device address
+            references.sceneBufferAddress = engine_context.renderer.get()->get_gpu_scene_data().scene_buffer_address;
+            references.materialParamsAddress = engine_context.material_manager.get()->get_material_params_address();
+            dispatch_table.cmdPushConstants(command_buffers[i], draw_batch.material->get_pipeline_layout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantBlock), &references);
+
+            //Binds and draws meshes
+            for (uint32_t i = 0; i < draw_batch.items.size(); i++)
+            {
+                auto draw_item = draw_batch.items[i];
+                
+                VkBuffer vertexBuffers[] = {draw_item.vertex_buffer};
+                VkDeviceSize offsets[] = {0};
+                dispatch_table.cmdBindVertexBuffers(command_buffers[i], 0, 1, vertexBuffers, offsets);
+                dispatch_table.cmdBindIndexBuffer(command_buffers[i], draw_item.index_buffer, 0, VK_INDEX_TYPE_UINT32);
+                
+                // Issue the draw call using the index buffer
+                dispatch_table.cmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(draw_item.index_count), 1, 0, 0,0);
+            }
+        }
+        
+        dispatch_table.cmdEndRenderingKHR(command_buffers[i]);
+
+        Vk_DynamicRendering::image_layout_transition
+        (
+             command_buffers[i],                            // Command buffer
+             swapchain.get_images().value()[i],               // Swapchain image
+             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // Source pipeline stage
+             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,     // Destination pipeline stage
+             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // Source access mask
+             0,                                        // Destination access mask
+             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // Old layout
+             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // New layout
+              VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
+
+            if (dispatch_table.endCommandBuffer(command_buffers[i]) != VK_SUCCESS)
+            {
+                 std::cout << "failed to record command buffer\n";
+                 return false; // failed to record command buffer!
+            }
+    }
+    return 0;
+}
+
+bool core::Renderer::create_command_pool()
+{
+    VkCommandPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_info.queueFamilyIndex = device_manager->get_device().get_queue_index(vkb::QueueType::graphics).value();
+    
+    if (dispatch_table.createCommandPool(&pool_info, nullptr, &command_pool) != VK_SUCCESS)
+    {
+        std::cout << "failed to create command pool\n";
+        return false;
+    }
+
+    return true;
+}

@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <vector>
 
 #include "../structs/Vk_SceneData.h"
@@ -6,6 +7,9 @@
 
 #include "VkBootstrapDispatch.h"
 #include "../structs/Vk_DepthStencilImage.h"
+#include "../structs/DrawBatch.h"
+
+struct EngineContext;
 
 namespace vulkan
 {
@@ -29,7 +33,7 @@ namespace core
     class Renderer
     {
     public:
-        Renderer(vulkan::DeviceManager* device_manager, vulkan::SwapchainManager* swapchain_manager);
+        Renderer(EngineContext& engine_context);
 
         bool draw_frame();
 
@@ -42,6 +46,9 @@ namespace core
         bool setup_scene_data();
         bool create_sync_objects();
 
+        bool create_command_pool();
+        bool create_command_buffers();
+
         Vk_SceneData get_scene_data() const { return scene_data; }
         GPU_SceneData get_gpu_scene_data() const { return gpu_scene_data; }
 
@@ -50,13 +57,16 @@ namespace core
         [[nodiscard]] std::vector<VkFence> getInFlightFences() const { return in_flight_fences; }
         [[nodiscard]] std::vector<VkFence> getImageInFlight() const { return image_in_flight; }
         [[nodiscard]] size_t get_current_frame() const { return current_frame; }
+        
+        [[nodiscard]] std::vector<VkCommandBuffer> get_command_buffers() const { return command_buffers; }
+        [[nodiscard]] VkCommandPool get_command_pool() const { return command_pool; }
+        [[nodiscard]] std::vector<DrawBatch>& get_draw_batches() { return draw_batches; }
     
     private:
         Vk_SceneData scene_data;
         GPU_SceneData gpu_scene_data;
-        
-        vulkan::DeviceManager* device_manager;
-        vulkan::SwapchainManager* swapchain_manager;
+
+        EngineContext& engine_context;
         
         DepthStencilImage depth_stencil_image;
 
@@ -66,6 +76,14 @@ namespace core
         std::vector<VkFence> image_in_flight;
         size_t current_frame = 0;
 
+        std::vector<VkCommandBuffer> command_buffers;
+        VkCommandPool command_pool;
+
         vkb::DispatchTable dispatch_table;
+        
+        vulkan::DeviceManager* device_manager;
+        vulkan::SwapchainManager* swapchain_manager;
+
+        std::vector<DrawBatch> draw_batches;
     };
 }

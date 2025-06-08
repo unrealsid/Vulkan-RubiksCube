@@ -1,7 +1,13 @@
 #pragma once
+#include <unordered_map>
+#include <vector>
+
 #include "VkBootstrapDispatch.h"
 #include "../structs/Vk_RenderData.h"
 #include "../structs/Vk_DepthStencilImage.h"
+
+struct EngineContext;
+struct MaterialParams;
 
 namespace vulkan
 {
@@ -22,13 +28,13 @@ namespace utils
         static void create_buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage,
                                     VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, GPU_Buffer& outBuffer);
 
-        static VkResult mapPersistenData(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize bufferSize);
+        static VkResult map_persistent_data(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize bufferSize);
 
-        static VkDeviceAddress getBufferDeviceAddress(const vkb::DispatchTable& disp, VkBuffer buffer);
+        static VkDeviceAddress get_buffer_device_address(const vkb::DispatchTable& disp, VkBuffer buffer);
 
-        static void copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+        static void copy_buffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        static void create_vertex_and_index_buffers(const vulkan::DeviceManager& device_manager,
+        static void create_vertex_and_index_buffers(EngineContext& engine_context,
                                                    const std::vector<Vertex>& vertices,
                                                    const std::vector<uint32_t>& indices,
                                                    GPU_Buffer& out_vertex_buffer, GPU_Buffer& out_index_buffer);

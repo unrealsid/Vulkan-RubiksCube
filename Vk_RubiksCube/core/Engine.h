@@ -3,9 +3,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Entity.h"
 #include "../materials/Material.h"
+#include "../structs/EngineContext.h"
+#include "../structs/DrawBatch.h"s
 
-namespace core
+namespace renderer
 {
     class Renderer;
 }
@@ -39,11 +42,12 @@ namespace core
         void cleanup();
 
     private:
-        std::unique_ptr<window::WindowManager> window_manager;
-        std::unique_ptr<vulkan::DeviceManager> device_manager;
-        std::unique_ptr<material::MaterialManager> material_manager;
-        std::unique_ptr<Renderer> renderer;
+        EngineContext engine_context;
+        std::vector<std::unique_ptr<Entity>> entities;
+        std::unordered_map<std::string, DrawBatch> draw_batches;
 
-        void loadModels();
+        void load_models();
+
+        void organize_draw_batches();
     };
 }

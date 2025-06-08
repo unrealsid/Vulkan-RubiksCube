@@ -4,8 +4,9 @@
 #include <vector>
 
 #include "ShaderObject.h"
-#include "../structs/Vk_Buffer.h"
+#include "../structs/GPU_Buffer.h"
 #include "../structs/Vk_Image.h"
+#include "../structs/EngineContext.h"
 
 struct MaterialParams;
 
@@ -21,7 +22,7 @@ namespace material
     class MaterialManager
     {
     public:
-        MaterialManager(vulkan::DeviceManager* device_manager_);
+        MaterialManager(EngineContext& engine_context);
         MaterialManager() = delete;
         ~MaterialManager();
 
@@ -43,12 +44,22 @@ namespace material
         {
             return material_params;
         }
+
+        [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<Material>> get_materials() const
+        {
+            return materials;
+        }
+
+        [[nodiscard]] VkDeviceAddress get_material_params_address() const
+        {
+            return material_params_address;
+        }
     
     private:
         //Store all kinds of materials (Translucent, Opaque etc)
         std::unordered_map<std::string, std::unique_ptr<Material>> materials;
+
         std::vector<Vk_Image> textures;
-        vulkan::DeviceManager* device_manager;
 
         //The buffer address for the material params
         VkDeviceAddress material_params_address;
@@ -65,5 +76,7 @@ namespace material
         VkDescriptorSet texture_descriptor_set;
 
         void init_shaders();
+
+        EngineContext& engine_context; 
     };
 }

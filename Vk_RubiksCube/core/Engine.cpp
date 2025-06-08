@@ -2,13 +2,15 @@
 
 #include <iostream>
 #include <GLFW/glfw3.h>
-
-#include "Renderer.h"
 #include "../platform/WindowManager.h"
 #include "../utils/MemoryUtils.h"
-#include "../utils/ModelUtils.h"
+#include "../utils/ModelLoaderUtils.h"
 #include "../vulkan/DeviceManager.h"
 #include "../materials/MaterialManager.h"
+#include "../rendering/Renderer.h"
+#include "../structs/EngineContext.h"
+#include "../structs/DrawItem.h"
+
 
 core::Engine::Engine()
 {
@@ -20,29 +22,32 @@ core::Engine::~Engine()
 
 void core::Engine::init()
 {
-    //1. Init window and vulkan objects
-    window_manager = std::make_unique<window::WindowManager>();
-    device_manager = std::make_unique<vulkan::DeviceManager>();
+    engine_context = EngineContext();
     
-    window_manager->createWindowGLFW("Rubik's Cube", true);
-    device_manager->device_init(*window_manager);
+    //Init window and vulkan objects
+    engine_context.window_manager = std::make_unique<window::WindowManager>();
+    engine_context.device_manager = std::make_unique<vulkan::DeviceManager>();
+    engine_context.swapchain_manager = std::make_unique<vulkan::SwapchainManager>();
+    
+    engine_context.window_manager->createWindowGLFW("Rubik's Cube", true);
+    engine_context.device_manager->device_init(engine_context);
 
-    material_manager = std::make_unique<material::MaterialManager>(device_manager.get());
+    engine_context.material_manager = std::make_unique<material::MaterialManager>(engine_context);
 
-    auto swapchain_manager = device_manager->get_swapchain_manager();
-    swapchain_manager.create_swapchain(*device_manager);
+    auto swapchain_manager = engine_context.swapchain_manager.get();
+    swapchain_manager->create_swapchain(engine_context);
 
-    renderer = std::make_unique<Renderer>(device_manager.get(), &swapchain_manager);
+    engine_context.device_manager->get_queues();
+    utils::MemoryUtils::create_vma_allocator(*engine_context.device_manager);
 
-    device_manager->get_queues();
-    utils::MemoryUtils::create_vma_allocator(*device_manager);
-    device_manager->create_command_pool();
+    engine_context.renderer = std::make_unique<Renderer>(engine_context);
+    engine_context.renderer->create_command_pool();
 
-    loadModels();
+    load_models();
 
     //device_manager->createGraphicsPipeline();
-    device_manager->create_command_buffers();
-    renderer->init();
+    engine_context.renderer->create_command_buffers();
+    engine_context.renderer->init();
 }
 
 void core::Engine::run()
@@ -64,16 +69,57 @@ void core::Engine::cleanup()
     
 }
 
-void core::Engine::loadModels()
+void core::Engine::load_models()
 {
     std::vector<std::string> model_paths = { "/models/rubiks_cube_texture/rubiksCubeTexture.obj", "/models/rubiks_cube/rubiks_cube.obj" };
-    
+
+    //Load all models 
     for (const auto& model_path : model_paths)
     {
-        utils::ModelUtils model_utils;
-        model_utils.load_model_from_obj(model_path, *device_manager, *material_manager);
+        utils::ModelLoaderUtils model_utils;
+        model_utils.load_model_from_obj(model_path, engine_context);
+
+        //Create an entity for each loaded model
+        std::unique_ptr<Entity> entity = std::make_unique<Entity>
+        (
+            RenderData
+            {
+                .vertex_buffer = model_utils.get_vertex_buffer(),
+                .index_buffer = model_utils.get_index_buffer(),
+                .vertices = model_utils.get_vertices(),
+                .indices = model_utils.get_indices(),
+            },
+        );
+
+        entities.push_back(std::move(entity));
     }
 
     //Once all materials are loaded, we can move them to the gpu
-    material_manager->init();
+    engine_context.material_manager->init();
+    organize_draw_batches();
+}
+
+void core::Engine::organize_draw_batches()
+{
+    auto material_manager = engine_context.material_manager.get();
+    
+    for (const auto& [name, material] : material_manager->get_materials())
+    {
+        DrawBatch batch;
+        batch.shader_name = name;
+        batch.material = material.get();
+        draw_batches[name] = batch;
+    }
+    
+    for (const auto& entity : entities)
+    {
+        const auto& render_data = entity->get_render_data();
+
+        DrawItem item;
+        item.vertex_buffer = render_data.vertex_buffer.buffer;
+        item.index_buffer = render_data.index_buffer.buffer;
+        item.index_count = render_data.indices.size();
+        
+        draw_batches[shader_name].items.push_back(item);
+    }
 }

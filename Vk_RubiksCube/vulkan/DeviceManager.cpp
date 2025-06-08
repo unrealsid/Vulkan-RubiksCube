@@ -6,7 +6,9 @@
 
 #include "VkBootstrap.h"
 #include "Features/VulkanFeatureActivator.h"
+#include "../rendering/Vk_DynamicRendering.h"
 #include "../platform/WindowManager.h"
+#include "../structs/EngineContext.h"
 
 vulkan::DeviceManager::DeviceManager()
 {
@@ -17,7 +19,7 @@ vulkan::DeviceManager::~DeviceManager()
     
 }
 
-bool vulkan::DeviceManager::device_init(window::WindowManager& windowManager)
+bool vulkan::DeviceManager::device_init(EngineContext& engine_context)
 {
     // Create the disable feature struct
     VkValidationFeatureDisableEXT disables[] =
@@ -44,9 +46,9 @@ bool vulkan::DeviceManager::device_init(window::WindowManager& windowManager)
     }
     instance = instance_ret.value();
 
-    instance_dispatch_table = instance.make_table();
+    engine_context.instance_dispatch_table = instance.make_table();
 
-    surface = create_surface_GLFW(windowManager);
+    surface = create_surface_GLFW(engine_context);
 
     VkPhysicalDeviceFeatures features = {};
     features.geometryShader = VK_FALSE;
@@ -103,15 +105,15 @@ bool vulkan::DeviceManager::device_init(window::WindowManager& windowManager)
 
     device = device_ret.value();
     physical_device = p_device;
-    dispatch_table = device.make_table();
+    engine_context.dispatch_table = device.make_table();
 
     return true;
 }
 
-VkSurfaceKHR vulkan::DeviceManager::create_surface_GLFW(window::WindowManager& windowManager, VkAllocationCallbacks* allocator)
+VkSurfaceKHR vulkan::DeviceManager::create_surface_GLFW(const EngineContext& engine_context, const VkAllocationCallbacks* allocator)
 {
     VkSurfaceKHR surface = VK_NULL_HANDLE;
-    VkResult err = glfwCreateWindowSurface(instance, windowManager.getWindow(), allocator, &surface);
+    VkResult err = glfwCreateWindowSurface(instance, engine_context.window_manager->getWindow(), allocator, &surface);
     if (err)
     {
         const char* error_msg;
@@ -145,26 +147,6 @@ bool vulkan::DeviceManager::get_queues()
     }
     present_queue = pq.value();
     return true;
-}
-
-bool vulkan::DeviceManager::create_command_pool()
-{
-    VkCommandPoolCreateInfo pool_info = {};
-    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    pool_info.queueFamilyIndex = device.get_queue_index(vkb::QueueType::graphics).value();
-    
-    if (dispatch_table.createCommandPool(&pool_info, nullptr, &command_pool) != VK_SUCCESS)
-    {
-        std::cout << "failed to create command pool\n";
-        return false;
-    }
-
-    return true;
-}
-
-bool vulkan::DeviceManager::create_command_buffers()
-{
-    return false;
 }
 
 // bool vulkan::DeviceManager::create_graphics_pipeline()

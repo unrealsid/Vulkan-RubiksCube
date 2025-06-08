@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-#include "Vk_Buffer.h"
+#include "GPU_Buffer.h"
 #include "MaterialParams.h"
 
 struct Vk_MaterialData

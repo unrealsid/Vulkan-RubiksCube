@@ -11,7 +11,7 @@
 #include "rendering/Vk_DynamicRendering.h"
 #include "structs/PushConstantBlock.h"
 #include "structs/Vk_SceneData.h"
-#include "utils/ModelUtils.h"
+#include "utils/ModelLoaderUtils.h"
 #include "utils/DescriptorUtils.h"
 #include "utils/Vk_Utils.h"
 #include "utils/ImageUtils.h"
@@ -263,8 +263,8 @@
 //
 // void loadModel(Init& init, RenderData& renderData)
 // {
-//     VkUtils::ModelUtils modelUtils;
-//     modelUtils.loadObj(std::string(RESOURCE_PATH) + "/models/rubiks_cube/RubiksCubeTextures/rubiksCubeTexture.obj", renderData.outVertices, renderData.outIndices, renderData.primitiveMaterialIndices, renderData.material_params, renderData.textureInfo);
+//     VkUtils::ModelLoaderUtils modelUtils;
+//     modelUtils.load_obj(std::string(RESOURCE_PATH) + "/models/rubiks_cube/RubiksCubeTextures/rubiksCubeTexture.obj", renderData.outVertices, renderData.outIndices, renderData.primitiveMaterialIndices, renderData.material_params, renderData.textureInfo);
 //
 //     for (const auto& texture : renderData.textureInfo)
 //     {
@@ -313,10 +313,8 @@ int main()
 {
     core::Engine engine;
     engine.init();
-
     engine.run();
     engine.cleanup();
-    std::this_thread::sleep_for(std::chrono::seconds(10));
     
     // if (0 != device_initialization(init)) return -1;
     // if (0 != create_swapchain(init)) return -1;

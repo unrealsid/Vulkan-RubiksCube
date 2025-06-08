@@ -2,18 +2,15 @@
 #include <iostream>
 #include "../structs/Vk_RenderData.h"
 #include "../structs/Vertex.h"
-#include "../structs/Vk_Init.h"
-
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 
 #define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
 
 #include "DescriptorUtils.h"
 #include "Vk_Utils.h"
+#include "../structs/EngineContext.h"
 #include "../vulkan/DeviceManager.h"
-
+#include "../rendering/Renderer.h"
 
 void utils::MemoryUtils::create_vma_allocator(vulkan::DeviceManager& device_manager)
 {
@@ -73,7 +70,7 @@ void utils::MemoryUtils::create_buffer(VmaAllocator allocator, VkDeviceSize size
     }
 }
 
-VkResult utils::MemoryUtils::mapPersistenData(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize bufferSize)
+VkResult utils::MemoryUtils::map_persistent_data(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize bufferSize)
 {
     VkMemoryPropertyFlags memPropFlags;
     vmaGetAllocationMemoryProperties(vmaAllocator, allocation, &memPropFlags);
@@ -88,7 +85,7 @@ VkResult utils::MemoryUtils::mapPersistenData(VmaAllocator vmaAllocator, VmaAllo
      return VK_ERROR_UNKNOWN;
 }
 
-VkDeviceAddress utils::MemoryUtils::getBufferDeviceAddress(const vkb::DispatchTable& disp, VkBuffer buffer)
+VkDeviceAddress utils::MemoryUtils::get_buffer_device_address(const vkb::DispatchTable& disp, VkBuffer buffer)
 {
     VkBufferDeviceAddressInfoEXT bufferDeviceAI{};
     bufferDeviceAI.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
@@ -101,7 +98,7 @@ VkDeviceAddress utils::MemoryUtils::getBufferDeviceAddress(const vkb::DispatchTa
 }
 
 
-void utils::MemoryUtils::copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, VkBuffer srcBuffer,
+void utils::MemoryUtils::copy_buffer(vkb::DispatchTable disp, VkQueue queue, VkCommandPool command_pool, VkBuffer srcBuffer,
                           VkBuffer dstBuffer, VkDeviceSize size)
 {
     VkCommandBufferAllocateInfo allocInfo{};
@@ -136,16 +133,19 @@ void utils::MemoryUtils::copyBuffer(vkb::DispatchTable disp, VkQueue queue, VkCo
     disp.freeCommandBuffers(command_pool, 1, &commandBuffer);
 }
 
-void utils::MemoryUtils::create_vertex_and_index_buffers(const vulkan::DeviceManager& device_manager,
-                                                        const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices,
-                                                        GPU_Buffer& out_vertex_buffer, GPU_Buffer& out_index_buffer)
+void utils::MemoryUtils::create_vertex_and_index_buffers(
+    EngineContext& engine_context, const std::vector<Vertex>& vertices,
+    const std::vector<uint32_t>& indices, GPU_Buffer& out_vertex_buffer, GPU_Buffer& out_index_buffer)
 {
+    auto device_manager = engine_context.device_manager.get();
+    auto renderer = engine_context.renderer.get();
+    
     VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
     VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
 
     // Create Staging Buffer for Vertices using VMA
     GPU_Buffer staging_vertex_buffer;
-    create_buffer(device_manager.get_allocator(), vertexBufferSize,
+    create_buffer(device_manager->get_allocator(), vertexBufferSize,
                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                     VMA_MEMORY_USAGE_AUTO,
                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
@@ -155,45 +155,45 @@ void utils::MemoryUtils::create_vertex_and_index_buffers(const vulkan::DeviceMan
     assert(vertices.size() != 0, "Vertex Data is empty!");
     
     void* data;
-    vmaMapMemory(device_manager.get_allocator(), staging_vertex_buffer.allocation, &data);
+    vmaMapMemory(device_manager->get_allocator(), staging_vertex_buffer.allocation, &data);
     memcpy(data, vertices.data(),  vertexBufferSize);
-    vmaUnmapMemory(device_manager.get_allocator(), staging_vertex_buffer.allocation);
+    vmaUnmapMemory(engine_context.device_manager->get_allocator(), staging_vertex_buffer.allocation);
 
     // Create Vertex Buffer (Device Local) using VMA
-    create_buffer(device_manager.get_allocator(), vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+    create_buffer(device_manager->get_allocator(), vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                     VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                     VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,out_vertex_buffer);
 
     // Copy from Staging Vertex Buffer to Device Local Vertex Buffer
-    copyBuffer(device_manager.get_dispatch_table(), device_manager.get_graphics_queue(), device_manager.get_command_pool(), staging_vertex_buffer.buffer, out_vertex_buffer.buffer, vertexBufferSize);
-    utils::set_vulkan_object_Name(device_manager.get_dispatch_table(), (uint64_t) out_vertex_buffer.buffer, VK_OBJECT_TYPE_BUFFER, "Vertex Buffer");
+    copy_buffer(engine_context.dispatch_table, device_manager->get_graphics_queue(), renderer->get_command_pool(), staging_vertex_buffer.buffer, out_vertex_buffer.buffer, vertexBufferSize);
+    utils::set_vulkan_object_Name(engine_context.dispatch_table, (uint64_t) out_vertex_buffer.buffer, VK_OBJECT_TYPE_BUFFER, "Vertex Buffer");
 
     // Clean up Staging Vertex Buffer using VMA
-    vmaDestroyBuffer(device_manager.get_allocator(), staging_vertex_buffer.buffer, out_vertex_buffer.allocation);
+    vmaDestroyBuffer(device_manager->get_allocator(), staging_vertex_buffer.buffer, out_vertex_buffer.allocation);
 
     // Create Staging Buffer for Indices using VMA
     GPU_Buffer staging_index_buffer;
-    create_buffer(device_manager.get_allocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO,
+    create_buffer(device_manager->get_allocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO,
                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
                     staging_index_buffer);
 
     // Copy Index Data to Staging Buffer using VMA mapping
-    vmaMapMemory(device_manager.get_allocator(), staging_index_buffer.allocation, &data);
+    vmaMapMemory(device_manager->get_allocator(), staging_index_buffer.allocation, &data);
     memcpy(data, indices.data(), (size_t) indexBufferSize);
-    vmaUnmapMemory(device_manager.get_allocator(), staging_index_buffer.allocation);
+    vmaUnmapMemory(device_manager->get_allocator(), staging_index_buffer.allocation);
 
     // Create Index Buffer (Device Local) using VMA
-    create_buffer(device_manager.get_allocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+    create_buffer(device_manager->get_allocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_AUTO,
                     VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, out_index_buffer);
     
-    utils::set_vulkan_object_Name(device_manager.get_dispatch_table(), (uint64_t) out_index_buffer.buffer, VK_OBJECT_TYPE_BUFFER, "Index Buffer");
+    utils::set_vulkan_object_Name(engine_context.dispatch_table, (uint64_t) out_index_buffer.buffer, VK_OBJECT_TYPE_BUFFER, "Index Buffer");
 
     // Copy from Staging Index Buffer to Device Local Index Buffer
-    copyBuffer(device_manager.get_dispatch_table(), device_manager.get_graphics_queue(), device_manager.get_command_pool(), staging_index_buffer.buffer, out_index_buffer.buffer, indexBufferSize);
+    copy_buffer(engine_context.dispatch_table, device_manager->get_graphics_queue(), renderer->get_command_pool(), staging_index_buffer.buffer, out_index_buffer.buffer, indexBufferSize);
 
     // Clean up Staging Index Buffer using VMA
-    vmaDestroyBuffer(device_manager.get_allocator(), staging_index_buffer.buffer, staging_index_buffer.allocation);
+    vmaDestroyBuffer(device_manager->get_allocator(), staging_index_buffer.buffer, staging_index_buffer.allocation);
 }
 
 void utils::MemoryUtils::createMaterialParamsBuffer(const vulkan::DeviceManager& device_manager,
@@ -232,7 +232,7 @@ void utils::MemoryUtils::createMaterialParamsBuffer(const vulkan::DeviceManager&
     VkDeviceSize bufferSize = sizeof(MaterialParams) * materialData.size();
     //allocate_buffer_with_mapped_access(device_manager.get_allocator(), bufferSize, out_material_params_buffer);
     
-    mapPersistenData(device_manager.get_allocator(), out_material_params_buffer.allocation, out_material_params_buffer.allocation_info, materialData.data(), bufferSize);
+    map_persistent_data(device_manager.get_allocator(), out_material_params_buffer.allocation, out_material_params_buffer.allocation_info, materialData.data(), bufferSize);
 }
 
 void utils::MemoryUtils::allocate_buffer_with_mapped_access(VmaAllocator allocator, VkDeviceSize size, GPU_Buffer& buffer)
