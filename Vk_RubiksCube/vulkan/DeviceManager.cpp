@@ -110,7 +110,7 @@ bool vulkan::DeviceManager::device_init(EngineContext& engine_context)
     return true;
 }
 
-VkSurfaceKHR vulkan::DeviceManager::create_surface_GLFW(const EngineContext& engine_context, const VkAllocationCallbacks* allocator)
+VkSurfaceKHR vulkan::DeviceManager::create_surface_GLFW(const EngineContext& engine_context, const VkAllocationCallbacks* allocator) const
 {
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     VkResult err = glfwCreateWindowSurface(instance, engine_context.window_manager->getWindow(), allocator, &surface);

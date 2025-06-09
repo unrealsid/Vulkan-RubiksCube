@@ -294,7 +294,7 @@ bool core::Renderer::create_command_buffers()
 
         dispatch_table.cmdBeginRenderingKHR(command_buffers[i], &render_info);
 
-        for (auto draw_batch : draw_batches)
+        for (const auto& [material_id, draw_batch] : draw_batches)
         {
             //Pipeline object binding
             draw_batch.material->get_shader_object()->set_initial_state(engine_context.dispatch_table, *engine_context.swapchain_manager, command_buffers[i]);
@@ -305,14 +305,14 @@ bool core::Renderer::create_command_buffers()
             //Passing Buffer Addresses
             PushConstantBlock references{};
             // Pass pointer to the global matrix via a buffer device address
-            references.sceneBufferAddress = engine_context.renderer.get()->get_gpu_scene_data().scene_buffer_address;
-            references.materialParamsAddress = engine_context.material_manager.get()->get_material_params_address();
+            references.sceneBufferAddress = engine_context.renderer->get_gpu_scene_data().scene_buffer_address;
+            references.materialParamsAddress = engine_context.material_manager->get_material_params_address();
             dispatch_table.cmdPushConstants(command_buffers[i], draw_batch.material->get_pipeline_layout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantBlock), &references);
 
             //Binds and draws meshes
-            for (uint32_t i = 0; i < draw_batch.items.size(); i++)
+            for (uint32_t draw_calls = 0; draw_calls < draw_batch.items.size(); draw_calls++)
             {
-                auto draw_item = draw_batch.items[i];
+                auto draw_item = draw_batch.items[draw_calls];
                 
                 VkBuffer vertexBuffers[] = {draw_item.vertex_buffer};
                 VkDeviceSize offsets[] = {0};
@@ -320,7 +320,7 @@ bool core::Renderer::create_command_buffers()
                 dispatch_table.cmdBindIndexBuffer(command_buffers[i], draw_item.index_buffer, 0, VK_INDEX_TYPE_UINT32);
                 
                 // Issue the draw call using the index buffer
-                dispatch_table.cmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(draw_item.index_count), 1, 0, 0,0);
+                dispatch_table.cmdDrawIndexed(command_buffers[i], draw_item.index_count, 1, 0, 0,0);
             }
         }
         
@@ -344,7 +344,7 @@ bool core::Renderer::create_command_buffers()
             return false; // failed to record command buffer!
         }
     }
-    return 0;
+    return true;
 }
 
 bool core::Renderer::create_command_pool()

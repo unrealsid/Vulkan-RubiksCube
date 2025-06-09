@@ -93,12 +93,12 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
 
         tiny_obj_material_id_to_buffer_index[tinyObjId] = bufferIndex;
     }
-
-    size_t current_start_index = 0;
     
     // Loop over shapes
     for (auto& shape : shapes)
     {
+        uint32_t current_start_index = 0;
+
         //Stores unique vertices
         std::unordered_map<Vertex, uint32_t> unique_vertices{};
         
@@ -194,7 +194,7 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
             }
 
             // Update material index ranges
-            size_t current_end_index = loaded_object.indices.size();
+            uint32_t current_end_index = loaded_object.indices.size();
             if (loaded_object.material_index_ranges.find(material_id) == loaded_object.material_index_ranges.end())
             {
                 loaded_object.material_index_ranges[material_id] = { current_start_index, current_end_index };
@@ -204,6 +204,8 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
                 loaded_object.material_index_ranges[material_id].second = current_end_index;
             }
 
+            assert(current_end_index > current_start_index);
+            
             current_start_index = current_end_index;
 
             index_offset += fv;

@@ -25,3 +25,8 @@ void material::Material::add_pipeline_layout(VkPipelineLayout pipeline_layout)
 {
     this->pipeline_layout = pipeline_layout;
 }
+
+void material::Material::add_descriptor_set(VkDescriptorSet descriptor_set)
+{
+    this->descriptor_set = descriptor_set;   
+}

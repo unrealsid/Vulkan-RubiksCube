@@ -150,6 +150,7 @@ material::Material* material::MaterialManager::create_material(const std::string
     auto material = std::make_unique<Material>(name);
     material->add_shader_object(std::move(shader_object));
     material->add_pipeline_layout(pipeline_layout);
+    material->add_descriptor_set(texture_descriptor_set);
 
     add_material(name, std::move(material));
     

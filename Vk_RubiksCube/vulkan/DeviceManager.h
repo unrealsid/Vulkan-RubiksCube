@@ -20,7 +20,7 @@ namespace vulkan
         ~DeviceManager();
         
         bool device_init(EngineContext& engine_context);
-        VkSurfaceKHR create_surface_GLFW(const EngineContext& engine_context, const VkAllocationCallbacks* allocator = nullptr);
+        VkSurfaceKHR create_surface_GLFW(const EngineContext& engine_context, const VkAllocationCallbacks* allocator = nullptr) const;
         bool get_queues();
         
     private:

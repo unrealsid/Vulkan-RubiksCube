@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "../structs/Vk_SceneData.h"
@@ -60,7 +61,7 @@ namespace core
         
         [[nodiscard]] std::vector<VkCommandBuffer> get_command_buffers() const { return command_buffers; }
         [[nodiscard]] VkCommandPool get_command_pool() const { return command_pool; }
-        [[nodiscard]] std::vector<DrawBatch>& get_draw_batches() { return draw_batches; }
+        [[nodiscard]] std::unordered_map<std::string, DrawBatch>& get_draw_batches() { return draw_batches; }
     
     private:
         Vk_SceneData scene_data;
@@ -84,6 +85,6 @@ namespace core
         vulkan::DeviceManager* device_manager;
         vulkan::SwapchainManager* swapchain_manager;
 
-        std::vector<DrawBatch> draw_batches;
+        std::unordered_map<std::string, DrawBatch> draw_batches;
     };
 }

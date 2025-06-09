@@ -26,6 +26,7 @@ namespace material
 
         void add_shader_object(std::unique_ptr<ShaderObject> shader_object);
         void add_pipeline_layout(VkPipelineLayout pipeline_layout);
+        void add_descriptor_set(VkDescriptorSet descriptor_set);
 
         VkPipelineLayout get_pipeline_layout() const { return pipeline_layout; }
         ShaderObject* get_shader_object() const { return shader_object.get(); }

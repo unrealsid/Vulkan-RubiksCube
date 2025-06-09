@@ -14,5 +14,5 @@ struct LoadedObject
     GPU_Buffer index_buffer = {};
 
     //A map of material ID to index range for rendering 
-    std::unordered_map<uint32_t, std::pair<size_t, size_t>> material_index_ranges;
+    std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>> material_index_ranges;
 };

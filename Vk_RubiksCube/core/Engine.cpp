@@ -73,8 +73,8 @@ void core::Engine::load_models()
 {
     std::vector<std::string> model_paths =
     {
-        // "/models/rubiks_cube_texture/rubiksCubeTexture.obj",
-        "/models/rubiks_cube/rubiks_cube.obj",
+        "/models/rubiks_cube_texture/rubiksCubeTexture.obj",
+        //"/models/rubiks_cube/rubiks_cube.obj",
         //"/models/viper/viper.obj"
     };
 
@@ -133,6 +133,10 @@ void core::Engine::organize_draw_batches()
             item.vertex_buffer = render_data.vertex_buffer.buffer;
             item.index_buffer = render_data.index_buffer.buffer;
             item.index_range = pair;
+
+            //Second value MUST ALWAYS be less than first
+            assert(pair.first < pair.second);
+
             item.index_count = pair.second - pair.first;
             
             std::string shader_name = material_manager->get_material_name_from_index(id);
@@ -141,4 +145,7 @@ void core::Engine::organize_draw_batches()
     }
 
     std::cout << "Draw batches: " << draw_batches.size() << "\n";
+    auto renderer = engine_context.renderer.get();
+    
+    renderer->get_draw_batches() = std::move(draw_batches);
 }
