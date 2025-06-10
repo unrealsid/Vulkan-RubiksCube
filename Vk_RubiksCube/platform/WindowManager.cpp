@@ -21,7 +21,7 @@ GLFWwindow* window::WindowManager::createWindowGLFW(const char* windowName, bool
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     }
 
-    window = glfwCreateWindow(windowWidth, windowHeight, windowName, nullptr, nullptr);
+    window = glfwCreateWindow(window_width, window_height, windowName, nullptr, nullptr);
     return window;  
 }
 

@@ -4,6 +4,7 @@
 #include <glm/vec3.hpp>
 
 #include "VkBootstrapDispatch.h"
+#include "../structs/EngineContext.h"
 #include "../structs/Vk_MaterialData.h"
 
 struct Vk_SceneData;

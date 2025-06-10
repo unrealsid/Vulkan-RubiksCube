@@ -3,6 +3,8 @@
 #include <glm/fwd.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+
+#include "../platform/WindowManager.h"
 #include "../structs/Vk_SceneData.h"
 
 void utils::set_vulkan_object_Name(const vkb::DispatchTable& disp, uint64_t objectHandle,
@@ -49,14 +51,15 @@ void utils::prepare_ubo(Vk_SceneData& sceneDataUBO)
     glm::vec3 camPos = glm::vec3(0.0f, 0.0f, 5.0f);
     glm::vec3 camTarget = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 camUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
+    
     float fov = glm::radians(45.0f);
-    float aspect = 800.0f / 600.0f; // Example aspect ratio
+    float aspect = static_cast<float>(window::window_width) / static_cast<float>(window::window_height); // Example aspect ratio
     float nearZ = 0.1f;
     float farZ = 100.0f;
 
     // Call the function to fill the UBO data
-    fill_scene_data_ubo(
+    fill_scene_data_ubo
+    (
         sceneDataUBO,
         objPos, objRotAxis, objRotAngle, objScale,
         camPos, camTarget, camUp,

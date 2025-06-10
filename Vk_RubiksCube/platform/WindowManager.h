@@ -7,8 +7,8 @@ struct GLFWwindow;
 
 namespace window
 {
-    constexpr int windowWidth = 1280;
-    constexpr int windowHeight = 720;
+    constexpr int window_width = 1280;
+    constexpr int window_height = 720;
     
     class WindowManager
     {

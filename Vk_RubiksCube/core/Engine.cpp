@@ -65,7 +65,7 @@ void core::Engine::load_models()
     std::vector<std::string> model_paths =
     {
         //"/models/rubiks_cube_texture/rubiksCubeTexture.obj",
-        //"/models/plane/plane_simple.obj",
+        "/models/plane/plane_simple.obj",
         "/models/rubiks_cube/rubiks_cube.obj",
         //"/models/viper/viper.obj"
     };
