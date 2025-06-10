@@ -234,6 +234,11 @@ bool utils::ModelLoaderUtils::load_model_from_obj(const std::string& path,
     //Load the object from the obj file
     load_obj(std::string(RESOURCE_PATH) + path, material_manager->get_material_name_to_index(), material_manager->get_material_params(), out_texture_info);
 
+    if (out_texture_info.empty())
+    {
+        out_texture_info.insert({ -1, TextureInfo(std::string(RESOURCE_PATH) + "/textures/default.png", TextureInfo::Type::Diffuse) });
+    }
+
     //Process textures
     for (const auto& texture : out_texture_info)
     {

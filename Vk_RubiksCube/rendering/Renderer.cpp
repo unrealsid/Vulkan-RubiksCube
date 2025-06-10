@@ -178,7 +178,7 @@ bool core::Renderer::setup_scene_data()
     //Allocate buffer for scene data
     utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), sizeof(Vk_SceneData), gpu_scene_data.scene_buffer);
 
-    //Get it's address and other params
+    //Get its address and other params
     gpu_scene_data.scene_buffer_address = utils::MemoryUtils::get_buffer_device_address(dispatch_table, gpu_scene_data.scene_buffer.buffer);
 
     //Fill and map the memory region
@@ -282,7 +282,7 @@ bool core::Renderer::create_command_buffers()
         depth_attachment_info.resolveMode = VK_RESOLVE_MODE_NONE;
         depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        depth_attachment_info.clearValue = {1.0f };
+        depth_attachment_info.clearValue = {{1.0f}};
 
         auto render_area             = VkRect2D{VkOffset2D{}, VkExtent2D{swapchain.extent.width, swapchain.extent.height}};
         auto render_info             = Vk_DynamicRendering::rendering_info(render_area, 1, &color_attachment_info);
@@ -293,11 +293,11 @@ bool core::Renderer::create_command_buffers()
         render_info.pStencilAttachment = &depth_attachment_info;
 
         dispatch_table.cmdBeginRenderingKHR(command_buffers[i], &render_info);
-
+        
         for (const auto& [material_id, draw_batch] : draw_batches)
         {
             //Pipeline object binding
-            draw_batch.material->get_shader_object()->set_initial_state(engine_context.dispatch_table, *engine_context.swapchain_manager, command_buffers[i]);
+            draw_batch.material->get_shader_object()->set_initial_state(engine_context.dispatch_table, *engine_context.swapchain_manager, command_buffers[i]); 
             draw_batch.material->get_shader_object()->bind_material_shader(engine_context.dispatch_table, command_buffers[i]);
 
             dispatch_table.cmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, draw_batch.material->get_pipeline_layout(), 0, 1, &draw_batch.material->get_descriptor_set(), 0, nullptr);
@@ -318,7 +318,7 @@ bool core::Renderer::create_command_buffers()
                 dispatch_table.cmdBindIndexBuffer(command_buffers[i], draw_item.index_buffer, 0, VK_INDEX_TYPE_UINT32);
                 
                 // Issue the draw call using the index buffer
-                dispatch_table.cmdDrawIndexed(command_buffers[i], draw_item.index_count, 1, 0, 0,0);
+                dispatch_table.cmdDrawIndexed(command_buffers[i], draw_item.index_count, 1, draw_item.index_range.first, 0,0);
             }
         }
         

@@ -83,7 +83,7 @@ void main()
 
     vec2 uv = transformUV(inUV, 0);
     vec4 texColor = texture(textures[nonuniformEXT(inTexIndex)], uv);
-    vec4 finalColor = texColor * diffuseColor;
+    vec4 finalColor = diffuseColor;
 
     //finalColor.rgb += emissiveColor.rgb;
 

@@ -140,8 +140,8 @@ void utils::MemoryUtils::create_vertex_and_index_buffers(
     auto device_manager = engine_context.device_manager.get();
     auto renderer = engine_context.renderer.get();
     
-    VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-    VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
+    VkDeviceSize vertexBufferSize = sizeof(Vertex) * vertices.size();
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 
     // Create Staging Buffer for Vertices using VMA
     GPU_Buffer staging_vertex_buffer;
@@ -166,7 +166,7 @@ void utils::MemoryUtils::create_vertex_and_index_buffers(
 
     // Copy from Staging Vertex Buffer to Device Local Vertex Buffer
     copy_buffer(engine_context.dispatch_table, device_manager->get_graphics_queue(), renderer->get_command_pool(), staging_vertex_buffer.buffer, out_vertex_buffer.buffer, vertexBufferSize);
-    utils::set_vulkan_object_Name(engine_context.dispatch_table, (uint64_t) out_vertex_buffer.buffer, VK_OBJECT_TYPE_BUFFER, "Vertex Buffer");
+    set_vulkan_object_Name(engine_context.dispatch_table, (uint64_t) out_vertex_buffer.buffer, VK_OBJECT_TYPE_BUFFER, "Vertex Buffer");
 
     // Clean up Staging Vertex Buffer using VMA
     vmaDestroyBuffer(device_manager->get_allocator(), staging_vertex_buffer.buffer, staging_vertex_buffer.allocation);

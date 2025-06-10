@@ -25,10 +25,10 @@ void utils::fill_scene_data_ubo(Vk_SceneData& sceneDataUBO, const glm::vec3& obj
     // --- Calculate the Model Matrix ---
     // Transforms vertices from model space to world space.
     // --- Calculate the Model Matrix ---
-    // sceneDataUBO.model = glm::mat4(1.0f);
-    // sceneDataUBO.model = glm::translate(sceneDataUBO.model, objectPosition);
-    // sceneDataUBO.model = glm::rotate(sceneDataUBO.model, objectRotationAngleRadians, objectRotationAxis);
-    // sceneDataUBO.model = glm::scale(sceneDataUBO.model, objectScale);
+    sceneDataUBO.model = glm::mat4(1.0f);
+    sceneDataUBO.model = glm::translate(sceneDataUBO.model, objectPosition);
+    sceneDataUBO.model = glm::rotate(sceneDataUBO.model, objectRotationAngleRadians, objectRotationAxis);
+    sceneDataUBO.model = glm::scale(sceneDataUBO.model, objectScale);
 
     // --- Calculate the View Matrix ---
     sceneDataUBO.view = glm::lookAt(cameraPosition, cameraTarget, cameraUp);
