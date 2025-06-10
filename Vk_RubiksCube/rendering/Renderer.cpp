@@ -33,7 +33,7 @@ void core::Renderer::init()
     create_depth_stencil_image(swapchain_manager->get_swapchain().extent, device_manager->get_allocator(), depth_stencil_image);
 }
 
-VkBool32 core::Renderer::get_supported_depth_stencil_format(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat)
+VkBool32 core::Renderer::get_supported_depth_stencil_format(VkPhysicalDevice physical_device, VkFormat* depth_stencil_format)
 {
     std::vector<VkFormat> formatList =
     {
@@ -45,10 +45,10 @@ VkBool32 core::Renderer::get_supported_depth_stencil_format(VkPhysicalDevice phy
     for (auto& format : formatList)
     {
         VkFormatProperties formatProps;
-        vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProps);
+        vkGetPhysicalDeviceFormatProperties(physical_device, format, &formatProps);
         if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
         {
-            *depthStencilFormat = format;
+            *depth_stencil_format = format;
             return true;
         }
     }
@@ -56,7 +56,7 @@ VkBool32 core::Renderer::get_supported_depth_stencil_format(VkPhysicalDevice phy
     return false;
 }
 
-void core::Renderer::create_depth_stencil_image(VkExtent2D extents, VmaAllocator allocator, DepthStencilImage& depthImage)
+void core::Renderer::create_depth_stencil_image(VkExtent2D extents, VmaAllocator allocator, DepthStencilImage& depthImage) const
 {
     VkImageCreateInfo imageCI{};
     imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -304,16 +304,14 @@ bool core::Renderer::create_command_buffers()
 
             //Passing Buffer Addresses
             PushConstantBlock references{};
-            // Pass pointer to the global matrix via a buffer device address
+            // Pass a pointer to the global matrix via a buffer device address
             references.sceneBufferAddress = engine_context.renderer->get_gpu_scene_data().scene_buffer_address;
             references.materialParamsAddress = engine_context.material_manager->get_material_params_address();
             dispatch_table.cmdPushConstants(command_buffers[i], draw_batch.material->get_pipeline_layout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantBlock), &references);
 
             //Binds and draws meshes
-            for (uint32_t draw_calls = 0; draw_calls < draw_batch.items.size(); draw_calls++)
+            for (auto draw_item : draw_batch.items)
             {
-                auto draw_item = draw_batch.items[draw_calls];
-                
                 VkBuffer vertexBuffers[] = {draw_item.vertex_buffer};
                 VkDeviceSize offsets[] = {0};
                 dispatch_table.cmdBindVertexBuffers(command_buffers[i], 0, 1, vertexBuffers, offsets);

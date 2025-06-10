@@ -2,6 +2,7 @@
 #include <memory>
 #include <vulkan_core.h>
 
+struct EngineContext;
 struct GLFWwindow;
 
 namespace window
@@ -12,17 +13,19 @@ namespace window
     class WindowManager
     {
     public:
-        WindowManager();
+        WindowManager(EngineContext& engine_context);
         ~WindowManager();
         
         GLFWwindow* createWindowGLFW(const char* windowName = "", bool resize = true);
         void destroyWindowGLFW() const;
         VkSurfaceKHR createSurfaceGLFW(VkInstance instance, VkAllocationCallbacks* allocator = nullptr) const;
-        bool shouldCloseWindow() const;
+
+        bool refresh_frame() const;
 
         GLFWwindow* getWindow() const;
 
     private:
         GLFWwindow* window;
+        EngineContext& engine_context;
     };
 }

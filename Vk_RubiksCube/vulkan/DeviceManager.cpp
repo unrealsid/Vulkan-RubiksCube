@@ -113,6 +113,7 @@ bool vulkan::DeviceManager::device_init(EngineContext& engine_context)
 VkSurfaceKHR vulkan::DeviceManager::create_surface_GLFW(const EngineContext& engine_context, const VkAllocationCallbacks* allocator) const
 {
     VkSurfaceKHR surface = VK_NULL_HANDLE;
+    
     VkResult err = glfwCreateWindowSurface(instance, engine_context.window_manager->getWindow(), allocator, &surface);
     if (err)
     {
@@ -121,7 +122,10 @@ VkSurfaceKHR vulkan::DeviceManager::create_surface_GLFW(const EngineContext& eng
         if (ret != 0)
         {
             std::cout << ret << " ";
-            if (error_msg != nullptr) std::cout << error_msg;
+            if (error_msg != nullptr)
+            {
+                std::cout << error_msg;
+            }
             std::cout << "\n";
         }
         surface = VK_NULL_HANDLE;
@@ -148,46 +152,3 @@ bool vulkan::DeviceManager::get_queues()
     present_queue = pq.value();
     return true;
 }
-
-// bool vulkan::DeviceManager::create_graphics_pipeline()
-// {
-//      //Buffer device address
-//     Vk_DescriptorUtils::createBuffer(init, sizeof(SceneData), data.sceneData.sceneBuffer);
-//     data.sceneData.sceneBufferAddress = vmaUtils::getBufferDeviceAddress(init.disp, data.sceneData.sceneBuffer.buffer);
-//
-//     //Materials Buffer
-//     vmaUtils::createMaterialParamsBuffer(init, data);
-//     data.materialValues.materialParamsBufferAddress = vmaUtils::getBufferDeviceAddress(init.disp, data.materialValues.materialsBuffer.buffer);
-//
-//     Vk_DescriptorUtils::setupDescriptors(init, data);
-//
-//     VkPushConstantRange pushConstantRange{};
-//     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-//     pushConstantRange.offset = 0;
-//     pushConstantRange.size = sizeof(PushConstantBlock);
-//     
-//     VkPipelineLayoutCreateInfo pipelineLayoutInfo = Vk_DescriptorUtils::pipelineLayoutCreateInfo(&init.descriptorSetLayout, 1, pushConstantRange, 1);
-//     init.disp.createPipelineLayout(&pipelineLayoutInfo, VK_NULL_HANDLE, &init.pipelineLayout);
-//
-//     SceneData sceneDataUBO;
-//     vkUtils::prepareUBO(sceneDataUBO);
-//     vmaUtils::mapPersistenData(init.vmaAllocator, data.sceneData.sceneBuffer.allocation, data.sceneData.sceneBuffer.allocationInfo, &sceneDataUBO, sizeof(SceneData));
-//
-//
-//     size_t shaderCodeSizes[2]{};
-//     char* shaderCodes[2]{};
-//     
-//     loadShader(std::string(SHADER_PATH) + "/mesh_shader.vert.spv", shaderCodes[0], shaderCodeSizes[0]);
-//     loadShader(std::string(SHADER_PATH) + "/mesh_shader.frag.spv", shaderCodes[1], shaderCodeSizes[1]);
-//     
-//     data.shader_object = std::make_unique<ShaderObject>();
-//     data.shader_object->create_shaders(init, shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1],
-//         &init.descriptorSetLayout, 1, &pushConstantRange, 1);
-//
-//     //create depth stencil image
-//     vmaUtils::getSupportedDepthStencilFormat(init.physicalDevice, &data.depthStencilImage.format);
-//
-//     vmaUtils::setupDepthStencil(init.disp, init.swapchain.extent, init.vmaAllocator, data.depthStencilImage);
-//     
-//     return 0;
-// }

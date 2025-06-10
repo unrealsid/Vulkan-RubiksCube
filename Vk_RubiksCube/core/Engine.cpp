@@ -25,7 +25,7 @@ void core::Engine::init()
     engine_context = EngineContext();
     
     //Init window and vulkan objects
-    engine_context.window_manager = std::make_unique<window::WindowManager>();
+    engine_context.window_manager = std::make_unique<window::WindowManager>(engine_context);
     engine_context.device_manager = std::make_unique<vulkan::DeviceManager>();
     engine_context.swapchain_manager = std::make_unique<vulkan::SwapchainManager>();
     
@@ -52,16 +52,7 @@ void core::Engine::init()
 
 void core::Engine::run()
 {
-    // while (!window_manager->shouldCloseWindow())
-    // {
-    //     glfwPollEvents();
-    //     int res = draw_frame(init, render_data);
-    //     if (res != 0)
-    //     {
-    //         std::cout << "failed to draw frame \n";
-    //         return -1;
-    //     }
-    // }
+    engine_context.window_manager->refresh_frame();
 }
 
 void core::Engine::cleanup()
