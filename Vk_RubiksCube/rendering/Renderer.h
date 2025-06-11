@@ -51,7 +51,7 @@ namespace core
         bool create_command_buffers();
 
         Vk_SceneData get_scene_data() const { return scene_data; }
-        GPU_SceneData get_gpu_scene_data() const { return gpu_scene_data; }
+        GPU_SceneBuffer get_gpu_scene_buffer() const { return gpu_scene_buffer; }
 
         [[nodiscard]] std::vector<VkSemaphore> getAvailableSemaphores() const { return available_semaphores; }
         [[nodiscard]] std::vector<VkSemaphore> getFinishedSemaphores() const { return finished_semaphores; }
@@ -65,7 +65,7 @@ namespace core
     
     private:
         Vk_SceneData scene_data;
-        GPU_SceneData gpu_scene_data;
+        GPU_SceneBuffer gpu_scene_buffer;
 
         EngineContext& engine_context;
         

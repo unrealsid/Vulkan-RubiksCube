@@ -114,7 +114,7 @@ VkSurfaceKHR vulkan::DeviceManager::create_surface_GLFW(const EngineContext& eng
 {
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     
-    VkResult err = glfwCreateWindowSurface(instance, engine_context.window_manager->getWindow(), allocator, &surface);
+    VkResult err = glfwCreateWindowSurface(instance, engine_context.window_manager->get_window(), allocator, &surface);
     if (err)
     {
         const char* error_msg;

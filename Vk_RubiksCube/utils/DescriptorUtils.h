@@ -7,7 +7,7 @@
 #include "../structs/Vk_RenderData.h"
 #include "../structs/Vk_Image.h"
 
-struct GPU_SceneData;
+struct GPU_SceneBuffer;
 struct GPU_Buffer;
 struct Vk_SceneData;
 
@@ -21,7 +21,7 @@ namespace utils
                                             VkDescriptorSetLayout& outDescriptorSetLayout,
                                             VkDescriptorSet& outDescriptorSet);
 
-        static void map_ubo(const EngineContext& engine_context, const Vk_SceneData& sceneDataUBO, GPU_SceneData& gpu_scene_data);
+        static void map_ubo(const EngineContext& engine_context, const Vk_SceneData& sceneDataUBO, GPU_SceneBuffer& gpu_scene_data);
     };
 }
 

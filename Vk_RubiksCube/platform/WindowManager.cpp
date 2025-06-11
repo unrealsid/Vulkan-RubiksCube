@@ -12,7 +12,7 @@ window::WindowManager::~WindowManager()
 {
 }
 
-GLFWwindow* window::WindowManager::createWindowGLFW(const char* windowName, bool resize) 
+GLFWwindow* window::WindowManager::create_window_glfw(const char* windowName, bool resize) 
 {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -25,13 +25,13 @@ GLFWwindow* window::WindowManager::createWindowGLFW(const char* windowName, bool
     return window;  
 }
 
-void window::WindowManager::destroyWindowGLFW() const
+void window::WindowManager::destroy_window_glfw() const
 {
     glfwDestroyWindow(window);
     glfwTerminate();   
 }
 
-VkSurfaceKHR window::WindowManager::createSurfaceGLFW(VkInstance instance, VkAllocationCallbacks* allocator) const
+VkSurfaceKHR window::WindowManager::create_surface_glfw(VkInstance instance, VkAllocationCallbacks* allocator) const
 {
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     VkResult err = glfwCreateWindowSurface(instance, window, allocator, &surface);
@@ -51,21 +51,7 @@ VkSurfaceKHR window::WindowManager::createSurfaceGLFW(VkInstance instance, VkAll
     return surface;
 }
 
-bool window::WindowManager::refresh_frame() const
-{
-    while (!glfwWindowShouldClose(window))
-    {
-        glfwPollEvents();
-        if (bool result = engine_context.renderer->draw_frame(); !result)
-        {
-            std::cout << "failed to draw frame \n";
-            return false;
-        }
-    }
-    return true;
-}
-
-GLFWwindow* window::WindowManager::getWindow() const
+GLFWwindow* window::WindowManager::get_window() const
 {
     return window;
 }

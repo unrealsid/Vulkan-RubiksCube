@@ -92,7 +92,7 @@ void utils::DescriptorUtils::setup_texture_descriptors(const vkb::DispatchTable&
     disp.updateDescriptorSets(static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 }
 
-void utils::DescriptorUtils::map_ubo(const EngineContext& engine_context, const Vk_SceneData& sceneDataUBO, GPU_SceneData& gpu_scene_data)
+void utils::DescriptorUtils::map_ubo(const EngineContext& engine_context, const Vk_SceneData& sceneDataUBO, GPU_SceneBuffer& gpu_scene_data)
 {
     void* mappedData;
     vmaMapMemory(engine_context.device_manager->get_allocator(), gpu_scene_data.scene_buffer.allocation, &mappedData);

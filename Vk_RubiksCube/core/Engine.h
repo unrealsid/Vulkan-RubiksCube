@@ -47,7 +47,9 @@ namespace core
         std::unordered_map<std::string, DrawBatch> draw_batches;
 
         void load_models();
-
         void organize_draw_batches();
+
+        void update(double delta_timme) const;
+        void render() const;
     };
 }

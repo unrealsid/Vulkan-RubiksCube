@@ -15,11 +15,7 @@ namespace utils
     void set_vulkan_object_Name(const vkb::DispatchTable& disp, uint64_t objectHandle, VkObjectType objectType, const std::string& name);
 
     void fill_scene_data_ubo(
-        Vk_SceneData& sceneDataUBO,
-        const glm::vec3& objectPosition,
-        const glm::vec3& objectRotationAxis,
-        float objectRotationAngleRadians,
-        const glm::vec3& objectScale,
+        ::Vk_SceneData& sceneDataUBO,
         const glm::vec3& cameraPosition,
         const glm::vec3& cameraTarget,
         const glm::vec3& cameraUp,

@@ -15,7 +15,7 @@
 #include "../materials/Material.h"
 #include "../materials/MaterialManager.h"
 
-core::Renderer::Renderer(EngineContext& engine_context) : scene_data(), gpu_scene_data(),
+core::Renderer::Renderer(EngineContext& engine_context) : scene_data(), gpu_scene_buffer(),
                                                           engine_context(engine_context),
                                                           command_pool(nullptr)
 {
@@ -176,14 +176,14 @@ bool core::Renderer::draw_frame()
 bool core::Renderer::setup_scene_data()
 {
     //Allocate buffer for scene data
-    utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), sizeof(Vk_SceneData), gpu_scene_data.scene_buffer);
+    utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), sizeof(Vk_SceneData), gpu_scene_buffer.scene_buffer);
 
     //Get its address and other params
-    gpu_scene_data.scene_buffer_address = utils::MemoryUtils::get_buffer_device_address(dispatch_table, gpu_scene_data.scene_buffer.buffer);
+    gpu_scene_buffer.scene_buffer_address = utils::MemoryUtils::get_buffer_device_address(dispatch_table, gpu_scene_buffer.scene_buffer.buffer);
 
     //Fill and map the memory region
     utils::prepare_ubo(scene_data);
-    utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), gpu_scene_data.scene_buffer.allocation, gpu_scene_data.scene_buffer.allocation_info, &scene_data, sizeof(Vk_SceneData));
+    utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), gpu_scene_buffer.scene_buffer.allocation, gpu_scene_buffer.scene_buffer.allocation_info, &scene_data, sizeof(Vk_SceneData));
 
     return true;
 }
@@ -305,13 +305,17 @@ bool core::Renderer::create_command_buffers()
             //Passing Buffer Addresses
             PushConstantBlock references{};
             // Pass a pointer to the global matrix via a buffer device address
-            references.sceneBufferAddress = engine_context.renderer->get_gpu_scene_data().scene_buffer_address;
+            references.sceneBufferAddress = engine_context.renderer->get_gpu_scene_buffer().scene_buffer_address;
             references.materialParamsAddress = engine_context.material_manager->get_material_params_address();
-            dispatch_table.cmdPushConstants(command_buffers[i], draw_batch.material->get_pipeline_layout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantBlock), &references);
 
             //Binds and draws meshes
             for (auto draw_item : draw_batch.items)
             {
+                references.object_model_transform_addr = draw_item.entity->get_transform_buffer_address();
+
+                dispatch_table.cmdPushConstants(command_buffers[i], draw_batch.material->get_pipeline_layout(),
+                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantBlock), &references);
+                
                 VkBuffer vertexBuffers[] = {draw_item.vertex_buffer};
                 VkDeviceSize offsets[] = {0};
                 dispatch_table.cmdBindVertexBuffers(command_buffers[i], 0, 1, vertexBuffers, offsets);

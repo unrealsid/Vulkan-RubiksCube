@@ -1,5 +1,6 @@
 #include "Engine.h"
 
+#include <chrono>
 #include <iostream>
 #include <GLFW/glfw3.h>
 #include "../platform/WindowManager.h"
@@ -29,7 +30,7 @@ void core::Engine::init()
     engine_context.device_manager = std::make_unique<vulkan::DeviceManager>();
     engine_context.swapchain_manager = std::make_unique<vulkan::SwapchainManager>();
     
-    engine_context.window_manager->createWindowGLFW("Rubik's Cube", true);
+    engine_context.window_manager->create_window_glfw("Rubik's Cube", true);
     engine_context.device_manager->device_init(engine_context);
 
     engine_context.material_manager = std::make_unique<material::MaterialManager>(engine_context);
@@ -52,7 +53,21 @@ void core::Engine::init()
 
 void core::Engine::run()
 {
-    engine_context.window_manager->refresh_frame();
+    auto previous_time = std::chrono::high_resolution_clock::now();
+    
+    while (!glfwWindowShouldClose(engine_context.window_manager->get_window()))
+    {
+        auto current_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> elapsed = current_time - previous_time; 
+        double delta_time = elapsed.count(); 
+        
+        update(delta_time);
+        render();
+
+        previous_time = current_time;
+        
+        glfwPollEvents();
+    }
 }
 
 void core::Engine::cleanup()
@@ -64,12 +79,14 @@ void core::Engine::load_models()
 {
     std::vector<std::string> model_paths =
     {
-        //"/models/rubiks_cube_texture/rubiksCubeTexture.obj",
+        "/models/rubiks_cube_texture/rubiksCubeTexture.obj",
         "/models/plane/plane_simple.obj",
         "/models/rubiks_cube/rubiks_cube.obj",
         //"/models/viper/viper.obj"
     };
 
+    uint32_t entity_id = 0;
+    
     //Load all models 
     for (const auto& model_path : model_paths)
     {
@@ -79,9 +96,12 @@ void core::Engine::load_models()
         //For each shape in the obj file
         for (const auto& loaded_object : model_utils.get_loaded_objects())
         {
-            //Create an entity for each loaded model
+            ++entity_id;
+            
+            //Create an entity for each loaded shape
             std::unique_ptr<Entity> entity = std::make_unique<Entity>
             (
+                entity_id,
                 RenderData
                 {
                     .vertex_buffer = loaded_object.vertex_buffer,
@@ -89,9 +109,11 @@ void core::Engine::load_models()
                     .vertices = loaded_object.vertices,
                     .indices = loaded_object.indices,
                     .material_index_ranges = loaded_object.material_index_ranges,
-                }
+                },
+                engine_context
             );
-
+            
+            
             entities.push_back(std::move(entity));
         }
     }
@@ -125,6 +147,7 @@ void core::Engine::organize_draw_batches()
             item.vertex_buffer = render_data.vertex_buffer.buffer;
             item.index_buffer = render_data.index_buffer.buffer;
             item.index_range = pair;
+            item.entity = entity.get();
 
             //Second value MUST ALWAYS be less than first
             assert(pair.first < pair.second);
@@ -140,4 +163,20 @@ void core::Engine::organize_draw_batches()
     auto renderer = engine_context.renderer.get();
     
     renderer->get_draw_batches() = std::move(draw_batches);
+}
+
+void core::Engine::update(double delta_time) const
+{
+    for (const auto& entity : entities)
+    {
+        entity->update(delta_time);
+    }
+}
+
+void core::Engine::render() const
+{
+    if (bool result = engine_context.renderer->draw_frame(); !result)
+    {
+        std::cout << "failed to draw frame \n";
+    }
 }

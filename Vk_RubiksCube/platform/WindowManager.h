@@ -16,13 +16,11 @@ namespace window
         WindowManager(EngineContext& engine_context);
         ~WindowManager();
         
-        GLFWwindow* createWindowGLFW(const char* windowName = "", bool resize = true);
-        void destroyWindowGLFW() const;
-        VkSurfaceKHR createSurfaceGLFW(VkInstance instance, VkAllocationCallbacks* allocator = nullptr) const;
+        GLFWwindow* create_window_glfw(const char* windowName = "", bool resize = true);
+        void destroy_window_glfw() const;
+        VkSurfaceKHR create_surface_glfw(VkInstance instance, VkAllocationCallbacks* allocator = nullptr) const;
 
-        bool refresh_frame() const;
-
-        GLFWwindow* getWindow() const;
+        GLFWwindow* get_window() const;
 
     private:
         GLFWwindow* window;

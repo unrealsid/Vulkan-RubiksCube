@@ -15,11 +15,15 @@ layout(location = 0) out vec4 outColor;
 
 layout (set = 0, binding = 0) uniform sampler2D textures[];
 
-layout(buffer_reference, scalar) buffer UniformBufferObject
+layout(buffer_reference, scalar) buffer SceneDataBuffer
 {
-    mat4 model;
     mat4 view;
     mat4 projection;
+};
+
+layout(buffer_reference, scalar) buffer ModelBuffer
+{
+    mat4 model_transform;
 };
 
 // Material buffer containing all material parameters
@@ -40,8 +44,9 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
 
 layout (push_constant) uniform PushConstants
 {
-    UniformBufferObject sceneDataReference;
+    SceneDataBuffer sceneDataReference;
     MaterialBuffer materialsDataReference;
+    ModelBuffer model_transform_addr;
 } pushConstants;
 
 vec2 transformUV(vec2 uv, uint texIndex) 
@@ -83,8 +88,17 @@ void main()
 
     vec2 uv = transformUV(inUV, 0);
     vec4 texColor = texture(textures[nonuniformEXT(inTexIndex)], uv);
-    vec4 finalColor = diffuseColor;
+    vec4 finalColor = vec4(0.0);
 
+    if (all(equal(texColor, vec4(0.0)))) 
+    {
+        finalColor = diffuseColor;
+    }
+    else
+    {
+        finalColor = texColor * diffuseColor;
+    }
+    
     //finalColor.rgb += emissiveColor.rgb;
 
     // Set alpha from material if needed, or you can use the texture's alpha
