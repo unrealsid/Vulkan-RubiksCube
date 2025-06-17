@@ -89,6 +89,6 @@ namespace material
 
         Material* get_or_create_material(const std::string& name);
 
-        Material* create_material(const std::string& name);
+        void create_material(const std::string& name);
     };
 }

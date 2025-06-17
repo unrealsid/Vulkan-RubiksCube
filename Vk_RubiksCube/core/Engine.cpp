@@ -11,7 +11,9 @@
 #include "../rendering/Renderer.h"
 #include "../structs/EngineContext.h"
 #include "../structs/DrawItem.h"
+#include "../rendering/picking/ObjectPicking.h"
 
+std::vector<std::unique_ptr<Entity>> core::Engine::entities;
 
 core::Engine::Engine()
 {
@@ -44,14 +46,12 @@ void core::Engine::init()
     engine_context.renderer = std::make_unique<Renderer>(engine_context);
     engine_context.renderer->init();
 
-    engine_context.renderer->create_command_pool();
-
     load_models();
 
-    engine_context.renderer->create_command_buffers(); 
+    engine_context.renderer->create_command_buffers();
 }
 
-void core::Engine::run()
+void core::Engine::run() const
 {
     auto previous_time = std::chrono::high_resolution_clock::now();
     
@@ -175,6 +175,12 @@ void core::Engine::update(double delta_time) const
 
 void core::Engine::render() const
 {
+    double mouse_x = engine_context.window_manager->get_mouse_x();
+    double mouse_y = engine_context.window_manager->get_mouse_y();
+
+    // Record the object picking command buffer with new mouse position
+    engine_context.renderer->get_object_picker()->record_command_buffer(static_cast<int32_t>(mouse_x), static_cast<int32_t>(mouse_y));
+    
     if (bool result = engine_context.renderer->draw_frame(); !result)
     {
         std::cout << "failed to draw frame \n";

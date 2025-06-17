@@ -41,11 +41,11 @@ LoadedImageData utils::ImageUtils::load_image_data(const std::string& filePath, 
     return imageData;
 }
 
-Vk_Image utils::ImageUtils::create_texture_image(EngineContext& engine_context, const LoadedImageData& imageData)
+Vk_Image utils::ImageUtils::create_texture_image(EngineContext& engine_context, const LoadedImageData& image_data)
 {
-    if (imageData.pixels)
+    if (image_data.pixels)
     {
-        VkDeviceSize imageSize = imageData.width * imageData.height * imageData.channels;
+        VkDeviceSize imageSize = image_data.width * image_data.height * image_data.channels;
         VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
 
         auto device_manager = engine_context.device_manager.get();
@@ -63,16 +63,16 @@ Vk_Image utils::ImageUtils::create_texture_image(EngineContext& engine_context, 
     
         void* data;
         vmaMapMemory(device_manager->get_allocator(), stagingImageBuffer.allocation, &data);
-        memcpy(data, imageData.pixels, imageSize);
+        memcpy(data, image_data.pixels, imageSize);
         vmaUnmapMemory(device_manager->get_allocator(), stagingImageBuffer.allocation);
 
         //Create image on the gpu
         VkExtent3D imageExtent;
-        imageExtent.width = static_cast<uint32_t>(imageData.width);
-        imageExtent.height = static_cast<uint32_t>(imageData.height);
+        imageExtent.width = static_cast<uint32_t>(image_data.width);
+        imageExtent.height = static_cast<uint32_t>(image_data.height);
         imageExtent.depth = 1;
 
-        VkImageCreateInfo imgIfo = imageCreateInfo(imageFormat, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, imageExtent);
+        VkImageCreateInfo imgIfo = image_create_info(imageFormat, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, imageExtent);
 
         //allocate and create the image
         VmaAllocationCreateInfo imgAllocInfo = {};
@@ -81,12 +81,12 @@ Vk_Image utils::ImageUtils::create_texture_image(EngineContext& engine_context, 
         Vk_Image textureImage;
         vmaCreateImage(device_manager->get_allocator(), &imgIfo, &imgAllocInfo, &textureImage.image, &textureImage.allocation, &textureImage.allocation_info);
 
-        //TODO: Copy image to device Memory
-        copyImage(engine_context, device_manager->get_graphics_queue(), renderer->get_command_pool(), stagingImageBuffer, textureImage, imageSize, imageExtent, imageData);
+        //Copy image to device Memory
+        copy_image(engine_context, device_manager->get_graphics_queue(), renderer->get_command_pool(), stagingImageBuffer, textureImage, imageSize, imageExtent, image_data);
 
-        createImageSampler(engine_context.dispatch_table, textureImage, VK_FILTER_LINEAR);
+        create_image_sampler(engine_context.dispatch_table, textureImage, VK_FILTER_LINEAR);
 
-        createImageView(engine_context.dispatch_table, textureImage, imageFormat);
+        create_image_view(engine_context.dispatch_table, textureImage, imageFormat);
         
         return textureImage;
     }
@@ -94,7 +94,7 @@ Vk_Image utils::ImageUtils::create_texture_image(EngineContext& engine_context, 
     return {};
 }
 
-VkImageCreateInfo utils::ImageUtils::imageCreateInfo(VkFormat imageFormat, VkImageUsageFlags imageUsageFlags, VkExtent3D imageExtent)
+VkImageCreateInfo utils::ImageUtils::image_create_info(VkFormat imageFormat, VkImageUsageFlags imageUsageFlags, VkExtent3D imageExtent)
 {
     VkImageCreateInfo imgInfo = {};
     imgInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -116,7 +116,7 @@ VkImageCreateInfo utils::ImageUtils::imageCreateInfo(VkFormat imageFormat, VkIma
     return imgInfo;
 }
 
-void utils::ImageUtils::copyImage(EngineContext& engine_context, VkQueue queue, VkCommandPool command_pool, GPU_Buffer srcBuffer, Vk_Image
+void utils::ImageUtils::copy_image(EngineContext& engine_context, VkQueue queue, VkCommandPool command_pool, GPU_Buffer srcBuffer, Vk_Image
                                   dstImage, VkDeviceSize size, VkExtent3D
                                   extend, const LoadedImageData& imageData)
 {
@@ -200,7 +200,7 @@ void utils::ImageUtils::copyImage(EngineContext& engine_context, VkQueue queue, 
     vmaDestroyBuffer(engine_context.device_manager->get_allocator(), srcBuffer.buffer, srcBuffer.allocation);
 }
 
-void utils::ImageUtils::createImageSampler(const vkb::DispatchTable& disp, Vk_Image& image, VkFilter filter)
+void utils::ImageUtils::create_image_sampler(const vkb::DispatchTable& disp, Vk_Image& image, VkFilter filter)
 {
     VkSamplerCreateInfo samplerCreateInfo = {};
     samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -218,7 +218,7 @@ void utils::ImageUtils::createImageSampler(const vkb::DispatchTable& disp, Vk_Im
     disp.createSampler(&samplerCreateInfo, nullptr, &image.sampler);
 }
 
-void utils::ImageUtils::createImageView(const vkb::DispatchTable& disp, Vk_Image& image, VkFormat format)
+void utils::ImageUtils::create_image_view(const vkb::DispatchTable& disp, Vk_Image& image, VkFormat format)
 {
     VkImageViewCreateInfo viewCreateInfo = {};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

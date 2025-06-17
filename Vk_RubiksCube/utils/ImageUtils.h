@@ -23,14 +23,14 @@ namespace utils
     public:    
         static LoadedImageData load_image_data(const std::string& filePath, int desiredChannels = 4);
 
-        static Vk_Image create_texture_image(EngineContext& engine_context,  const LoadedImageData& imageData);
+        static Vk_Image create_texture_image(EngineContext& engine_context,  const LoadedImageData& image_data);
 
-        static VkImageCreateInfo imageCreateInfo(VkFormat imageFormat, VkImageUsageFlags imageUsageFlags, VkExtent3D imageExtent);
+        static VkImageCreateInfo image_create_info(VkFormat imageFormat, VkImageUsageFlags imageUsageFlags, VkExtent3D imageExtent);
 
-        static void copyImage(EngineContext& engine_context, VkQueue queue, VkCommandPool command_pool, GPU_Buffer srcBuffer, Vk_Image dstImage, VkDeviceSize size, VkExtent3D extend, const LoadedImageData& imageData);
+        static void copy_image(EngineContext& engine_context, VkQueue queue, VkCommandPool command_pool, GPU_Buffer srcBuffer, Vk_Image dstImage, VkDeviceSize size, VkExtent3D extend, const LoadedImageData& imageData);
 
-        static void createImageSampler(const vkb::DispatchTable& disp, Vk_Image& image, VkFilter filter);
+        static void create_image_sampler(const vkb::DispatchTable& disp, Vk_Image& image, VkFilter filter);
 
-        static void createImageView(const vkb::DispatchTable& disp, Vk_Image& image, VkFormat format);
+        static void create_image_view(const vkb::DispatchTable& disp, Vk_Image& image, VkFormat format);
     };
 };

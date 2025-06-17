@@ -55,3 +55,17 @@ GLFWwindow* window::WindowManager::get_window() const
 {
     return window;
 }
+
+void window::WindowManager::update_mouse_position()
+{
+    double new_x, new_y;
+    glfwGetCursorPos(window, &new_x, &new_y);
+    
+    // Check if mouse has moved
+    if (new_x != mouse_x || new_y != mouse_y)
+    {
+        mouse_moved = true;
+        mouse_x = new_x;
+        mouse_y = new_y;
+    }
+}

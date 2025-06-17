@@ -109,17 +109,19 @@ material::Material* material::MaterialManager::get_or_create_material(const std:
     {
         return material_it->second.get();
     }
-    return create_material(name);
+    
+    create_material(name);
+    return nullptr;  
 }
 
-material::Material* material::MaterialManager::create_material(const std::string& name)
+void material::MaterialManager::create_material(const std::string& name)
 {
     auto shader_info_data = shader_info.find(name);
 
     if (shader_info_data == shader_info.end())
     {
         std::cout << "Failed to find shader info for material: " << name << "\n";
-        return nullptr;
+        return;
     }
     
     //Setup push constants
@@ -153,7 +155,4 @@ material::Material* material::MaterialManager::create_material(const std::string
     material->add_descriptor_set(texture_descriptor_set);
 
     add_material(name, std::move(material));
-    
-    //TODO: VERY BAD. Remove Pliss
-    return material.get();
 }

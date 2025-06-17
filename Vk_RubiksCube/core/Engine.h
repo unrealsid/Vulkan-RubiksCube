@@ -38,12 +38,14 @@ namespace core
         ~Engine();
     
         void init();
-        void run();
+        void run() const;
         void cleanup();
+
+        static std::vector<std::unique_ptr<Entity>>& get_entities() { return entities; }
 
     private:
         EngineContext engine_context;
-        std::vector<std::unique_ptr<Entity>> entities;
+        static std::vector<std::unique_ptr<Entity>> entities;
         std::unordered_map<std::string, DrawBatch> draw_batches;
 
         void load_models();

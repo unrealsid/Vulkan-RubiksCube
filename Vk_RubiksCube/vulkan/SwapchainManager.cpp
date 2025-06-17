@@ -4,6 +4,7 @@
 #include "DeviceManager.h"
 #include "../structs/EngineContext.h"
 #include "../rendering/Renderer.h"
+#include "../utils/RenderUtils.h"
 
 bool vulkan::SwapchainManager::create_swapchain(const EngineContext& engine_context)
 {
@@ -30,8 +31,9 @@ bool vulkan::SwapchainManager::recreate_swapchain(const EngineContext& engine_co
     swapchain.destroy_image_views(swapchain_image_views);
     if (create_swapchain(engine_context) == false)
         return false;
-    if (renderer->create_command_pool() == false)
-        return false;
+    //TODO: recreate command pool
+    // if (renderer->create_command_pool() == false)
+    //     return false;
     if (renderer->create_command_buffers() == false)
         return false;
     return true;

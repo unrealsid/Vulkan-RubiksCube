@@ -7,15 +7,6 @@
 
 #include "Config.h"
 #include "core/Engine.h"
-#include "materials/ShaderObject.h"
-#include "rendering/Vk_DynamicRendering.h"
-#include "structs/PushConstantBlock.h"
-#include "structs/Vk_SceneData.h"
-#include "utils/ModelLoaderUtils.h"
-#include "utils/DescriptorUtils.h"
-#include "utils/Vk_Utils.h"
-#include "utils/ImageUtils.h"
-#include "utils/MemoryUtils.h"
 
 
 //
@@ -74,9 +65,5 @@ int main()
     engine.run();
     engine.cleanup();
     
-    //
-    // init.disp.deviceWaitIdle();
-    //
-    // cleanup(init, render_data);
     return 0;
 }
