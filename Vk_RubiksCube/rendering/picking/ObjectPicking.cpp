@@ -55,7 +55,7 @@ void rendering::ObjectPicking::init_picking()
     fence_info.flags = 0;
     dispatch_table.createFence(&fence_info, nullptr, &object_picker_fence);
     
-    record_command_buffer(0, 0);
+    //record_command_buffer(0, 0);
 }
 
 void rendering::ObjectPicking::create_image_attachment()

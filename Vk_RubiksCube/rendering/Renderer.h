@@ -94,6 +94,6 @@ namespace core
 
         void init_object_picker();
 
-        void submit_object_picker_command_buffer();
+        void submit_object_picker_command_buffer() const;
     };
 }

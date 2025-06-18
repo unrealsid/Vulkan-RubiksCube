@@ -19,8 +19,8 @@ struct Vertex_ObjectPicking
         VkVertexInputBindingDescription2EXT bindingDescription{};
         bindingDescription.sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT;
         bindingDescription.pNext = nullptr;
-        bindingDescription.binding = 0; 
-        bindingDescription.stride = sizeof(Vertex_ObjectPicking); 
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(Vertex); //Important to use thisi stride because we ultimately use the first buffer to read vertex data.
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescription.divisor = 1;
 
@@ -39,7 +39,7 @@ struct Vertex_ObjectPicking
         attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; // glm::vec3 is 3 floats
         attribute_descriptions[0].offset = offsetof(Vertex_ObjectPicking, position); // Offset within the Vertex struct
 
-        // Normal attribute
+        // Index attribute
         attribute_descriptions[1].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
         attribute_descriptions[1].pNext = nullptr;
         attribute_descriptions[1].location = 1; // Corresponds to layout(location = 1) in shader

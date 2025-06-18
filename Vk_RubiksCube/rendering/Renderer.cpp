@@ -48,7 +48,7 @@ void core::Renderer::init_object_picker()
     object_picker->init_picking();
 }
 
-void core::Renderer::submit_object_picker_command_buffer()
+void core::Renderer::submit_object_picker_command_buffer() const
 {
     auto buffer = object_picker->get_command_buffer();
     auto object_picker_fence = object_picker->get_object_picker_fence();
@@ -94,7 +94,7 @@ bool core::Renderer::draw_frame()
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore wait_semaphores[] = { available_semaphores[current_frame], object_picker_done_semaphore };
+    VkSemaphore wait_semaphores[] = { available_semaphores[current_frame], object_picker_done_semaphore};
     VkPipelineStageFlags wait_stages[] =
     {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
