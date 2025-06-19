@@ -77,7 +77,7 @@ bool core::Renderer::draw_frame()
 
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) 
     {
-        std::cout << "failed to acquire swapchain image. Error " << result << "\n";
+        //std::cout << "failed to acquire swapchain image. Error " << result << "\n";
         return false;
     }
 
@@ -116,7 +116,7 @@ bool core::Renderer::draw_frame()
     dispatch_table.resetFences(1, &in_flight_fences[current_frame]);
     if (dispatch_table.queueSubmit(device_manager->get_graphics_queue(), 1, &submitInfo, in_flight_fences[current_frame]) != VK_SUCCESS) 
     {
-        std::cout << "failed to submit draw command buffer\n";
+        //std::cout << "failed to submit draw command buffer\n";
         return false; 
     }
 
@@ -139,7 +139,7 @@ bool core::Renderer::draw_frame()
     }
     if (result != VK_SUCCESS)
     {
-        std::cout << "failed to present swapchain image\n";
+        //std::cout << "failed to present swapchain image\n";
         return false;
     }
 
@@ -271,7 +271,7 @@ bool core::Renderer::create_command_buffers()
         {
             //Pipeline object binding
             draw_batch.material->get_shader_object()->set_initial_state(engine_context.dispatch_table, engine_context.swapchain_manager->get_swapchain().extent, command_buffers[i],
-                Vertex::get_binding_description(), Vertex::get_attribute_descriptions()); 
+                                                                        Vertex::get_binding_description(), Vertex::get_attribute_descriptions()); 
             draw_batch.material->get_shader_object()->bind_material_shader(engine_context.dispatch_table, command_buffers[i]);
 
             dispatch_table.cmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, draw_batch.material->get_pipeline_layout(), 0, 1, &draw_batch.material->get_descriptor_set(), 0, nullptr);

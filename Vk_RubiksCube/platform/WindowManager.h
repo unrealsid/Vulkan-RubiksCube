@@ -23,8 +23,8 @@ namespace window
         GLFWwindow* get_window() const;
 
         void update_mouse_position();
-        double get_mouse_x() const { return mouse_x; }
-        double get_mouse_y() const { return mouse_y; }
+        double get_mouse_x() const { return mouse_x > 0 ? mouse_x : 0.0 ; }
+        double get_mouse_y() const { return mouse_y > 0 ? mouse_y : 0.0 ; }
         bool has_mouse_moved() const { return mouse_moved; }
         void reset_mouse_moved_flag() { mouse_moved = false; }
 

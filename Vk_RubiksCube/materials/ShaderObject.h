@@ -89,7 +89,8 @@ namespace material
 
 		template<size_t N>
 		static void set_initial_state(vkb::DispatchTable& disp, VkExtent2D extent, VkCommandBuffer cmd_buffer, VkVertexInputBindingDescription2EXT
-									  vertex_input_binding, std::array<VkVertexInputAttributeDescription2EXT, N> input_attribute_description);
+		                              vertex_input_binding, std::array<VkVertexInputAttributeDescription2EXT, N> input_attribute_description, VkOffset2D
+		                              scissor_offset);
 
 	private:
 		static void build_linked_shaders(const vkb::DispatchTable& disp, ShaderObject::Shader* vert, ShaderObject::Shader* frag);
@@ -100,8 +101,8 @@ namespace material
 
 	template <size_t N>
 	void ShaderObject::set_initial_state(vkb::DispatchTable& disp, VkExtent2D extent, VkCommandBuffer cmd_buffer,
-		VkVertexInputBindingDescription2EXT vertex_input_binding,
-		std::array<VkVertexInputAttributeDescription2EXT, N> input_attribute_description)
+	                                     VkVertexInputBindingDescription2EXT vertex_input_binding,
+	                                     std::array<VkVertexInputAttributeDescription2EXT, N> input_attribute_description, VkOffset2D scissor_offset = {.x = 0, .y = 0 })
 	{
 		{
 			// Set viewport and scissor to screen size
@@ -114,7 +115,7 @@ namespace material
 			viewport.maxDepth = 1.0f;
 
 			VkRect2D scissor = {};
-			scissor.offset = {.x = 0, .y = 0 };
+			scissor.offset = scissor_offset;
 			scissor.extent = extent;
     	
 			disp.cmdSetViewportWithCountEXT(cmd_buffer, 1, &viewport);

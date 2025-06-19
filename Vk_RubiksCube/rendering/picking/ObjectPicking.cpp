@@ -60,7 +60,9 @@ void rendering::ObjectPicking::init_picking()
 
 void rendering::ObjectPicking::create_image_attachment()
 {
-    VkImageCreateInfo image_info = utils::ImageUtils::image_create_info(VK_FORMAT_R32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, { 1, 1, 1 });
+    auto width = swapchain_manager->get_swapchain().extent.width;
+    auto height = swapchain_manager->get_swapchain().extent.height;
+    VkImageCreateInfo image_info = utils::ImageUtils::image_create_info(VK_FORMAT_R32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, { width, height, 1 });
 
     VmaAllocationCreateInfo alloc_info{};
     alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
@@ -174,9 +176,9 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
     depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     depth_attachment_info.clearValue = {{1.0f}};
 
-    //TODO: Pass mouse pointer location to offset2D
-    auto render_area             = VkRect2D{VkOffset2D{mouse_x, mouse_y}, VkExtent2D{1, 1}};
-    auto render_info             = Vk_DynamicRendering::rendering_info(render_area, 1, &color_attachment_info);
+    auto render_extent = swapchain_manager->get_swapchain().extent;
+    auto render_area   = VkRect2D{VkOffset2D{0, 0}, render_extent};
+    auto render_info   = Vk_DynamicRendering::rendering_info(render_area, 1, &color_attachment_info);
 
     render_info.layerCount       = 1;
     render_info.pColorAttachments = &color_attachment_info;
@@ -186,8 +188,9 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
     dispatch_table.cmdBeginRenderingKHR(command_buffer, &render_info);
 
     //Bind the shader
+    //Pass mouse location to shader
     object_picker_material->get_shader_object()->set_initial_state(dispatch_table, {1, 1}, command_buffer,
-        Vertex_ObjectPicking::get_binding_description(), Vertex_ObjectPicking::get_attribute_descriptions());
+                                                                   Vertex_ObjectPicking::get_binding_description(), Vertex_ObjectPicking::get_attribute_descriptions(), VkOffset2D{mouse_x, mouse_y});
     object_picker_material->get_shader_object()->bind_material_shader(engine_context.dispatch_table, command_buffer);
 
     ObjectPickerPushConstantBlock push_constants{};
