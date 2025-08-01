@@ -7,11 +7,10 @@
 struct Vertex_ObjectPicking
 {
     glm::vec3 position;
-    uint32_t  object_id;
 
     bool operator==(const Vertex_ObjectPicking& other) const
     {
-        return position == other.position && object_id == other.object_id;
+        return position == other.position;
     }
 
     static VkVertexInputBindingDescription2EXT get_binding_description()
@@ -27,9 +26,9 @@ struct Vertex_ObjectPicking
         return bindingDescription;
     }
 
-    static std::array<VkVertexInputAttributeDescription2EXT, 2> get_attribute_descriptions()
+    static std::array<VkVertexInputAttributeDescription2EXT, 1> get_attribute_descriptions()
     {
-        std::array<VkVertexInputAttributeDescription2EXT, 2> attribute_descriptions{};
+        std::array<VkVertexInputAttributeDescription2EXT, 1> attribute_descriptions{};
 
         // Position attribute
         attribute_descriptions[0].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
@@ -38,14 +37,6 @@ struct Vertex_ObjectPicking
         attribute_descriptions[0].binding = 0; // Corresponds to binding point 0
         attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; // glm::vec3 is 3 floats
         attribute_descriptions[0].offset = offsetof(Vertex_ObjectPicking, position); // Offset within the Vertex struct
-
-        // Index attribute
-        attribute_descriptions[1].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
-        attribute_descriptions[1].pNext = nullptr;
-        attribute_descriptions[1].location = 1; // Corresponds to layout(location = 1) in shader
-        attribute_descriptions[1].binding = 0; // Corresponds to binding point 0
-        attribute_descriptions[1].format = VK_FORMAT_R32_UINT;
-        attribute_descriptions[1].offset = offsetof(Vertex_ObjectPicking, object_id); // Offset within the Vertex struct
 
         return attribute_descriptions;
     }

@@ -60,16 +60,18 @@ void rendering::ObjectPicking::init_picking()
 
 void rendering::ObjectPicking::create_image_attachment()
 {
+    VkFormat image_format = VK_FORMAT_B8G8R8A8_SRGB;
+
     auto width = swapchain_manager->get_swapchain().extent.width;
     auto height = swapchain_manager->get_swapchain().extent.height;
-    VkImageCreateInfo image_info = utils::ImageUtils::image_create_info(VK_FORMAT_R32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, { width, height, 1 });
+    VkImageCreateInfo image_info = utils::ImageUtils::image_create_info(image_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, { width, height, 1 });
 
     VmaAllocationCreateInfo alloc_info{};
     alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
     
     vmaCreateImage(device_manager->get_allocator(), &image_info, &alloc_info, &object_id_image.image, &object_id_image.allocation, nullptr);
 
-    utils::ImageUtils::create_image_view(engine_context.dispatch_table, object_id_image, VK_FORMAT_R32_SFLOAT);
+    utils::ImageUtils::create_image_view(engine_context.dispatch_table, object_id_image, image_format);
 }
 
 void rendering::ObjectPicking::create_object_id_buffer()
@@ -164,7 +166,7 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
     color_attachment_info.resolveMode                  = VK_RESOLVE_MODE_NONE;
     color_attachment_info.loadOp                       = VK_ATTACHMENT_LOAD_OP_CLEAR;
     color_attachment_info.storeOp                      = VK_ATTACHMENT_STORE_OP_STORE;
-    color_attachment_info.clearValue                   = { { 0, 0, 0, 0 } };
+    color_attachment_info.clearValue                   = { { 1.0, 1.0, 0.0, 1.0 } };
 
     //Depth Stencil
     VkRenderingAttachmentInfoKHR depth_attachment_info = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
@@ -189,20 +191,20 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
 
     //Bind the shader
     //Pass mouse location to shader
-    object_picker_material->get_shader_object()->set_initial_state(dispatch_table, {1, 1}, command_buffer,
-                                                                   Vertex_ObjectPicking::get_binding_description(), Vertex_ObjectPicking::get_attribute_descriptions(), VkOffset2D{mouse_x, mouse_y});
+    object_picker_material->get_shader_object()->set_initial_state(dispatch_table, {1280, 720}, command_buffer,
+                                                                   Vertex_ObjectPicking::get_binding_description(), Vertex_ObjectPicking::get_attribute_descriptions(), VkOffset2D{0, 0});
     object_picker_material->get_shader_object()->bind_material_shader(engine_context.dispatch_table, command_buffer);
 
     ObjectPickerPushConstantBlock push_constants{};
     push_constants.scene_buffer_addr = engine_context.renderer->get_gpu_scene_buffer().scene_buffer_address;
-    push_constants.object_id_addr = object_id_buffer_address;
-
+    
     //Draw the objects
     for (const auto& entity : core::Engine::get_entities())
     {
         RenderData render_data = entity->get_render_data();
 
         push_constants.model_transform_addr = entity->get_transform_buffer_address();
+        push_constants.object_id_addr = entity->get_object_id_buffer_address();
 
         dispatch_table.cmdPushConstants(command_buffer, object_picker_material->get_pipeline_layout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(ObjectPickerPushConstantBlock), &push_constants);
 

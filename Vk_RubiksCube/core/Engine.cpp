@@ -180,7 +180,7 @@ void core::Engine::render() const
     double mouse_x = engine_context.window_manager->get_mouse_x();
     double mouse_y = engine_context.window_manager->get_mouse_y();
     
-    std::cout << "Mouse position: " << mouse_x << ", " << mouse_y << "\n";
+    //std::cout << "Mouse position: " << mouse_x << ", " << mouse_y << "\n";
 
     // Record the object picking command buffer with new mouse position
     engine_context.renderer->get_object_picker()->record_command_buffer(static_cast<int32_t>(mouse_x), static_cast<int32_t>(mouse_y));

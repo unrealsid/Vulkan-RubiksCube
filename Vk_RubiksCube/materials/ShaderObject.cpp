@@ -1,7 +1,7 @@
 #include "ShaderObject.h"
 #include "../Vk_RubiksCube.h"
 #include "../Structs/Vertex.h"
-#include "../vulkan/SwapchainManager.h""
+#include "../vulkan/SwapchainManager.h"
 #include <iostream>
 #include <utility>
 

@@ -30,13 +30,20 @@ layout(push_constant) uniform PushConstants
     ObjectID_Buffer object_id_addr;
 } push_constants;
 
-layout(location = 0) out float outColor;
+float encode_id(uint object_id) 
+{
+    return (float(object_id) + 0.5) / 56.0;
+}
+
+layout(location = 0) out vec4 outColor;
 
 void main() 
 {
     ObjectID_Buffer object_id_buffer = push_constants.object_id_addr;
-    object_id_buffer.object_id = ID;
+    uint id = object_id_buffer.object_id;
+    
+    float encoded_color = encode_id(id);
 
     //only needed for debugging to draw to color attachment
-    outColor = object_id_buffer.object_id ;
+    outColor = vec4(encoded_color, 0.0, 0.0, 1.0); 
 }
