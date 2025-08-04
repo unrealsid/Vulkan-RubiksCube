@@ -42,6 +42,8 @@ namespace utils
         //Creates a device-addressable buffer (Can be addressed via vulkan BDA)
         static void allocate_buffer_with_mapped_access(VmaAllocator allocator, VkDeviceSize size, GPU_Buffer& buffer);
 
+        static void allocate_buffer_with_readback_access(VmaAllocator allocator, VkDeviceSize size, GPU_Buffer& buffer);
+
         static void createMaterialParamsBuffer(const vulkan::DeviceManager& device_manager, const std::unordered_map<uint32_t, MaterialParams>& material_params, GPU_Buffer& out_material_params_buffer);
     };
 }

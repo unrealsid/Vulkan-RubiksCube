@@ -52,10 +52,10 @@ namespace rendering
         VkCommandBuffer command_buffer;
 
         Vk_Image object_id_image;
-        GPU_Buffer object_id_buffer;
+        GPU_Buffer readback_id_buffer;
 
-        void create_object_id_buffer();
-        VkDeviceAddress object_id_buffer_address;
+        void create_readback_id_buffer();
+        VkDeviceAddress readback_id_buffer_address;
 
         VkFence object_picker_fence;
 

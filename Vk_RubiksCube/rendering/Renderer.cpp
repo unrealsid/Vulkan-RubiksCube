@@ -271,7 +271,7 @@ bool core::Renderer::create_command_buffers()
         {
             //Pipeline object binding
             draw_batch.material->get_shader_object()->set_initial_state(engine_context.dispatch_table, engine_context.swapchain_manager->get_swapchain().extent, command_buffers[i],
-                                                                        Vertex::get_binding_description(), Vertex::get_attribute_descriptions()); 
+                                                                        Vertex::get_binding_description(), Vertex::get_attribute_descriptions(), engine_context.swapchain_manager->get_swapchain().extent); 
             draw_batch.material->get_shader_object()->bind_material_shader(engine_context.dispatch_table, command_buffers[i]);
 
             dispatch_table.cmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, draw_batch.material->get_pipeline_layout(), 0, 1, &draw_batch.material->get_descriptor_set(), 0, nullptr);

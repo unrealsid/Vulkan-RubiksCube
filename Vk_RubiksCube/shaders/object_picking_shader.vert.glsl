@@ -24,11 +24,17 @@ layout(buffer_reference, scalar) buffer ObjectID_Buffer
     uint object_id;
 };
 
+layout(buffer_reference, scalar) buffer EncodedObjectID_Buffer
+{
+    float encoded_object_id;
+};
+
 layout(push_constant) uniform PushConstants
 {
     SceneDataBuffer scene_data_buffer_addr;
     ModelBuffer model_transform_addr;
     ObjectID_Buffer object_id_addr;
+    EncodedObjectID_Buffer encoded_object_addr;
 } push_constants;
 
 void main() 

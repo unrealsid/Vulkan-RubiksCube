@@ -12,6 +12,7 @@ layout(location = 2) flat in uint inMaterialIndex;
 layout(location = 3) flat in uint inTexIndex;
 
 layout(location = 0) out vec4 outColor;
+layout(early_fragment_tests) in;
 
 layout (set = 0, binding = 0) uniform sampler2D textures[];
 

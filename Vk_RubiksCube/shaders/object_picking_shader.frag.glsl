@@ -5,6 +5,7 @@
 #extension GL_EXT_scalar_block_layout: require
 #extension GL_EXT_buffer_reference : require
 
+layout(early_fragment_tests) in;
 layout(location = 0) flat in uint ID;
 
 layout(buffer_reference, scalar) buffer SceneDataBuffer
@@ -23,11 +24,17 @@ layout(buffer_reference, scalar) buffer ObjectID_Buffer
     uint object_id;
 };
 
+layout(buffer_reference, scalar) buffer EncodedObjectID_Buffer
+{
+    float encoded_object_id;
+};
+
 layout(push_constant) uniform PushConstants
 {
     SceneDataBuffer scene_data_buffer_addr;
     ModelBuffer model_transform_addr;
     ObjectID_Buffer object_id_addr;
+    EncodedObjectID_Buffer encoded_object_addr;
 } push_constants;
 
 float encode_id(uint object_id) 
@@ -41,8 +48,9 @@ void main()
 {
     ObjectID_Buffer object_id_buffer = push_constants.object_id_addr;
     uint id = object_id_buffer.object_id;
-    
+
     float encoded_color = encode_id(id);
+    push_constants.encoded_object_addr.encoded_object_id = encoded_color;
 
     //only needed for debugging to draw to color attachment
     outColor = vec4(encoded_color, 0.0, 0.0, 1.0); 

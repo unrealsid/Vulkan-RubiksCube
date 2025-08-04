@@ -31,7 +31,7 @@ void rendering::ObjectPicking::init_picking()
     utils::RenderUtils::create_depth_stencil_image(engine_context, swapchain_manager->get_swapchain().extent, device_manager->get_allocator(), depth_stencil_image);
 
     create_image_attachment();
-    create_object_id_buffer();
+    create_readback_id_buffer();
 
     create_object_picking_material();
 
@@ -54,8 +54,6 @@ void rendering::ObjectPicking::init_picking()
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_info.flags = 0;
     dispatch_table.createFence(&fence_info, nullptr, &object_picker_fence);
-    
-    //record_command_buffer(0, 0);
 }
 
 void rendering::ObjectPicking::create_image_attachment()
@@ -74,10 +72,10 @@ void rendering::ObjectPicking::create_image_attachment()
     utils::ImageUtils::create_image_view(engine_context.dispatch_table, object_id_image, image_format);
 }
 
-void rendering::ObjectPicking::create_object_id_buffer()
+void rendering::ObjectPicking::create_readback_id_buffer()
 {
-    utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), sizeof(uint32_t), object_id_buffer);
-    object_id_buffer_address = utils::MemoryUtils::get_buffer_device_address(engine_context.dispatch_table, object_id_buffer.buffer);
+    utils::MemoryUtils::allocate_buffer_with_readback_access(device_manager->get_allocator(), sizeof(float), readback_id_buffer);
+    readback_id_buffer_address = utils::MemoryUtils::get_buffer_device_address(engine_context.dispatch_table, readback_id_buffer.buffer);
 }
 
 void rendering::ObjectPicking::create_object_picking_material()
@@ -138,6 +136,21 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
         return false;
     }
 
+    float data = -1.0;
+    dispatch_table.cmdFillBuffer(command_buffer, readback_id_buffer.buffer, 0, VK_WHOLE_SIZE, 0xFFFFFFF);
+    
+    VkMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+
+    dispatch_table.cmdPipelineBarrier(
+        command_buffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0, 1, &barrier, 0, nullptr, 0, nullptr
+    );
+
     Vk_DynamicRendering::image_layout_transition(command_buffer,
                                       object_id_image.image,
                                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -191,8 +204,16 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
 
     //Bind the shader
     //Pass mouse location to shader
-    object_picker_material->get_shader_object()->set_initial_state(dispatch_table, {1280, 720}, command_buffer,
-                                                                   Vertex_ObjectPicking::get_binding_description(), Vertex_ObjectPicking::get_attribute_descriptions(), VkOffset2D{0, 0});
+
+    auto local_mouse_x = mouse_x > 0 ? mouse_x : 0;
+    auto local_mouse_y = mouse_y > 0 ? mouse_y : 0;
+    
+    object_picker_material->get_shader_object()->set_initial_state(dispatch_table,
+                                                                   engine_context.swapchain_manager->get_swapchain().extent, command_buffer,
+                                                                   Vertex_ObjectPicking::get_binding_description(), Vertex_ObjectPicking::get_attribute_descriptions(),
+                                                                   {1, 1},
+                                                                   VkOffset2D{local_mouse_x, local_mouse_y});
+    
     object_picker_material->get_shader_object()->bind_material_shader(engine_context.dispatch_table, command_buffer);
 
     ObjectPickerPushConstantBlock push_constants{};
@@ -205,6 +226,7 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
 
         push_constants.model_transform_addr = entity->get_transform_buffer_address();
         push_constants.object_id_addr = entity->get_object_id_buffer_address();
+        push_constants.readback_id_address = readback_id_buffer_address;
 
         dispatch_table.cmdPushConstants(command_buffer, object_picker_material->get_pipeline_layout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(ObjectPickerPushConstantBlock), &push_constants);
 
@@ -236,5 +258,15 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
         return false; // failed to record command buffer!
     }
 
+    if(auto data = static_cast<const float*>(readback_id_buffer.allocation_info.pMappedData))
+    { 
+        
+        
+        uint32_t id = static_cast<uint32_t>(floor(*data * 56.0f));
+        id = std::min(id, 55u);
+        std::cout << "id at" << local_mouse_x << " /" << local_mouse_y << "is: " << id << std::endl;
+        //system("cls");
+    }
+    
     return true;
 }

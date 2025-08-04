@@ -88,9 +88,10 @@ namespace material
 		void bind_material_shader(const vkb::DispatchTable& disp, VkCommandBuffer cmd_buffer) const;
 
 		template<size_t N>
-		static void set_initial_state(vkb::DispatchTable& disp, VkExtent2D extent, VkCommandBuffer cmd_buffer, VkVertexInputBindingDescription2EXT
-		                              vertex_input_binding, std::array<VkVertexInputAttributeDescription2EXT, N> input_attribute_description, VkOffset2D
-		                              scissor_offset);
+		static void set_initial_state(vkb::DispatchTable& disp, VkExtent2D viewport_extent, VkCommandBuffer cmd_buffer, VkVertexInputBindingDescription2EXT
+		                              vertex_input_binding, std::array<VkVertexInputAttributeDescription2EXT, N> input_attribute_description,
+		                              VkExtent2D scissor_extents,
+		                              VkOffset2D scissor_offset);
 
 	private:
 		static void build_linked_shaders(const vkb::DispatchTable& disp, ShaderObject::Shader* vert, ShaderObject::Shader* frag);
@@ -100,26 +101,29 @@ namespace material
 	};
 
 	template <size_t N>
-	void ShaderObject::set_initial_state(vkb::DispatchTable& disp, VkExtent2D extent, VkCommandBuffer cmd_buffer,
+	void ShaderObject::set_initial_state(vkb::DispatchTable& disp, VkExtent2D viewport_extent, VkCommandBuffer cmd_buffer,
 	                                     VkVertexInputBindingDescription2EXT vertex_input_binding,
-	                                     std::array<VkVertexInputAttributeDescription2EXT, N> input_attribute_description, VkOffset2D scissor_offset = {.x = 0, .y = 0 })
+	                                     std::array<VkVertexInputAttributeDescription2EXT, N> input_attribute_description, VkExtent2D scissor_extents, VkOffset2D scissor_offset = {.x = 0, .y = 0 })
 	{
 		{
-			// Set viewport and scissor to screen size
+			// Set viewport and scissor
 			VkViewport viewport = {};
 			viewport.x = 0.0f;
 			viewport.y = 0.0f;
-			viewport.width = static_cast<float>(extent.width);
-			viewport.height = static_cast<float>(extent.height);
+			viewport.width = static_cast<float>(viewport_extent.width);
+			viewport.height = static_cast<float>(viewport_extent.height);
 			viewport.minDepth = 0.0f;
 			viewport.maxDepth = 1.0f;
 
 			VkRect2D scissor = {};
 			scissor.offset = scissor_offset;
-			scissor.extent = extent;
+			scissor.extent = scissor_extents;
     	
 			disp.cmdSetViewportWithCountEXT(cmd_buffer, 1, &viewport);
 			disp.cmdSetScissorWithCountEXT(cmd_buffer, 1, &scissor);
+
+			disp.cmdSetScissor(cmd_buffer, 0, 1, &scissor);
+			
 			disp.cmdSetCullModeEXT(cmd_buffer, VK_CULL_MODE_NONE);
 			disp.cmdSetFrontFaceEXT(cmd_buffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 			disp.cmdSetDepthTestEnableEXT(cmd_buffer, VK_TRUE);

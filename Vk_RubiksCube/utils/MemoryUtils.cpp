@@ -244,3 +244,13 @@ void utils::MemoryUtils::allocate_buffer_with_mapped_access(VmaAllocator allocat
                      VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
                      VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer);
 }
+
+void utils::MemoryUtils::allocate_buffer_with_readback_access(VmaAllocator allocator, VkDeviceSize size,
+    GPU_Buffer& buffer)
+{
+    create_buffer(allocator, size,
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
+        VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer);
+}

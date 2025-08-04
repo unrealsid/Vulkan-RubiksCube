@@ -53,20 +53,24 @@ void core::Engine::init()
 
 void core::Engine::run() const
 {
-    auto previous_time = std::chrono::high_resolution_clock::now();
-    
-    while (!glfwWindowShouldClose(engine_context.window_manager->get_window()))
+    int focused = glfwGetWindowAttrib(engine_context.window_manager->get_window(), GLFW_FOCUSED);
+    if (focused)
     {
-        auto current_time = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float> elapsed = current_time - previous_time; 
-        double delta_time = elapsed.count(); 
-        
-        update(delta_time);
-        render();
+       auto previous_time = std::chrono::high_resolution_clock::now();
 
-        previous_time = current_time;
-        
-        glfwPollEvents();
+        while (!glfwWindowShouldClose(engine_context.window_manager->get_window()))
+        {
+            auto current_time = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<float> elapsed = current_time - previous_time;
+            double delta_time = elapsed.count();
+
+            update(delta_time);
+            render();
+
+            previous_time = current_time;
+
+            glfwPollEvents();
+        }
     }
 }
 
@@ -79,8 +83,8 @@ void core::Engine::load_models()
 {
     std::vector<std::string> model_paths =
     {
-        "/models/rubiks_cube_texture/rubiksCubeTexture.obj",
-        "/models/plane/plane_simple.obj",
+        //"/models/rubiks_cube_texture/rubiksCubeTexture.obj",
+        //"/models/plane/plane_simple.obj",
         "/models/rubiks_cube/rubiks_cube.obj",
         //"/models/viper/viper.obj"
     };
