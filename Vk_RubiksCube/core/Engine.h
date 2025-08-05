@@ -4,9 +4,11 @@
 #include <vector>
 
 #include "Entity.h"
+#include "../enums/MouseDirection.h"
 #include "../materials/Material.h"
 #include "../structs/EngineContext.h"
 #include "../structs/DrawBatch.h"
+#include "../utils/mouse_utils/MouseTracker.h"
 
 namespace renderer
 {
@@ -48,6 +50,9 @@ namespace core
         static std::vector<std::unique_ptr<Entity>> entities;
         std::unordered_map<std::string, DrawBatch> draw_batches;
 
+        static utils::MouseTracker mouse_tracker;
+        static void get_mouse_direction(GLFWwindow* window);
+        
         void load_models();
         void organize_draw_batches();
 

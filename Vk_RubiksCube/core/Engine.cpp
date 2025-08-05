@@ -15,6 +15,7 @@
 #include "../utils/GameUtils.h"
 
 std::vector<std::unique_ptr<Entity>> core::Engine::entities;
+utils::MouseTracker core::Engine::mouse_tracker(3.0);
 
 core::Engine::Engine()
 {
@@ -52,27 +53,44 @@ void core::Engine::init()
     engine_context.renderer->create_command_buffers();
 }
 
+void core::Engine::get_mouse_direction(GLFWwindow* window)
+{
+    mouse_tracker.update_position(window);
+    MouseDirection dir = mouse_tracker.get_direction();
+
+    if (dir != MouseDirection::none)
+    {
+        printf("Mouse moving: %s\n", utils::direction_to_string(dir));
+            
+        // Get actual movement values if needed
+        double delta_x, delta_y;
+        mouse_tracker.get_movement_delta(delta_x, delta_y);
+        printf("Delta: %.2f, %.2f\n", delta_x, delta_y);
+    }
+        
+    mouse_tracker.commit_position();
+}
+
 void core::Engine::run() const
 {
-    int focused = glfwGetWindowAttrib(engine_context.window_manager->get_window(), GLFW_FOCUSED);
-    if (focused)
+    auto previous_time = std::chrono::high_resolution_clock::now();
+
+    auto window = engine_context.window_manager->get_window();
+    while (!glfwWindowShouldClose(window))
     {
-       auto previous_time = std::chrono::high_resolution_clock::now();
+        auto current_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> elapsed = current_time - previous_time;
+        double delta_time = elapsed.count();
 
-        while (!glfwWindowShouldClose(engine_context.window_manager->get_window()))
-        {
-            auto current_time = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<float> elapsed = current_time - previous_time;
-            double delta_time = elapsed.count();
+        get_mouse_direction(window); 
 
-            update(delta_time);
-            render();
+        update(delta_time);
+        render();
 
-            previous_time = current_time;
+        previous_time = current_time;
 
-            glfwPollEvents();
-        }
-    }
+        glfwPollEvents();
+   }
 }
 
 void core::Engine::cleanup()
