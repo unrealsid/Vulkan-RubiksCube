@@ -13,5 +13,4 @@ struct ObjectPickerPushConstantBlock
     VkDeviceAddress scene_buffer_addr;
     VkDeviceAddress model_transform_addr;
     VkDeviceAddress object_id_addr;
-    VkDeviceAddress readback_id_address;
 };

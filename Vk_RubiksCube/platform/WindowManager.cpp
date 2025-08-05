@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include "../structs/EngineContext.h"
 #include "../rendering/Renderer.h"
+#include "../vulkan/SwapchainManager.h"
 
 window::WindowManager::WindowManager(EngineContext& engine_context): window(nullptr), engine_context(engine_context)
 {
@@ -68,4 +69,21 @@ void window::WindowManager::update_mouse_position()
         mouse_x = new_x;
         mouse_y = new_y;
     }
+}
+
+bool window::WindowManager::get_local_mouse_xy(int32_t& local_mouse_x, int32_t& local_mouse_y) const
+{
+    auto swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
+    
+    if (mouse_x > 0 && mouse_x < swapchain_extents.width)
+    {
+        local_mouse_x = mouse_x;
+    }
+
+    if (mouse_y > 0 && mouse_y < swapchain_extents.height)
+    {
+        local_mouse_y = mouse_y;
+    }
+    
+    return true;
 }

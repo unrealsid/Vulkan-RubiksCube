@@ -12,6 +12,7 @@
 #include "../structs/EngineContext.h"
 #include "../structs/DrawItem.h"
 #include "../rendering/picking/ObjectPicking.h"
+#include "../utils/GameUtils.h"
 
 std::vector<std::unique_ptr<Entity>> core::Engine::entities;
 
@@ -180,17 +181,26 @@ void core::Engine::update(double delta_time) const
 void core::Engine::render() const
 {
     engine_context.window_manager->update_mouse_position();
-    
-    double mouse_x = engine_context.window_manager->get_mouse_x();
-    double mouse_y = engine_context.window_manager->get_mouse_y();
-    
-    //std::cout << "Mouse position: " << mouse_x << ", " << mouse_y << "\n";
 
+    int32_t local_mouse_x = 0;
+    int32_t local_mouse_y = 0;
+
+    engine_context.window_manager->get_local_mouse_xy(local_mouse_x, local_mouse_y);    
+
+    auto object_picker =  engine_context.renderer->get_object_picker();
+    
     // Record the object picking command buffer with new mouse position
-    engine_context.renderer->get_object_picker()->record_command_buffer(static_cast<int32_t>(mouse_x), static_cast<int32_t>(mouse_y));
+   object_picker->record_command_buffer(local_mouse_x, local_mouse_y);
     
     if (bool result = engine_context.renderer->draw_frame(); !result)
     {
         //std::cout << "failed to draw frame \n";
     }
+    
+    //engine_context.dispatch_table.queueWaitIdle(engine_context.device_manager->get_present_queue());
+    //engine_context.dispatch_table.queueWaitIdle(engine_context.device_manager->get_graphics_queue());
+
+    VkExtent2D swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
+    GPU_Buffer buffer = object_picker->get_readback_buffer();
+    utils::GameUtils::get_pixel_color(engine_context, local_mouse_x, local_mouse_y, swapchain_extents, buffer);
 }

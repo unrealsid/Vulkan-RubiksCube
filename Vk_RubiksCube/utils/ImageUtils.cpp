@@ -6,6 +6,7 @@
 #include <vk_mem_alloc.h>
 
 #include "DescriptorUtils.h"
+#include "../rendering/Vk_DynamicRendering.h"
 #include "VkBootstrapDispatch.h"
 #include "MemoryUtils.h"
 #include "../structs/EngineContext.h"
@@ -198,6 +199,78 @@ void utils::ImageUtils::copy_image(EngineContext& engine_context, VkQueue queue,
     engine_context.dispatch_table.freeCommandBuffers(command_pool, 1, &commandBuffer);
 
     vmaDestroyBuffer(engine_context.device_manager->get_allocator(), srcBuffer.buffer, srcBuffer.allocation);
+}
+
+void utils::ImageUtils::copy_image_to_buffer(EngineContext& engine_context, Vk_Image src_image, GPU_Buffer& dst_buffer, VkCommandBuffer cmd_buffer, VkOffset3D image_offset)
+{
+    auto dispatch_table = engine_context.dispatch_table;
+    
+    // Transition image for transfer
+        Vk_DynamicRendering::image_layout_transition(
+        cmd_buffer,
+        src_image.image,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+    );
+    //Copy the image to the buffer
+    VkBufferImageCopy copy_region{};
+    copy_region.bufferOffset = 0;
+    copy_region.bufferRowLength = 0;
+    copy_region.bufferImageHeight = 0;
+    copy_region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copy_region.imageSubresource.mipLevel = 0;
+    copy_region.imageSubresource.baseArrayLayer = 0;
+    copy_region.imageSubresource.layerCount = 1;
+    copy_region.imageOffset = image_offset;
+    copy_region.imageExtent = {1280, 720, 1};
+    
+    dispatch_table.cmdCopyImageToBuffer(
+        cmd_buffer,
+        src_image.image,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dst_buffer.buffer,
+        1,
+        &copy_region
+    );
+
+    //Add a barrier for the image 
+    Vk_DynamicRendering::image_layout_transition(
+        cmd_buffer,
+        src_image.image,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT,
+        0,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+    );
+
+    //And add a buffer for the buffer before it is read on the cpu
+    VkBufferMemoryBarrier buffer_barrier{};
+    buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    buffer_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    buffer_barrier.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+    buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    buffer_barrier.buffer = dst_buffer.buffer;
+    buffer_barrier.offset = 0;
+    buffer_barrier.size = VK_WHOLE_SIZE;
+
+    engine_context.dispatch_table.cmdPipelineBarrier(
+        cmd_buffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_HOST_BIT,
+        0,
+        0, nullptr,
+        1, &buffer_barrier,
+        0, nullptr
+    );
 }
 
 void utils::ImageUtils::create_image_sampler(const vkb::DispatchTable& disp, Vk_Image& image, VkFilter filter)

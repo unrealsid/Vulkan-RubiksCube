@@ -58,7 +58,7 @@ void rendering::ObjectPicking::init_picking()
 
 void rendering::ObjectPicking::create_image_attachment()
 {
-    VkFormat image_format = VK_FORMAT_B8G8R8A8_SRGB;
+    VkFormat image_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
     auto width = swapchain_manager->get_swapchain().extent.width;
     auto height = swapchain_manager->get_swapchain().extent.height;
@@ -74,8 +74,8 @@ void rendering::ObjectPicking::create_image_attachment()
 
 void rendering::ObjectPicking::create_readback_id_buffer()
 {
-    utils::MemoryUtils::allocate_buffer_with_readback_access(device_manager->get_allocator(), sizeof(float), readback_id_buffer);
-    readback_id_buffer_address = utils::MemoryUtils::get_buffer_device_address(engine_context.dispatch_table, readback_id_buffer.buffer);
+    auto swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
+    utils::MemoryUtils::allocate_buffer_with_readback_access(device_manager->get_allocator(), swapchain_extents.width * swapchain_extents.height * sizeof(glm::vec4), readback_id_buffer);
 }
 
 void rendering::ObjectPicking::create_object_picking_material()
@@ -115,7 +115,7 @@ void rendering::ObjectPicking::create_object_picking_material()
     object_picker_material->add_descriptor_set(nullptr);
 }
 
-bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mouse_y) const
+bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mouse_y)
 {
     auto dispatch_table = engine_context.dispatch_table;
 
@@ -135,21 +135,6 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
         // failed to begin recording command buffer;
         return false;
     }
-
-    float data = -1.0;
-    dispatch_table.cmdFillBuffer(command_buffer, readback_id_buffer.buffer, 0, VK_WHOLE_SIZE, 0xFFFFFFF);
-    
-    VkMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
-
-    dispatch_table.cmdPipelineBarrier(
-        command_buffer,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0, 1, &barrier, 0, nullptr, 0, nullptr
-    );
 
     Vk_DynamicRendering::image_layout_transition(command_buffer,
                                       object_id_image.image,
@@ -203,16 +188,12 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
     dispatch_table.cmdBeginRenderingKHR(command_buffer, &render_info);
 
     //Bind the shader
-    //Pass mouse location to shader
-
-    auto local_mouse_x = mouse_x > 0 ? mouse_x : 0;
-    auto local_mouse_y = mouse_y > 0 ? mouse_y : 0;
     
     object_picker_material->get_shader_object()->set_initial_state(dispatch_table,
                                                                    engine_context.swapchain_manager->get_swapchain().extent, command_buffer,
                                                                    Vertex_ObjectPicking::get_binding_description(), Vertex_ObjectPicking::get_attribute_descriptions(),
-                                                                   {1, 1},
-                                                                   VkOffset2D{local_mouse_x, local_mouse_y});
+                                                                   engine_context.swapchain_manager->get_swapchain().extent,
+                                                                   {0, 0});
     
     object_picker_material->get_shader_object()->bind_material_shader(engine_context.dispatch_table, command_buffer);
 
@@ -226,7 +207,6 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
 
         push_constants.model_transform_addr = entity->get_transform_buffer_address();
         push_constants.object_id_addr = entity->get_object_id_buffer_address();
-        push_constants.readback_id_address = readback_id_buffer_address;
 
         dispatch_table.cmdPushConstants(command_buffer, object_picker_material->get_pipeline_layout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(ObjectPickerPushConstantBlock), &push_constants);
 
@@ -237,35 +217,15 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
         dispatch_table.cmdBindIndexBuffer(command_buffer, render_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
         dispatch_table.cmdDrawIndexed(command_buffer, render_data.indices.size(), 1, 0, 0, 0);
     }
-    
+
     dispatch_table.cmdEndRenderingKHR(command_buffer);
 
-    Vk_DynamicRendering::image_layout_transition
-       (
-            command_buffer,                            // Command buffer
-            object_id_image.image,               // Swapchain image
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // Source pipeline stage
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,     // Destination pipeline stage
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // Source access mask
-            0,                                        // Destination access mask
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // Old layout
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // New layout
-             VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 });
-
+    utils::ImageUtils::copy_image_to_buffer(engine_context, object_id_image, readback_id_buffer, command_buffer, { 0, 0, 0 });
+    
     if (dispatch_table.endCommandBuffer(command_buffer) != VK_SUCCESS)
     {
         std::cout << "failed to record command buffer\n";
         return false; // failed to record command buffer!
-    }
-
-    if(auto data = static_cast<const float*>(readback_id_buffer.allocation_info.pMappedData))
-    { 
-        
-        
-        uint32_t id = static_cast<uint32_t>(floor(*data * 56.0f));
-        id = std::min(id, 55u);
-        std::cout << "id at" << local_mouse_x << " /" << local_mouse_y << "is: " << id << std::endl;
-        //system("cls");
     }
     
     return true;

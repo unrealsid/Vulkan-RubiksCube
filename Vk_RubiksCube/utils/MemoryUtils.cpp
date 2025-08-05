@@ -249,7 +249,7 @@ void utils::MemoryUtils::allocate_buffer_with_readback_access(VmaAllocator alloc
     GPU_Buffer& buffer)
 {
     create_buffer(allocator, size,
-        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_AUTO,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
         VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer);

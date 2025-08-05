@@ -33,11 +33,13 @@ namespace rendering
         bool first_submit_done;
 
         void init_picking();
-        bool record_command_buffer(int32_t mouse_x, int32_t mouse_y) const;
+        bool record_command_buffer(int32_t mouse_x, int32_t mouse_y);
 
         VkCommandBuffer get_command_buffer() const { return command_buffer; }
 
         VkFence get_object_picker_fence() const { return object_picker_fence; }
+
+        GPU_Buffer get_readback_buffer() const { return readback_id_buffer; }
 
     private:
         EngineContext& engine_context;
