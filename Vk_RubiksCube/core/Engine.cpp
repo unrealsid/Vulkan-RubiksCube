@@ -3,6 +3,8 @@
 #include <chrono>
 #include <iostream>
 #include <GLFW/glfw3.h>
+
+#include "DrawableEntity.h"
 #include "../platform/WindowManager.h"
 #include "../utils/MemoryUtils.h"
 #include "../utils/ModelLoaderUtils.h"
@@ -14,12 +16,13 @@
 #include "../rendering/picking/ObjectPicking.h"
 #include "../utils/GameUtils.h"
 
-std::vector<std::unique_ptr<Entity>> core::Engine::entities;
+std::vector<std::unique_ptr<core::Entity>> core::Engine::entities;
+std::vector<std::unique_ptr<core::DrawableEntity>> core::Engine::drawable_entities;
 utils::MouseTracker core::Engine::mouse_tracker(3.0);
+uint32_t core::Engine::selected_object = -1;
 
 core::Engine::Engine()
 {
-    selected_object = -1;
 }
 
 core::Engine::~Engine()
@@ -98,10 +101,12 @@ void core::Engine::run()
         //Store which object is currently selected.
         //TODO: Remove from loop and add to an empty Entity
         VkExtent2D swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
-        selected_object = utils::GameUtils::get_object_id_from_color(engine_context, window_manager->local_mouse_x,
+        selected_object = utils::GameUtils::get_object_id_from_color(engine_context,
+                                                                   window_manager->local_mouse_x,
                                                                    window_manager->local_mouse_y,
                                                                    swapchain_extents, buffer);
 
+        std::cout << selected_object << std::endl;
         
         previous_time = current_time;
 
@@ -114,9 +119,9 @@ void core::Engine::cleanup()
     
 }
 
-Entity* core::Engine::get_entity_by_id(uint32_t entity_id)
+core::Entity* core::Engine::get_drawable_entity_by_id(uint32_t entity_id)
 {
-    for (const auto& entity : entities)
+    for (const auto& entity : drawable_entities)
     {
         if(entity->get_entity_id() == entity_id)
         {
@@ -151,7 +156,7 @@ void core::Engine::load_models()
             ++entity_id;
             
             //Create an entity for each loaded shape
-            std::unique_ptr<Entity> entity = std::make_unique<Entity>
+            std::unique_ptr<DrawableEntity> entity = std::make_unique<DrawableEntity>
             (
                 entity_id,
                 RenderData
@@ -165,8 +170,7 @@ void core::Engine::load_models()
                 engine_context
             );
             
-            
-            entities.push_back(std::move(entity));
+            drawable_entities.push_back(std::move(entity));
         }
     }
 
@@ -187,7 +191,7 @@ void core::Engine::organize_draw_batches()
         draw_batches[name] = batch;
     }
     
-    for (const auto& entity : entities)
+    for (const auto& entity : drawable_entities)
     {
         const auto& render_data = entity->get_render_data();
 
@@ -219,6 +223,11 @@ void core::Engine::organize_draw_batches()
 
 void core::Engine::update(double delta_time) const
 {
+    for (const auto& drawable_entity : drawable_entities)
+    {
+        drawable_entity->update(delta_time);
+    }
+
     for (const auto& entity : entities)
     {
         entity->update(delta_time);

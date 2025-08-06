@@ -14,6 +14,7 @@
 #include "../../utils/DescriptorUtils.h"
 #include "../../Config.h"
 #include "../Vk_DynamicRendering.h"
+#include "../../core/DrawableEntity.h"
 #include "../../core/Engine.h"
 #include "../../structs/Vertex_ObjectPicking.h"
 
@@ -201,8 +202,9 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
     push_constants.scene_buffer_addr = engine_context.renderer->get_gpu_scene_buffer().scene_buffer_address;
     
     //Draw the objects
-    for (const auto& entity : core::Engine::get_entities())
+    for (const auto& entity : core::Engine::get_drawable_entities())
     {
+        
         RenderData render_data = entity->get_render_data();
 
         push_constants.model_transform_addr = entity->get_transform_buffer_address();
@@ -212,10 +214,11 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
 
         VkBuffer vertex_buffers[] = { render_data.vertex_buffer.buffer };
         VkDeviceSize offsets[] = {0};
-        
+    
         dispatch_table.cmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
         dispatch_table.cmdBindIndexBuffer(command_buffer, render_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
         dispatch_table.cmdDrawIndexed(command_buffer, render_data.indices.size(), 1, 0, 0, 0);
+        
     }
 
     dispatch_table.cmdEndRenderingKHR(command_buffer);

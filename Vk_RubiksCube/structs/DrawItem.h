@@ -10,6 +10,6 @@ struct DrawItem
     uint32_t index_count;
 
     //Who does this drawcall belong to?
-    Entity* entity = nullptr;
+    core::Entity* entity = nullptr;
 };
 
