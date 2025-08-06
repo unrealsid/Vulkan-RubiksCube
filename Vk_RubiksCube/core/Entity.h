@@ -12,6 +12,8 @@ namespace vulkan
     class DeviceManager;
 }
 
+//TODO: Need to detach rendering and the entity class
+
 class Entity
 {
 public:
@@ -24,7 +26,7 @@ public:
     virtual void update(double delta_time);
     
     RenderData get_render_data() const { return render_data; }
-    Transform* get_transform() { return transform.get(); }
+    Transform* get_transform() const { return transform.get(); }
     uint32_t get_entity_id() const { return entity_id; }
     GPU_Buffer get_transform_buffer() const { return transform_buffer; }
     [[nodiscard]] VkDeviceAddress get_transform_buffer_address() const { return transform_buffer_address; }
@@ -51,7 +53,6 @@ private:
     vulkan::DeviceManager* device_manager;
     
     //Init the buffer used to store object data
-    //TODO: Unify this buffer and access via an ID
     void initialize_transform_buffer();
 
     void initialize_object_id_buffer();

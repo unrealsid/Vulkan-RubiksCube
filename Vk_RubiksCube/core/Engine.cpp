@@ -19,6 +19,7 @@ utils::MouseTracker core::Engine::mouse_tracker(3.0);
 
 core::Engine::Engine()
 {
+    selected_object = -1;
 }
 
 core::Engine::~Engine()
@@ -71,13 +72,20 @@ void core::Engine::get_mouse_direction(GLFWwindow* window)
     mouse_tracker.commit_position();
 }
 
-void core::Engine::run() const
+void core::Engine::run()
 {
     auto previous_time = std::chrono::high_resolution_clock::now();
 
+    auto window_manager = engine_context.window_manager.get();
     auto window = engine_context.window_manager->get_window();
+    auto object_picker =  engine_context.renderer->get_object_picker();
+    GPU_Buffer buffer = object_picker->get_readback_buffer();
+    
     while (!glfwWindowShouldClose(window))
     {
+        window_manager->update_mouse_position();
+        window_manager->get_local_mouse_xy();    
+        
         auto current_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float> elapsed = current_time - previous_time;
         double delta_time = elapsed.count();
@@ -87,6 +95,14 @@ void core::Engine::run() const
         update(delta_time);
         render();
 
+        //Store which object is currently selected.
+        //TODO: Remove from loop and add to an empty Entity
+        VkExtent2D swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
+        selected_object = utils::GameUtils::get_object_id_from_color(engine_context, window_manager->local_mouse_x,
+                                                                   window_manager->local_mouse_y,
+                                                                   swapchain_extents, buffer);
+
+        
         previous_time = current_time;
 
         glfwPollEvents();
@@ -96,6 +112,19 @@ void core::Engine::run() const
 void core::Engine::cleanup()
 {
     
+}
+
+Entity* core::Engine::get_entity_by_id(uint32_t entity_id)
+{
+    for (const auto& entity : entities)
+    {
+        if(entity->get_entity_id() == entity_id)
+        {
+            return entity.get();
+        }
+    }
+
+    return nullptr;
 }
 
 void core::Engine::load_models()
@@ -198,27 +227,14 @@ void core::Engine::update(double delta_time) const
 
 void core::Engine::render() const
 {
-    engine_context.window_manager->update_mouse_position();
-
-    int32_t local_mouse_x = 0;
-    int32_t local_mouse_y = 0;
-
-    engine_context.window_manager->get_local_mouse_xy(local_mouse_x, local_mouse_y);    
-
-    auto object_picker =  engine_context.renderer->get_object_picker();
+   auto object_picker =  engine_context.renderer->get_object_picker();
+   auto window = engine_context.window_manager.get();
     
     // Record the object picking command buffer with new mouse position
-   object_picker->record_command_buffer(local_mouse_x, local_mouse_y);
+   object_picker->record_command_buffer(window->local_mouse_x, window->local_mouse_y);
     
     if (bool result = engine_context.renderer->draw_frame(); !result)
     {
         //std::cout << "failed to draw frame \n";
     }
-    
-    //engine_context.dispatch_table.queueWaitIdle(engine_context.device_manager->get_present_queue());
-    //engine_context.dispatch_table.queueWaitIdle(engine_context.device_manager->get_graphics_queue());
-
-    VkExtent2D swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
-    GPU_Buffer buffer = object_picker->get_readback_buffer();
-    std:: cout << utils::GameUtils::get_object_id_from_color(engine_context, local_mouse_x, local_mouse_y, swapchain_extents, buffer) << std::endl;
 }

@@ -71,7 +71,7 @@ void window::WindowManager::update_mouse_position()
     }
 }
 
-bool window::WindowManager::get_local_mouse_xy(int32_t& local_mouse_x, int32_t& local_mouse_y) const
+bool window::WindowManager::get_local_mouse_xy()
 {
     auto swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
     
