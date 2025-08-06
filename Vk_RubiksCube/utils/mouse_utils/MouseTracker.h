@@ -28,15 +28,15 @@ namespace utils
     {
         switch (dir)
         {
-        case MouseDirection::none: return "none";
-        case MouseDirection::left: return "left";
-        case MouseDirection::right: return "right";
-        case MouseDirection::up: return "up";
-        case MouseDirection::down: return "down";
-        case MouseDirection::up_left: return "up_left";
-        case MouseDirection::up_right: return "up_right";
-        case MouseDirection::down_left: return "down_left";
-        case MouseDirection::down_right: return "down_right";
+            case MouseDirection::none: return "none";
+            case MouseDirection::left: return "left";
+            case MouseDirection::right: return "right";
+            case MouseDirection::up: return "up";
+            case MouseDirection::down: return "down";
+            case MouseDirection::up_left: return "up_left";
+            case MouseDirection::up_right: return "up_right";
+            case MouseDirection::down_left: return "down_left";
+            case MouseDirection::down_right: return "down_right";
         }
     
         return "unknown";

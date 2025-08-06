@@ -2,7 +2,7 @@
 
 enum class MouseDirection
 {
-    none,
+   none,
    left,
    right,
    up,

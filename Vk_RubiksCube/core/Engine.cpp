@@ -60,12 +60,12 @@ void core::Engine::get_mouse_direction(GLFWwindow* window)
 
     if (dir != MouseDirection::none)
     {
-        printf("Mouse moving: %s\n", utils::direction_to_string(dir));
+        //printf("Mouse moving: %s\n", utils::direction_to_string(dir));
             
         // Get actual movement values if needed
         double delta_x, delta_y;
         mouse_tracker.get_movement_delta(delta_x, delta_y);
-        printf("Delta: %.2f, %.2f\n", delta_x, delta_y);
+        //printf("Delta: %.2f, %.2f\n", delta_x, delta_y);
     }
         
     mouse_tracker.commit_position();
@@ -220,5 +220,5 @@ void core::Engine::render() const
 
     VkExtent2D swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
     GPU_Buffer buffer = object_picker->get_readback_buffer();
-    utils::GameUtils::get_pixel_color(engine_context, local_mouse_x, local_mouse_y, swapchain_extents, buffer);
+    std:: cout << utils::GameUtils::get_object_id_from_color(engine_context, local_mouse_x, local_mouse_y, swapchain_extents, buffer) << std::endl;
 }
