@@ -62,6 +62,7 @@ namespace core
         
         void load_models();
         void load_root();
+        void load_pointer();
         void load_entities();
         void organize_draw_batches();
 

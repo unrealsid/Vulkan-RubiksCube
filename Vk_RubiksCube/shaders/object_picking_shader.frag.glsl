@@ -44,6 +44,7 @@ void main()
     uint id = object_id_buffer.object_id;
 
     float encoded_color = encode_id(id);
+    float depth = gl_FragCoord.z;
 
-    outColor = vec4(encoded_color, 0.0, 0.0, 1.0); 
+    outColor = vec4(encoded_color, 0.0, depth, 1.0); 
 }

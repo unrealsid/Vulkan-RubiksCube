@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include "../core/Entity.h"
 
+class PointerEntity;
+
 namespace rendering
 {
     class ObjectPicking;
@@ -32,4 +34,7 @@ private:
 
     GPU_Buffer buffer;
     uint32_t selected_object_id;
+    glm::vec3 selected_point;
+
+    PointerEntity* pointer_entity;
 };

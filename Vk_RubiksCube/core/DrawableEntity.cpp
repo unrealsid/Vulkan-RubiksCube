@@ -20,5 +20,4 @@ void core::DrawableEntity::update(double delta_time)
 void core::DrawableEntity::initialize_transform() const
 {
     transform->set_position(get_render_data().local_position);
-    
 }

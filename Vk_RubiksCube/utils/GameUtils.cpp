@@ -18,10 +18,9 @@ glm::vec4 utils::GameUtils::get_pixel_color(const EngineContext& engine_context,
 }
 
 uint32_t utils::GameUtils::get_object_id_from_color(const EngineContext& engine_context, int32_t mouse_x, int32_t mouse_y,
-                                                    VkExtent2D swapchain_extent, GPU_Buffer& buffer)
+                                                    VkExtent2D swapchain_extent, GPU_Buffer& buffer, const glm::vec4& encoded_color)
 {
-    auto encoded_id = get_pixel_color(engine_context, mouse_x, mouse_y, swapchain_extent, buffer);
-    uint32_t id = static_cast<uint32_t>(floor(encoded_id.r * 56.0f));
+    uint32_t id = static_cast<uint32_t>(floor(encoded_color.r * 56.0f));
     id = std::min(id, 55u);
 
     return id;
