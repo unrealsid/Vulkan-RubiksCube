@@ -7,10 +7,10 @@
 #include <iostream>
 #include "../utils/Vk_Utils.h"
 
-core::Entity::Entity(uint32_t entity_id, EngineContext& engine_context): entity_id(entity_id),
-                                                                                                
-                                                                                                 transform(std::make_unique<Transform>()),
-                                                                                                 engine_context(engine_context)
+core::Entity::Entity(uint32_t entity_id, EngineContext& engine_context, const std::string& entity_string_id): engine_context(engine_context),
+                                                                                                              entity_id(entity_id),
+                                                                                                              entity_string_id(entity_string_id),
+                                                                                                              transform(std::make_unique<Transform>())
 {
     device_manager = engine_context.device_manager.get();
     initialize_transform_buffer();

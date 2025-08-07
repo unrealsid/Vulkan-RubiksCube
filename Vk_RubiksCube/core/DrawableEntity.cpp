@@ -1,7 +1,9 @@
 ﻿#include "DrawableEntity.h"
 #include "../vulkan/DeviceManager.h"
 
-core::DrawableEntity::DrawableEntity(uint32_t entity_id, RenderData render_data, EngineContext& engine_context) : Entity(entity_id, engine_context), render_data(std::move(render_data))
+core::DrawableEntity::DrawableEntity(uint32_t entity_id, RenderData render_data, EngineContext& engine_context, const std::string& entity_string_id) :
+                                                                                                                                                        Entity(entity_id, engine_context, entity_string_id),
+                                                                                                                                                        render_data(std::move(render_data))
 {
     
 }

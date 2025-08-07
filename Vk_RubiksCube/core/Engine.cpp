@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 
 #include "DrawableEntity.h"
+#include "../game_entities/GameManager.h"
 #include "../platform/WindowManager.h"
 #include "../utils/MemoryUtils.h"
 #include "../utils/ModelLoaderUtils.h"
@@ -19,7 +20,6 @@
 std::vector<std::unique_ptr<core::Entity>> core::Engine::entities;
 std::vector<std::unique_ptr<core::DrawableEntity>> core::Engine::drawable_entities;
 utils::MouseTracker core::Engine::mouse_tracker(3.0);
-uint32_t core::Engine::selected_object = -1;
 
 core::Engine::Engine()
 {
@@ -53,8 +53,11 @@ void core::Engine::init()
     engine_context.renderer->init();
 
     load_models();
+    load_entities();
 
     engine_context.renderer->create_command_buffers();
+
+    exec_start();
 }
 
 void core::Engine::get_mouse_direction(GLFWwindow* window)
@@ -82,7 +85,6 @@ void core::Engine::run()
     auto window_manager = engine_context.window_manager.get();
     auto window = engine_context.window_manager->get_window();
     auto object_picker =  engine_context.renderer->get_object_picker();
-    GPU_Buffer buffer = object_picker->get_readback_buffer();
     
     while (!glfwWindowShouldClose(window))
     {
@@ -97,16 +99,6 @@ void core::Engine::run()
 
         update(delta_time);
         render();
-
-        //Store which object is currently selected.
-        //TODO: Remove from loop and add to an empty Entity
-        VkExtent2D swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
-        selected_object = utils::GameUtils::get_object_id_from_color(engine_context,
-                                                                   window_manager->local_mouse_x,
-                                                                   window_manager->local_mouse_y,
-                                                                   swapchain_extents, buffer);
-
-        std::cout << selected_object << std::endl;
         
         previous_time = current_time;
 
@@ -117,6 +109,27 @@ void core::Engine::run()
 void core::Engine::cleanup()
 {
     
+}
+
+core::Entity* core::Engine::get_entity_by_tag(const std::string& tag)
+{
+    for (const auto& element : drawable_entities)
+    {
+        if(element->get_entity_string_id() == tag)
+        {
+            return element.get();
+        }
+    }
+    
+    for (const auto& element : entities)
+    {
+        if(element->get_entity_string_id() == tag)
+        {
+            return element.get();
+        }
+    }
+
+    return nullptr;
 }
 
 core::Entity* core::Engine::get_drawable_entity_by_id(uint32_t entity_id)
@@ -167,7 +180,8 @@ void core::Engine::load_models()
                     .indices = loaded_object.indices,
                     .material_index_ranges = loaded_object.material_index_ranges,
                 },
-                engine_context
+                engine_context,
+                "drawable_entity_" + std::to_string(entity_id)
             );
             
             drawable_entities.push_back(std::move(entity));
@@ -177,6 +191,13 @@ void core::Engine::load_models()
     //Once all materials are loaded, we can move them to the gpu
     engine_context.material_manager->init();
     organize_draw_batches();
+}
+
+void core::Engine::load_entities()
+{
+    //Load Game manager
+    std::unique_ptr<Entity> game_manager = std::make_unique<GameManager>(1000, engine_context, "game_manager");
+    entities.push_back(std::move(game_manager));
 }
 
 void core::Engine::organize_draw_batches()
@@ -221,7 +242,20 @@ void core::Engine::organize_draw_batches()
     renderer->get_draw_batches() = std::move(draw_batches);
 }
 
-void core::Engine::update(double delta_time) const
+void core::Engine::exec_start()
+{
+    for (const auto& drawable_entity : drawable_entities)
+    {
+        drawable_entity->start();
+    }
+
+    for (const auto& entity : entities)
+    {
+        entity->start();
+    }
+}
+
+void core::Engine::update(double delta_time)
 {
     for (const auto& drawable_entity : drawable_entities)
     {

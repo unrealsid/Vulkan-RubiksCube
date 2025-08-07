@@ -46,10 +46,9 @@ namespace core
 
         static std::vector<std::unique_ptr<DrawableEntity>>& get_drawable_entities() { return drawable_entities; }
         static std::vector<std::unique_ptr<Entity>>& get_entities() { return entities; }
+        static Entity* get_entity_by_tag(const std::string& tag);
 
         static Entity* get_drawable_entity_by_id(uint32_t entity_id);
-
-        static uint32_t get_selected_id() { return selected_object; }
 
     private:
         EngineContext engine_context;
@@ -58,16 +57,20 @@ namespace core
         
         std::unordered_map<std::string, DrawBatch> draw_batches;
 
-        //Which ID is currently selected
-        static uint32_t selected_object;
-
         static utils::MouseTracker mouse_tracker;
         static void get_mouse_direction(GLFWwindow* window);
         
         void load_models();
+        void load_entities();
         void organize_draw_batches();
 
-        void update(double delta_timme) const;
+        //Calls start event on entities
+        static void exec_start();
+
+        //Calls update on each entity
+        static void update(double delta_timme);
+
+        //Calls render on drawable entities
         void render() const;
     };
 }

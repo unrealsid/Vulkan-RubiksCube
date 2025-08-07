@@ -4,6 +4,7 @@
 #include "Transform.h"
 #include "../structs/Vk_RenderData.h"
 #include "../utils/MemoryUtils.h"
+#include "string"
 
 struct EngineContext;
 
@@ -17,7 +18,7 @@ namespace core
     class Entity
     {
     public:
-        Entity(uint32_t entity_id, EngineContext& engine_context);
+        Entity(uint32_t entity_id, EngineContext& engine_context, const std::string& entity_string_id);
 
         //Runs once when the game starts
         virtual void start();
@@ -27,6 +28,7 @@ namespace core
     
         Transform* get_transform() const { return transform.get(); }
         uint32_t get_entity_id() const { return entity_id; }
+        std::string get_entity_string_id() const { return entity_string_id; }
 
         //We store transforms in buffers that are linked via an address -- I love Vulkan
         GPU_Buffer get_transform_buffer() const { return transform_buffer; }
@@ -42,6 +44,8 @@ namespace core
     private:
 
         uint32_t entity_id;
+
+        std::string entity_string_id;
         
         //Stores transform address
         GPU_Buffer transform_buffer;

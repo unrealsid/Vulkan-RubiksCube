@@ -1,0 +1,32 @@
+﻿#pragma once
+#include "../core/Entity.h"
+
+namespace rendering
+{
+    class ObjectPicking;
+}
+
+namespace window
+{
+    class WindowManager;
+}
+
+class GameManager : public core::Entity
+{
+public:
+    GameManager(uint32_t entity_id, EngineContext& engine_context, const std::string& entity_string_id)
+        : Entity(entity_id, engine_context, entity_string_id)
+    {
+    }
+
+    void start() override;
+
+    void update(double delta_time) override;
+
+private:
+    window::WindowManager* window_manager;
+    rendering::ObjectPicking* object_picker;
+
+    GPU_Buffer buffer;
+    uint32_t selected_object_id;
+};
