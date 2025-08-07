@@ -7,5 +7,5 @@ struct LoadedImageData
     int width = 0;
     int height = 0;
     int channels = 0; 
-    int originalChannels = 0;
+    int original_channels = 0;
 };

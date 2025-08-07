@@ -10,11 +10,15 @@ layout(location = 2) in vec2 inTexCoord;
 layout(location = 3) in uint inMaterialIndex;
 layout(location = 4) in uint inTextureIndex;
 
-layout(buffer_reference, scalar) buffer UniformBufferObject 
+layout(buffer_reference, scalar) buffer SceneDataBuffer 
 {
-    mat4 model;
     mat4 view;
     mat4 projection;
+};
+
+layout(buffer_reference, scalar) buffer ModelBuffer
+{
+    mat4 model_transform;
 };
 
 // Material buffer containing all material parameters
@@ -35,8 +39,9 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
 
 layout (push_constant) uniform PushConstants
 {
-    UniformBufferObject sceneDataReference;
+    SceneDataBuffer sceneDataReference;
     MaterialBuffer materialsDataReference;
+    ModelBuffer model_transform_addr;
 } pushConstants;
 
 // Output to fragment shader
@@ -47,9 +52,10 @@ layout(location = 3) flat out uint outTexIndex;
 
 void main()
 {
-    UniformBufferObject sceneData = pushConstants.sceneDataReference;
+    SceneDataBuffer sceneData = pushConstants.sceneDataReference;
+    ModelBuffer model_addr = pushConstants.model_transform_addr;
     
-    gl_Position = sceneData.projection * sceneData.view * sceneData.model * vec4(inPosition, 1.0);
+    gl_Position = sceneData.projection * sceneData.view * model_addr.model_transform * vec4(inPosition, 1.0);
 
     debugPrintfEXT("Value of inPosition: %v3", inPosition);
 

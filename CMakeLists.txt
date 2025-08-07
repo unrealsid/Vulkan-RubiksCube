@@ -80,9 +80,36 @@ else()
     # If GLM is not found here, you might need to add its specific path manually or via another variable.
 endif()
 
+# ------------------------------------------------------
+# 4. Add shaderc library from Vulkan SDK
+# ------------------------------------------------------
+if (NOT "${VULKAN_SDK_PATH}" STREQUAL "")
+    # Add include directories for shaderc
+    target_include_directories(Vulkan_RubiksCube PUBLIC 
+        "${VULKAN_SDK_PATH}/Include"
+    )
+    
+    # Add library paths for shaderc
+    if(WIN32)
+        # For Windows, using the standard library location pattern in Vulkan SDK
+        target_link_libraries(Vulkan_RubiksCube
+            "${VULKAN_SDK_PATH}/Lib/shaderc_combinedd.lib"
+        )
+    else()
+        # For Linux/macOS, lib paths may differ
+        target_link_libraries(Vulkan_RubiksCube
+            "${VULKAN_SDK_PATH}/lib/libshaderc_combinedd.a"
+        )
+    endif()
+    
+    # Define precompiler directive to indicate shaderc is available
+    target_compile_definitions(Vulkan_RubiksCube PRIVATE HAVE_SHADERC)
+else()
+    message(WARNING "VULKAN_SDK_PATH not set. Shaderc library will not be available.")
+endif()
 
 # ------------------------------------------------------
-# 4. Add ImGuis
+# 5. Add ImGuis
 # ------------------------------------------------------
 
 set(IMGUI_DIR ${EXT_DIR}/imgui-master)
@@ -121,7 +148,7 @@ target_include_directories(Vulkan_RubiksCube PRIVATE
 target_link_libraries(Vulkan_RubiksCube imgui)
 
 # ------------------------------------------------------
-# 5. Add stbi
+# 6. Add stbi
 # ------------------------------------------------------
 
 set(STBI_DIR ${EXT_DIR}/stb-master)
@@ -129,7 +156,7 @@ set(STBI_DIR ${EXT_DIR}/stb-master)
 
 # ------------------------------------------------------
 
-# 6. Add vk bootstrapper
+# 7. Add vk bootstrapper
 # ------------------------------------------------------
 set(VK_BOOTSTRAP ${EXT_DIR}/vk-bootstrap)
 
@@ -194,7 +221,7 @@ endif()
 
 
 # ------------------------------------------------------
-# 8. Add Vulkan and related libraries (vk_hpp, vma) from Vulkan SDK
+# 9. Add Vulkan and related libraries (vk_hpp, vma) from Vulkan SDK
 # ------------------------------------------------------
 if (NOT "${VULKAN_SDK_PATH}" STREQUAL "")
     message(STATUS "Using Vulkan SDK from: ${VULKAN_SDK_PATH}")
