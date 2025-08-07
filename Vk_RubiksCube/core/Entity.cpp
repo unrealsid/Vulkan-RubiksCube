@@ -14,14 +14,13 @@ core::Entity::Entity(uint32_t entity_id, EngineContext& engine_context, const st
 {
     device_manager = engine_context.device_manager.get();
     initialize_transform_buffer();
-    initialize_transform();
-
+    
     initialize_object_id_buffer();
 }
 
 void core::Entity::start()
 {
-    
+    initialize_transform();
 }
 
 void core::Entity::initialize_transform_buffer()
@@ -41,9 +40,6 @@ void core::Entity::initialize_object_id_buffer()
 
 void core::Entity::initialize_transform() const
 {
-    transform->set_position(glm::vec3(0.0f, 0.0f, -5.0f));
-    transform->set_rotation(glm::vec3(90.0f));
-    transform->set_scale(glm::vec3(0.5f));
 }
 
 void core::Entity::update(double delta_time)

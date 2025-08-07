@@ -40,18 +40,18 @@ namespace core
         vulkan::DeviceManager* device_manager;
 
         EngineContext& engine_context;
+
+        //Stores transform address
+        GPU_Buffer transform_buffer;
+        VkDeviceAddress transform_buffer_address;
+
+        std::unique_ptr<Transform> transform;
         
     private:
 
         uint32_t entity_id;
 
         std::string entity_string_id;
-        
-        //Stores transform address
-        GPU_Buffer transform_buffer;
-        VkDeviceAddress transform_buffer_address;
-
-        std::unique_ptr<Transform> transform;
 
         //Stores Object ID Address
         GPU_Buffer object_id_buffer;
@@ -62,6 +62,6 @@ namespace core
 
         void initialize_object_id_buffer();
 
-        void initialize_transform() const;
+        virtual void initialize_transform() const;
     };
 }

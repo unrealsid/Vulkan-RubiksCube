@@ -67,6 +67,11 @@ namespace utils
         std::vector<LoadedObject> loaded_objects;
         
         std::vector<tinyobj::material_t> materials;
+
+        //Calculates average and normalizes vertices
+        static glm::vec3 compute_vertices_average(const std::vector<Vertex>& object_vertices);
+
+        static void normalize_vertices(const glm::vec3& local_center, std::vector<Vertex>& position_data);
         
         bool get_material_params(uint32_t materialIndex, MaterialParams& outMaterialParams) const;
 

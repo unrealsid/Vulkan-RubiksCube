@@ -15,4 +15,7 @@ struct LoadedObject
 
     //A map of material ID to index range for rendering 
     std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>> material_index_ranges;
+
+    //This is the averaged location by computing the average from the vertices provided by tinyobj loader 
+    glm::vec3 local_position;
 };

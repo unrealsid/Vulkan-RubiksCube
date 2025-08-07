@@ -61,6 +61,7 @@ namespace core
         static void get_mouse_direction(GLFWwindow* window);
         
         void load_models();
+        void load_root();
         void load_entities();
         void organize_draw_batches();
 

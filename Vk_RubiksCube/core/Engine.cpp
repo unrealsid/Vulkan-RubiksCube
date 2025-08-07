@@ -5,7 +5,9 @@
 #include <GLFW/glfw3.h>
 
 #include "DrawableEntity.h"
+#include "../game_entities/CubiesEntity.h"
 #include "../game_entities/GameManager.h"
+#include "../game_entities/RootEntity.h"
 #include "../platform/WindowManager.h"
 #include "../utils/MemoryUtils.h"
 #include "../utils/ModelLoaderUtils.h"
@@ -84,7 +86,6 @@ void core::Engine::run()
 
     auto window_manager = engine_context.window_manager.get();
     auto window = engine_context.window_manager->get_window();
-    auto object_picker =  engine_context.renderer->get_object_picker();
     
     while (!glfwWindowShouldClose(window))
     {
@@ -151,7 +152,8 @@ void core::Engine::load_models()
     {
         //"/models/rubiks_cube_texture/rubiksCubeTexture.obj",
         //"/models/plane/plane_simple.obj",
-        "/models/rubiks_cube/rubiks_cube.obj",
+        //"/models/rubiks_cube/rubiks_cube.obj",
+        "/models/rubiks_cube_newpivots/rubiks_cube_new_pivot.obj"
         //"/models/viper/viper.obj"
     };
 
@@ -169,28 +171,59 @@ void core::Engine::load_models()
             ++entity_id;
             
             //Create an entity for each loaded shape
-            std::unique_ptr<DrawableEntity> entity = std::make_unique<DrawableEntity>
+            std::unique_ptr<DrawableEntity> entity = std::make_unique<CubiesEntity>
             (
                 entity_id,
                 RenderData
                 {
                     .vertex_buffer = loaded_object.vertex_buffer,
                     .index_buffer = loaded_object.index_buffer,
+                    .local_position = loaded_object.local_position,
                     .vertices = loaded_object.vertices,
                     .indices = loaded_object.indices,
                     .material_index_ranges = loaded_object.material_index_ranges,
                 },
                 engine_context,
-                "drawable_entity_" + std::to_string(entity_id)
+                "cubie_entity_" + std::to_string(entity_id)
             );
             
             drawable_entities.push_back(std::move(entity));
         }
     }
 
+    load_root();
+
     //Once all materials are loaded, we can move them to the gpu
     engine_context.material_manager->init();
     organize_draw_batches();
+}
+
+void core::Engine::load_root()
+{
+    std::string root_obj_path = "/models/root/root.obj";
+
+    utils::ModelLoaderUtils model_utils;
+    model_utils.load_model_from_obj(root_obj_path, engine_context);
+    auto loaded_object = model_utils.get_loaded_objects()[0];
+
+    //Create an entity for each loaded shape
+    std::unique_ptr<DrawableEntity> entity = std::make_unique<RootEntity>
+    (
+        1500,
+        RenderData
+        {
+            .vertex_buffer = loaded_object.vertex_buffer,
+            .index_buffer = loaded_object.index_buffer,
+            .local_position = loaded_object.local_position,
+            .vertices = loaded_object.vertices,
+            .indices = loaded_object.indices,
+            .material_index_ranges = loaded_object.material_index_ranges,
+        },
+        engine_context,
+        "root"
+    );
+            
+    drawable_entities.push_back(std::move(entity));
 }
 
 void core::Engine::load_entities()

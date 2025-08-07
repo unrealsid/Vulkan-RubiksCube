@@ -14,6 +14,8 @@ namespace core
         //Runs every frame
         virtual void update(double delta_time) override;
 
+        virtual void initialize_transform() const override;
+
     private:
         //Stores data to render
         RenderData render_data;

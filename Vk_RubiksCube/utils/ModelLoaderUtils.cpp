@@ -5,11 +5,8 @@
 
 #include <iostream>
 #include "../structs/TextureInfo.h"
-
 #include "ImageUtils.h"
 #include "MemoryUtils.h"
-
-
 #include "../Config.h"
 #include "../materials/MaterialManager.h"
 #include "../structs/LoadedImageData.h"
@@ -17,10 +14,10 @@
 
 bool utils::ModelLoaderUtils::load_obj(const std::string& path,
 
-                                std::unordered_map<std::string, uint32_t>& material_name_to_index,
+                                       std::unordered_map<std::string, uint32_t>& material_name_to_index,
                                 
-                                std::unordered_map<uint32_t, MaterialParams>& material_params,
-                                std::unordered_map<uint32_t, TextureInfo>& out_texture_info)
+                                       std::unordered_map<uint32_t, MaterialParams>& material_params,
+                                       std::unordered_map<uint32_t, TextureInfo>& out_texture_info)
 {
     // Extract the directory from the path for loading textures
     std::string textureDirectory = path.substr(0, path.find_last_of('/') + 1);
@@ -67,7 +64,7 @@ bool utils::ModelLoaderUtils::load_obj(const std::string& path,
         std::string materialName = materials[tinyObjId].name;
         uint32_t bufferIndex = 0;
 
-        //Use an already stored buffer so we can reuse elements
+        //Use an already stored buffer, so we can reuse elements
         //Material was already loaded previously
         if (auto it = material_name_to_index.find(materialName); it != material_name_to_index.end())
         {
@@ -249,6 +246,11 @@ bool utils::ModelLoaderUtils::load_model_from_obj(const std::string& path,
     //Create Model index and vertex buffers
     for (auto& loaded_object : loaded_objects)
     {
+        //Normalize model vertices
+        auto local_center = compute_vertices_average(loaded_object.vertices);
+        normalize_vertices(local_center, loaded_object.vertices);
+        loaded_object.local_position = local_center;
+        
         MemoryUtils::create_vertex_and_index_buffers(engine_context,
             loaded_object.vertices,loaded_object.indices,
             loaded_object.vertex_buffer, loaded_object.index_buffer);
@@ -259,6 +261,28 @@ bool utils::ModelLoaderUtils::load_model_from_obj(const std::string& path,
     }
 
     return true;   
+}
+
+glm::vec3 utils::ModelLoaderUtils::compute_vertices_average(const std::vector<Vertex>& object_vertices)
+{
+    glm::vec3 local_center(0.0);
+    for (auto& element : object_vertices)
+    {
+        local_center += element.position; 
+    }
+
+    auto size = object_vertices.size();
+    local_center = glm::vec3( local_center.x / static_cast<float>(size), local_center.y / static_cast<float>(size), local_center.z / static_cast<float>(size));
+
+    return local_center;
+}
+
+void utils::ModelLoaderUtils::normalize_vertices(const glm::vec3& local_center, std::vector<Vertex>& position_data)
+{
+    for (auto& vertex_data : position_data)
+    {
+        vertex_data.position = vertex_data.position - local_center;
+    }
 }
 
 bool utils::ModelLoaderUtils::get_material_params(uint32_t materialIndex, MaterialParams& outMaterialParams) const
