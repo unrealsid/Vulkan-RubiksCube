@@ -1,10 +1,6 @@
 #version 460
 
-#extension GL_EXT_scalar_block_layout: require
-#extension GL_EXT_buffer_reference : require
-#extension GL_EXT_nonuniform_qualifier : require
-
-//Fragment shader
+#include "/include/mesh_shader_common.glsl"
 
 layout(location = 0) in vec3 inColor; 
 layout(location = 1) in vec2 inUV;
@@ -12,43 +8,8 @@ layout(location = 2) flat in uint inMaterialIndex;
 layout(location = 3) flat in uint inTexIndex;
 
 layout(location = 0) out vec4 outColor;
-layout(early_fragment_tests) in;
 
 layout (set = 0, binding = 0) uniform sampler2D textures[];
-
-layout(buffer_reference, scalar) buffer SceneDataBuffer
-{
-    mat4 view;
-    mat4 projection;
-};
-
-layout(buffer_reference, scalar) buffer ModelBuffer
-{
-    mat4 model_transform;
-};
-
-// Material buffer containing all material parameters
-struct Material
-{
-    vec4 diffuse;
-    vec4 specular;
-    vec4 shininess;
-    vec4 emissive;
-
-    vec4 alpha;
-};
-
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MaterialBuffer
-{
-    Material materialParams[];
-};
-
-layout (push_constant) uniform PushConstants
-{
-    SceneDataBuffer sceneDataReference;
-    MaterialBuffer materialsDataReference;
-    ModelBuffer model_transform_addr;
-} pushConstants;
 
 vec2 transformUV(vec2 uv, uint texIndex) 
 {
@@ -75,7 +36,6 @@ vec2 transformUV(vec2 uv, uint texIndex)
     // Move back from center and apply translation
     return scaledUV + vec2(0.5, 0.5) + translate;
 }
-
 
 void main() 
 {
