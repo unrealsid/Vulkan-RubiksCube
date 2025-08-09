@@ -1,5 +1,8 @@
 #pragma once
 
+#include <glm/fwd.hpp>
+#include <glm/vec3.hpp>
+
 #include "../../structs/EngineContext.h"
 #include "../../structs/GPU_Buffer.h"
 #include "../../structs/Vk_DepthStencilImage.h" 
@@ -41,10 +44,13 @@ namespace rendering
 
         GPU_Buffer get_readback_buffer() const { return readback_id_buffer; }
 
+        GPU_Buffer get_face_normal_readback_buffer() const { return normal_readback_buffer;  }
+
+        glm::vec3 get_selected_face_normal(const glm::mat4& model_transform) const;  
+
     private:
         EngineContext& engine_context;
-        core::Engine* engine;
-
+        
         DepthStencilImage depth_stencil_image;
 
         vulkan::DeviceManager* device_manager;
@@ -56,16 +62,22 @@ namespace rendering
         Vk_Image object_id_image;
         GPU_Buffer readback_id_buffer;
 
-        void create_readback_id_buffer();
-        VkDeviceAddress readback_id_buffer_address;
+        GPU_Buffer normal_readback_buffer;
 
         VkFence object_picker_fence;
-
-        void create_object_picking_material();
 
         //Stores the object picking material
         std::unique_ptr<material::Material> object_picker_material;
 
+        void create_readback_id_buffer();
+
+        //Creates a buffer for reading back the normal data for a face that is selected
+        void create_normal_readback_buffer();
+        VkDeviceAddress normal_readback_buffer_address;
+
+        //Creates the material for object picking
+        void create_object_picking_material();
+        
         //Creates the image attachment for storing Object IDs
         void create_image_attachment();
     };

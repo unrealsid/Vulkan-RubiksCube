@@ -19,9 +19,15 @@ layout(buffer_reference, scalar) buffer ObjectID_Buffer
     uint object_id;
 };
 
+layout(buffer_reference, scalar) buffer FaceNormalBuffer
+{
+    vec4 face_normal;
+};
+
 layout(push_constant) uniform PushConstants
 {
     SceneDataBuffer scene_data_buffer_addr;
     ModelBuffer model_transform_addr;
     ObjectID_Buffer object_id_addr;
+    FaceNormalBuffer face_normal_addr;
 } push_constants;

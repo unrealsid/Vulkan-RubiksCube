@@ -17,6 +17,8 @@
 #include "../../core/DrawableEntity.h"
 #include "../../core/Engine.h"
 #include "../../structs/Vertex_ObjectPicking.h"
+#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 rendering::ObjectPicking::ObjectPicking(EngineContext& engine_context): engine_context(engine_context), command_pool(nullptr)
 {
@@ -33,6 +35,7 @@ void rendering::ObjectPicking::init_picking()
 
     create_image_attachment();
     create_readback_id_buffer();
+    create_normal_readback_buffer();
 
     create_object_picking_material();
 
@@ -77,6 +80,12 @@ void rendering::ObjectPicking::create_readback_id_buffer()
 {
     auto swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
     utils::MemoryUtils::allocate_buffer_with_readback_access(device_manager->get_allocator(), swapchain_extents.width * swapchain_extents.height * sizeof(glm::vec4), readback_id_buffer);
+}
+
+void rendering::ObjectPicking::create_normal_readback_buffer()
+{
+    utils::MemoryUtils::allocate_buffer_with_readback_access(device_manager->get_allocator(),  sizeof(glm::vec4), normal_readback_buffer);
+    normal_readback_buffer_address = utils::MemoryUtils::get_buffer_device_address(engine_context.dispatch_table, normal_readback_buffer.buffer);
 }
 
 void rendering::ObjectPicking::create_object_picking_material()
@@ -184,14 +193,15 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
     render_info.layerCount       = 1;
     render_info.pColorAttachments = &color_attachment_info;
     render_info.pDepthAttachment = &depth_attachment_info;
-    render_info.pStencilAttachment = &depth_attachment_info;
+    //render_info.pStencilAttachment = &depth_attachment_info;
 
     dispatch_table.cmdBeginRenderingKHR(command_buffer, &render_info);
 
     //Bind the shader
     
     object_picker_material->get_shader_object()->set_initial_state(dispatch_table,
-                                                                   engine_context.swapchain_manager->get_swapchain().extent, command_buffer,
+                                                                   engine_context.swapchain_manager->get_swapchain().extent,
+                                                                   command_buffer,
                                                                    Vertex_ObjectPicking::get_binding_description(), Vertex_ObjectPicking::get_attribute_descriptions(),
                                                                    engine_context.swapchain_manager->get_swapchain().extent,
                                                                    {0, 0});
@@ -200,11 +210,13 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
 
     ObjectPickerPushConstantBlock push_constants{};
     push_constants.scene_buffer_addr = engine_context.renderer->get_gpu_scene_buffer().scene_buffer_address;
+
+    //Stores the currently selected face normal
+    push_constants.face_normal_addr = normal_readback_buffer_address;
     
     //Draw the objects
     for (const auto& entity : core::Engine::get_drawable_entities())
     {
-        
         RenderData render_data = entity->get_render_data();
 
         push_constants.model_transform_addr = entity->get_transform_buffer_address();
@@ -232,4 +244,38 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
     }
     
     return true;
+}
+
+glm::vec3 rendering::ObjectPicking::get_selected_face_normal(const glm::mat4& model_transform) const
+{
+    if(auto data = static_cast<glm::vec3*>(normal_readback_buffer.allocation_info.pMappedData))
+    {
+        glm::mat3 normal_matrix = inverse(transpose(glm::mat3(model_transform)));
+        glm::vec3 world_normal = glm::normalize(normal_matrix * *data);
+        
+        return world_normal;
+
+        // std::cout << "Data read from buffer: " << glm::to_string(*data) << std::endl;
+        //
+        // std::cout << "Model Transform (4x4): " << glm::to_string(model_transform) << std::endl;
+        //
+        // glm::mat3 model_transform_3x3 = glm::mat3(model_transform);
+        // std::cout << "Model Transform (3x3): " << glm::to_string(model_transform_3x3) << std::endl;
+        //
+        // glm::mat3 transposed_matrix = glm::transpose(model_transform_3x3);
+        // std::cout << "Transposed Matrix: " << glm::to_string(transposed_matrix) << std::endl;
+        //
+        // glm::mat3 normal_matrix = glm::inverse(transposed_matrix);
+        // std::cout << "Normal Matrix: " << glm::to_string(normal_matrix) << std::endl;
+        //
+        // glm::vec3 world_normal_unnormalized = normal_matrix * *data;
+        // std::cout << "World Normal (unnormalized): " << glm::to_string(world_normal_unnormalized) << std::endl;
+        //
+        // glm::vec3 world_normal = glm::normalize(world_normal_unnormalized);
+        // std::cout << "Final World Normal: " << glm::to_string(world_normal) << std::endl;
+        //
+        // return world_normal;
+    }
+
+    return glm::vec3(0.0);
 }

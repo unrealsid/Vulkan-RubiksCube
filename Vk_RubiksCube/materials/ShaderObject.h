@@ -128,7 +128,7 @@ namespace material
 			disp.cmdSetFrontFaceEXT(cmd_buffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 			disp.cmdSetDepthTestEnableEXT(cmd_buffer, VK_TRUE);
 			disp.cmdSetDepthWriteEnableEXT(cmd_buffer, VK_TRUE);
-			disp.cmdSetDepthCompareOpEXT(cmd_buffer, VK_COMPARE_OP_LESS_OR_EQUAL);
+			disp.cmdSetDepthCompareOpEXT(cmd_buffer, VK_COMPARE_OP_LESS);
 			disp.cmdSetPrimitiveTopologyEXT(cmd_buffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 			disp.cmdSetRasterizerDiscardEnableEXT(cmd_buffer, VK_FALSE);
 			disp.cmdSetPolygonModeEXT(cmd_buffer, VK_POLYGON_MODE_FILL);

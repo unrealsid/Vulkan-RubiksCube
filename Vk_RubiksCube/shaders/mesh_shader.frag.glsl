@@ -2,6 +2,8 @@
 
 #include "/include/mesh_shader_common.glsl"
 
+layout(early_fragment_tests) in;
+
 layout(location = 0) in vec3 inColor; 
 layout(location = 1) in vec2 inUV;
 layout(location = 2) flat in uint inMaterialIndex;

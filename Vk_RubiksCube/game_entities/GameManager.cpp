@@ -31,14 +31,16 @@ void GameManager::update(double delta_time)
     VkExtent2D swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
     auto encoded_color = utils::GameUtils::get_pixel_color(engine_context,
         window_manager->local_mouse_x,
-        window_manager->local_mouse_y, swapchain_extents, buffer);
+         window_manager->local_mouse_y, swapchain_extents, buffer);
     
-    selected_object_id = utils::GameUtils::get_object_id_from_color(engine_context, window_manager->local_mouse_x,
-        window_manager->local_mouse_y, swapchain_extents,
+    selected_object_id = utils::GameUtils::get_object_id_from_color(engine_context,
+         window_manager->local_mouse_x,
+         window_manager->local_mouse_y, swapchain_extents,
         buffer, encoded_color);
 
     if(Entity* entity =  core::Engine::get_drawable_entity_by_id(selected_object_id))
     {
+        //Get location of pointer and get ID of cubie selected
         Transform* transform = entity->get_transform();
         
         std::cout << "Object id: << " << selected_object_id <<  " << Transform: " << *transform << std::endl;
@@ -48,7 +50,12 @@ void GameManager::update(double delta_time)
         Vk_SceneData scene_data = engine_context.renderer->get_scene_data();
         selected_point = utils::ProjectionUtils::unproject_point(engine_context, encoded_color.z, scene_data.view, scene_data.projection);
 
-        pointer_entity->get_transform()->set_position(selected_point);
+        //pointer_entity->get_transform()->set_position(selected_point);
+
+        auto object_picker = engine_context.renderer->get_object_picker();
+        glm::vec3 normal = object_picker->get_selected_face_normal(transform->get_model_matrix());
+
+        std::cout << "Normal:" << normal.x << ", " << normal.y << ", " << normal.z << std::endl;
     }
 }
 

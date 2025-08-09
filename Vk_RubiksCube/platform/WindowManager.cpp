@@ -84,6 +84,9 @@ bool window::WindowManager::get_local_mouse_xy()
     {
         local_mouse_y = mouse_y;
     }
+
+
+    //std::cout << "Local mouse x" << local_mouse_x << " local_mouse_y " << local_mouse_y << std::endl;
     
     return true;
 }

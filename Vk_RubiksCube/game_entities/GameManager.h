@@ -26,7 +26,8 @@ public:
 
     void update(double delta_time) override;
 
-    void parent_cubies_to_root();
+    //setup a basic scene graph
+    static void parent_cubies_to_root();
 
 private:
     window::WindowManager* window_manager;
