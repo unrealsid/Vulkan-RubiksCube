@@ -19,6 +19,7 @@
 #include "../../structs/Vertex_ObjectPicking.h"
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include "../../utils/Initializers.h"
 
 rendering::ObjectPicking::ObjectPicking(EngineContext& engine_context): engine_context(engine_context), command_pool(nullptr)
 {
@@ -29,7 +30,7 @@ rendering::ObjectPicking::ObjectPicking(EngineContext& engine_context): engine_c
 
 void rendering::ObjectPicking::init_picking()
 {
-    utils::RenderUtils::create_command_pool(engine_context, command_pool);
+    utils::RenderUtils::create_command_pool(engine_context, command_pool,  vkb::QueueType::graphics);
     utils::RenderUtils::get_supported_depth_stencil_format(device_manager->get_physical_device(), &depth_stencil_image.format);
     utils::RenderUtils::create_depth_stencil_image(engine_context, swapchain_manager->get_swapchain().extent, device_manager->get_allocator(), depth_stencil_image);
 

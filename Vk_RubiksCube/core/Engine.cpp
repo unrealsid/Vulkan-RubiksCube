@@ -61,6 +61,9 @@ void core::Engine::init()
     engine_context.renderer->create_command_buffers();
 
     exec_start();
+    
+    //Init the compute shader portion which we use to detect hits?
+    engine_context.renderer->init_hit_detect_system();
 }
 
 void core::Engine::get_mouse_direction(GLFWwindow* window)
@@ -179,6 +182,8 @@ void core::Engine::load_models()
                 {
                     .vertex_buffer = loaded_object.vertex_buffer,
                     .index_buffer = loaded_object.index_buffer,
+                    //Get the address of this buffer to pass to the Compute shader so it can access model data
+                    //Important for cubies since we need to hit test them
                     .local_position = loaded_object.local_position,
                     .vertices = loaded_object.vertices,
                     .indices = loaded_object.indices,
@@ -334,10 +339,13 @@ void core::Engine::update(double delta_time)
 void core::Engine::render() const
 {
    auto object_picker =  engine_context.renderer->get_object_picker();
-   auto window = engine_context.window_manager.get();
+   auto hit_detection = engine_context.renderer->get_hit_detect();
+    
     
     // Record the object picking command buffer with new mouse position
-   object_picker->record_command_buffer(window->local_mouse_x, window->local_mouse_y);
+    //object_picker->record_command_buffer(window->local_mouse_x, window->local_mouse_y);
+
+    hit_detection->build_compute_command_buffer();
     
     if (bool result = engine_context.renderer->draw_frame(); !result)
     {

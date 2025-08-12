@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "../core/Entity.h"
+#include "../rendering/picking/compute/HitDetect.h"
 
 class PointerEntity;
 
@@ -32,6 +33,7 @@ public:
 private:
     window::WindowManager* window_manager;
     rendering::ObjectPicking* object_picker;
+    rendering::compute::HitDetect* hit_detect;
 
     GPU_Buffer buffer;
     uint32_t selected_object_id;

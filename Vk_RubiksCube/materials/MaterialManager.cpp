@@ -9,6 +9,7 @@
 #include "../utils/DescriptorUtils.h"
 #include "../utils/MemoryUtils.h"
 #include "../vulkan/DeviceManager.h"
+#include "../utils/Initializers.h"
 #include <cmath>
 
 material::MaterialManager::MaterialManager(EngineContext& engine_context) : max_materials(1000),

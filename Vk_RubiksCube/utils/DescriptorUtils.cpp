@@ -8,6 +8,7 @@
 #include "../structs/GPU_Buffer.h"
 
 #include "MemoryUtils.h"
+#include "Initializers.h"
 #include "../vulkan/DeviceManager.h"
 
 void utils::DescriptorUtils::setup_texture_descriptors(const vkb::DispatchTable& disp, const std::vector<Vk_Image>& textures, VkDescriptorSetLayout& outDescriptorSetLayout, VkDescriptorSet& outDescriptorSet)

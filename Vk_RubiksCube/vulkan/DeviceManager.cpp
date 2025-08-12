@@ -53,6 +53,7 @@ bool vulkan::DeviceManager::device_init(EngineContext& engine_context)
     VkPhysicalDeviceFeatures features = {};
     features.geometryShader = VK_FALSE;
     features.tessellationShader = VK_FALSE;
+    features.shaderInt64 = VK_TRUE;
 
     vkb::PhysicalDeviceSelector phys_device_selector(instance);
     auto phys_device_ret = phys_device_selector
@@ -150,5 +151,14 @@ bool vulkan::DeviceManager::get_queues()
         return false;
     }
     present_queue = pq.value();
+
+    auto cq = device.get_queue(vkb::QueueType::compute);
+    if (!cq.has_value())
+    {
+        std::cout << "failed to get compute queue: " << cq.error().message() << "\n";
+        return false;
+    }
+    compute_queue = cq.value();
+    
     return true;
 }

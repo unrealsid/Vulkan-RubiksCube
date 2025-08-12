@@ -45,5 +45,10 @@ namespace utils
         static void allocate_buffer_with_readback_access(VmaAllocator allocator, VkDeviceSize size, GPU_Buffer& buffer);
 
         static void createMaterialParamsBuffer(const vulkan::DeviceManager& device_manager, const std::unordered_map<uint32_t, MaterialParams>& material_params, GPU_Buffer& out_material_params_buffer);
+
+        //Copies data to local gpu memory 
+        static void transfer_data_to_gpu(const EngineContext& engine_context, VkCommandPool command_pool, GPU_Buffer& gpu_buffer, VkDeviceSize buffer_size, const
+                                  void* data_to_transfer, VkDeviceAddress
+                                  & out_device_buffer_address);
     };
 }

@@ -7,8 +7,15 @@
 #include <vulkan/vulkan.h>
 
 #include "VkBootstrapDispatch.h"
+#include "../core/Engine.h"
 #include "../structs/Vk_DepthStencilImage.h"
 #include "../structs/DrawBatch.h"
+#include "../Vk_RubiksCube/rendering/picking/compute/HitDetect.h"
+
+namespace rendering::compute
+{
+    class HitDetect;
+}
 
 namespace rendering
 {
@@ -62,6 +69,9 @@ namespace core
         [[nodiscard]] VkCommandPool get_command_pool() const { return command_pool; }
         [[nodiscard]] std::unordered_map<std::string, DrawBatch>& get_draw_batches() { return draw_batches; }
         [[nodiscard]] rendering::ObjectPicking* get_object_picker() const { return object_picker.get(); }
+        [[nodiscard]] rendering::compute::HitDetect* get_hit_detect() const { return hit_detect.get(); }
+
+        void init_hit_detect_system();
     
     private:
         Vk_SceneData scene_data;
@@ -74,6 +84,8 @@ namespace core
         std::vector<VkSemaphore> available_semaphores;
         std::vector<VkSemaphore> finished_semaphores;
         VkSemaphore object_picker_done_semaphore;
+
+        VkSemaphore hit_detection_done_semaphore;
         
         std::vector<VkFence> in_flight_fences;
         std::vector<VkFence> image_in_flight;
@@ -92,8 +104,12 @@ namespace core
 
         std::unique_ptr<rendering::ObjectPicking> object_picker;
 
+        std::unique_ptr<rendering::compute::HitDetect> hit_detect;
+
         void init_object_picker();
 
         void submit_object_picker_command_buffer() const;
+
+        void submit_hit_detect_command_buffer() const;
     };
 }

@@ -31,6 +31,7 @@ namespace vulkan
 
         VkQueue graphics_queue;
         VkQueue present_queue;
+        VkQueue compute_queue;
 
         VmaAllocator vmaAllocator;
         
@@ -41,6 +42,7 @@ namespace vulkan
         [[nodiscard]] vkb::PhysicalDevice get_physical_device() const { return physical_device; }
         [[nodiscard]] VkQueue get_graphics_queue() const { return graphics_queue; }
         [[nodiscard]] VkQueue get_present_queue() const { return present_queue; }
+        [[nodiscard]] VkQueue get_compute_queue() const {return compute_queue; }
         [[nodiscard]] VmaAllocator get_allocator() const { return vmaAllocator; }
 
         void set_vma_allocator(VmaAllocator allocator) { vmaAllocator = allocator; }

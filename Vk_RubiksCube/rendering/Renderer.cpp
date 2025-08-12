@@ -16,6 +16,7 @@
 #include "../materials/MaterialManager.h"
 #include "../utils/RenderUtils.h"
 #include "picking/ObjectPicking.h"
+#include "picking/compute/HitDetect.h"
 
 core::Renderer::Renderer(EngineContext& engine_context) : scene_data(), gpu_scene_buffer(),
                                                           engine_context(engine_context),
@@ -32,11 +33,22 @@ void core::Renderer::init()
     create_sync_objects();
     setup_scene_data();
     
-    utils::RenderUtils::create_command_pool(engine_context, command_pool);
+    utils::RenderUtils::create_command_pool(engine_context, command_pool,  vkb::QueueType::graphics);
     utils::RenderUtils::get_supported_depth_stencil_format(device_manager->get_physical_device(), &depth_stencil_image.format);
     utils::RenderUtils::create_depth_stencil_image(engine_context, swapchain_manager->get_swapchain().extent, device_manager->get_allocator(), depth_stencil_image);
 
     init_object_picker();
+}
+
+void core::Renderer::init_hit_detect_system()
+{
+    VkSemaphoreCreateInfo semaphore_info{};
+    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    
+    engine_context.dispatch_table.createSemaphore(&semaphore_info, nullptr, &hit_detection_done_semaphore);
+    
+    hit_detect = std::make_unique<rendering::compute::HitDetect>(engine_context);
+    hit_detect->init_compute();
 }
 
 void core::Renderer::init_object_picker()
@@ -64,6 +76,21 @@ void core::Renderer::submit_object_picker_command_buffer() const
     object_picker->first_submit_done = true;
 }
 
+void core::Renderer::submit_hit_detect_command_buffer() const
+{
+    auto hit_detect_fence = hit_detect->get_fence();
+    auto buffer = hit_detect->get_command_buffer();
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &buffer;
+    submit_info.pSignalSemaphores = &hit_detection_done_semaphore;
+    submit_info.signalSemaphoreCount = 1;
+    dispatch_table.queueSubmit(device_manager->get_compute_queue(), 1, &submit_info, hit_detect_fence);
+    hit_detect->first_submit_done = true;
+}
+
 bool core::Renderer::draw_frame()
 {
     dispatch_table.waitForFences(1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
@@ -87,14 +114,13 @@ bool core::Renderer::draw_frame()
     }
     
     image_in_flight[image_index] = in_flight_fences[current_frame];
-    
-    //Object picker
-    submit_object_picker_command_buffer();
 
+    submit_hit_detect_command_buffer();
+    
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore wait_semaphores[] = { available_semaphores[current_frame], object_picker_done_semaphore};
+    VkSemaphore wait_semaphores[] = { available_semaphores[current_frame], hit_detection_done_semaphore};
     VkPipelineStageFlags wait_stages[] =
     {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,

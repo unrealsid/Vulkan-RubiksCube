@@ -30,5 +30,5 @@ glm::vec3 utils::ProjectionUtils::unproject_point(const EngineContext& engine_co
         world_coords /= world_coords.w;
     }
 
-    return {world_coords};
+    return world_coords;
 }

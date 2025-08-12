@@ -5,11 +5,11 @@
 #include "../vulkan/DeviceManager.h"
 #include "../structs/Vk_DepthStencilImage.h"
 
-bool utils::RenderUtils::create_command_pool(const EngineContext& engine_context, VkCommandPool& out_command_pool)
+bool utils::RenderUtils::create_command_pool(const EngineContext& engine_context, VkCommandPool& out_command_pool, vkb::QueueType queue_type)
 {
     VkCommandPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    pool_info.queueFamilyIndex = engine_context.device_manager->get_device().get_queue_index(vkb::QueueType::graphics).value();
+    pool_info.queueFamilyIndex = engine_context.device_manager->get_device().get_queue_index(queue_type).value();
     pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     
     if (engine_context.dispatch_table.createCommandPool(&pool_info, nullptr, &out_command_pool) != VK_SUCCESS)

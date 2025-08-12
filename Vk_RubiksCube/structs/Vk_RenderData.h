@@ -12,7 +12,7 @@ struct RenderData
 {
     GPU_Buffer vertex_buffer;
     GPU_Buffer index_buffer;
-
+    
     glm::vec3 local_position;
     
     std::vector<Vertex> vertices;
