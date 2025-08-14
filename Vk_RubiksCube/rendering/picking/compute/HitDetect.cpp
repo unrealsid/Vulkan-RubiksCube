@@ -89,6 +89,20 @@ void rendering::compute::HitDetect::create_ray_data() const
     vmaUnmapMemory(allocator, ray_buffer.allocation);
 }
 
+void rendering::compute::HitDetect::update_transforms()
+{
+    auto& entities = core::Engine::get_drawable_entities();
+
+    for (int i = 0; i < cubies.size(); ++i)
+    {
+        auto model_matrix = cubies[i]->get_transform()->get_model_matrix();
+        world_matrices[i] =  model_matrix;
+    }
+
+    VkDeviceSize model_transform_buffer_size = world_matrices.size() * sizeof(glm::mat4);
+    utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), world_transform_buffer.allocation, world_transform_buffer.allocation_info, world_matrices.data(), model_transform_buffer_size);
+}
+
 void rendering::compute::HitDetect::init_compute()
 {
     utils::RenderUtils::create_command_pool(engine_context, compute.command_pool, vkb::QueueType::compute);
@@ -175,7 +189,6 @@ void rendering::compute::HitDetect::load_objects_in_compute_buffer()
     auto& entities = core::Engine::get_drawable_entities();
 
     std::vector<TriangleInfo> vertex_triangles;
-    std::vector<glm::mat4> world_matrices;
 
     uint32_t world_matrix_insertion_id = 0;
     
@@ -189,6 +202,9 @@ void rendering::compute::HitDetect::load_objects_in_compute_buffer()
             auto indices = entity->get_render_data().indices;
             auto id = entity->get_entity_id();
 
+            //Track cubies with this array
+            cubies.push_back(entity.get());
+            
             //Store the world transformation in the vertex info of the triangle 
             world_matrices.push_back(model_matrix);
             ++world_matrix_insertion_id;
@@ -229,10 +245,11 @@ void rendering::compute::HitDetect::load_objects_in_compute_buffer()
     utils::MemoryUtils::transfer_data_to_gpu(engine_context, compute.command_pool, triangles_buffer, triangle_info_buffer_size, vertex_triangles.data(), triangles_buffer.buffer_address);
 
     VkDeviceSize model_transform_buffer_size = world_matrices.size() * sizeof(glm::mat4);
-    utils::MemoryUtils::transfer_data_to_gpu(engine_context, compute.command_pool, world_transform_buffer, model_transform_buffer_size, world_matrices.data(), world_transform_buffer.buffer_address);
+    utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), model_transform_buffer_size, world_transform_buffer);
+    world_transform_buffer.buffer_address = utils::MemoryUtils::get_buffer_device_address(engine_context.dispatch_table, world_transform_buffer.buffer);
 }
 
-void rendering::compute::HitDetect::build_compute_command_buffer() const
+void rendering::compute::HitDetect::build_compute_command_buffer()
 {
     auto dispatch_table = engine_context.dispatch_table;
 
@@ -244,6 +261,7 @@ void rendering::compute::HitDetect::build_compute_command_buffer() const
 
     dispatch_table.resetCommandBuffer(compute.command_buffer, 0);
 
+    update_transforms();
     create_ray_data();
     
     //Divide to get the number of triangles

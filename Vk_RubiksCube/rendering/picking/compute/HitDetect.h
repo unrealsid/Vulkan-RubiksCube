@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <string>
+#include <vector>
 #include <glm/fwd.hpp>
 #include <glm/vec3.hpp>
 
@@ -8,6 +9,11 @@
 #include "../../../structs/EngineContext.h"
 #include "../../../structs/GPU_Buffer.h"
 #include "../../../structs/Ray.h"
+
+namespace core
+{
+    class DrawableEntity;
+}
 
 namespace core
 {
@@ -58,7 +64,7 @@ namespace rendering::compute
         //Init compute resources
         void init_compute();
         
-        void build_compute_command_buffer() const;
+        void build_compute_command_buffer();
 
     private:
         EngineContext& engine_context;
@@ -82,6 +88,10 @@ namespace rendering::compute
 
         //Stores world matrix data
         GPU_Buffer world_transform_buffer;
+        std::vector<glm::mat4> world_matrices;
+
+        //List of cubies
+        std::vector<core::DrawableEntity*> cubies;
 
         //The buffer that tracks the ray we are sending 
         GPU_Buffer ray_buffer;
@@ -93,6 +103,8 @@ namespace rendering::compute
 
         //Maps ray data to shared memory
         void create_ray_data() const;
+
+        void update_transforms();
 
         void create_readback_buffer();
 
