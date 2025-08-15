@@ -26,6 +26,7 @@ core::Renderer::Renderer(EngineContext& engine_context) : scene_data(), gpu_scen
     swapchain_manager = engine_context.swapchain_manager.get();
     dispatch_table = engine_context.dispatch_table;
     object_picker = std::make_unique<rendering::ObjectPicking>(engine_context);
+    should_update_camera = false;
 }
 
 void core::Renderer::init()
@@ -173,11 +174,15 @@ bool core::Renderer::init_camera()
 
 void core::Renderer::update_camera(float pos_delta_x, float pos_delta_y)
 {
-    orbit_camera.update_rotation(pos_delta_x, pos_delta_y);
+    if(should_update_camera)
+    {
+        orbit_camera.update_rotation(pos_delta_x, pos_delta_y);
 
-    float aspect = static_cast<float>(window::window_width) / static_cast<float>(window::window_height); 
-    scene_data = orbit_camera.get_scene_data(aspect);
-    utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), gpu_scene_buffer.scene_buffer.allocation, gpu_scene_buffer.scene_buffer.allocation_info, &scene_data, sizeof(Vk_SceneData));
+        float aspect = static_cast<float>(window::window_width) / static_cast<float>(window::window_height); 
+        scene_data = orbit_camera.get_scene_data(aspect);
+        utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), gpu_scene_buffer.scene_buffer.allocation, gpu_scene_buffer.scene_buffer.allocation_info, &scene_data, sizeof(Vk_SceneData));
+    }
+    
 }
 
 bool core::Renderer::create_sync_objects()

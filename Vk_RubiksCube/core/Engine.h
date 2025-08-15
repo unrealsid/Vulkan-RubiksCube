@@ -50,6 +50,7 @@ namespace core
         static Entity* get_entity_by_tag(const std::string& tag);
 
         static Entity* get_drawable_entity_by_id(uint32_t entity_id);
+        EngineContext& get_engine_context() { return engine_context; };
 
     private:
         EngineContext engine_context;
@@ -84,14 +85,5 @@ namespace core
         void render() const;
         
         static void get_mouse_direction(GLFWwindow* window);
-        
-        // Handle mouse button press/release
-        static void on_mouse_button(GLFWwindow* window, int button, int action, int mods);
-
-        // Handle mouse movement
-        static void on_mouse_move(GLFWwindow* window, double xpos, double ypos);
-
-        // Handle scroll wheel
-        static void on_scroll(GLFWwindow* window, double xoffset, double yoffset);
     };
 }

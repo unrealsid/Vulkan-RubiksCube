@@ -4,6 +4,11 @@
 #include <vulkan_core.h>
 #include <GLFW/glfw3.h>
 
+namespace core
+{
+    class Engine;
+}
+
 struct EngineContext;
 struct GLFWwindow;
 
@@ -33,9 +38,7 @@ namespace window
         VkSurfaceKHR create_surface_glfw(VkInstance instance, VkAllocationCallbacks* allocator = nullptr) const;
 
         //Register window callbacks
-        void register_callbacks(GLFWmousebuttonfun mouse_button_fn,
-                                GLFWcursorposfun mouse_move_fn,
-                                GLFWscrollfun scroll_fn) const;
+        void register_callbacks() const;
 
         GLFWwindow* get_window() const;
 
@@ -59,5 +62,13 @@ namespace window
         double mouse_y = 0.0;
         bool mouse_moved = false;
 
+        // Handle mouse button press/release
+        static void on_mouse_button(GLFWwindow* window, int button, int action, int mods);
+
+        // Handle mouse movement
+        static void on_mouse_move(GLFWwindow* window, double xpos, double ypos);
+
+        // Handle scroll wheel
+        static void on_scroll(GLFWwindow* window, double xoffset, double yoffset);
     };
 }

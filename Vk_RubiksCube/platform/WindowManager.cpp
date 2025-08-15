@@ -1,6 +1,8 @@
 #include "WindowManager.h"
 #include <iostream>
 #include <GLFW/glfw3.h>
+
+#include "../core/Engine.h"
 #include "../structs/EngineContext.h"
 #include "../rendering/Renderer.h"
 #include "../vulkan/SwapchainManager.h"
@@ -23,6 +25,7 @@ GLFWwindow* window::WindowManager::create_window_glfw(const char* windowName, bo
     }
 
     window = glfwCreateWindow(window_width, window_height, windowName, nullptr, nullptr);
+    register_callbacks();
     return window;  
 }
 
@@ -36,6 +39,7 @@ VkSurfaceKHR window::WindowManager::create_surface_glfw(VkInstance instance, VkA
 {
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     VkResult err = glfwCreateWindowSurface(instance, window, allocator, &surface);
+    
     if (err)
     {
         const char* error_msg;
@@ -52,13 +56,11 @@ VkSurfaceKHR window::WindowManager::create_surface_glfw(VkInstance instance, VkA
     return surface;
 }
 
-void window::WindowManager::register_callbacks(GLFWmousebuttonfun mouse_button_fn,
-                                                GLFWcursorposfun mouse_move_fn,
-                                                GLFWscrollfun scroll_fn) const
+void window::WindowManager::register_callbacks() const
 {
-    glfwSetMouseButtonCallback(window, mouse_button_fn);
-    glfwSetCursorPosCallback(window, mouse_move_fn);
-    glfwSetScrollCallback(window, scroll_fn);
+    glfwSetMouseButtonCallback(window, on_mouse_button);
+    glfwSetCursorPosCallback(window, on_mouse_move);
+    glfwSetScrollCallback(window, on_scroll);
 }
 
 GLFWwindow* window::WindowManager::get_window() const
@@ -110,4 +112,42 @@ void window::WindowManager::update_last_mouse_position()
 {
     last_mouse_x = local_mouse_x;
     last_mouse_y = local_mouse_y;
+}
+
+void window::WindowManager::on_mouse_button(GLFWwindow* window, int button, int action, int mods)
+{
+    core::Engine& engine = core::Engine::get_instance();
+
+    if(action == GLFW_PRESS)
+    {
+        //Rotate camera
+        if(button == GLFW_MOUSE_BUTTON_MIDDLE)
+        {
+            engine.get_engine_context().renderer->should_update_camera = true;
+        }
+
+        //Select
+        if(button == GLFW_MOUSE_BUTTON_LEFT)
+        {
+        
+        }
+    }
+    if(action == GLFW_RELEASE)
+    {
+        //Rotate camera
+        if(button == GLFW_MOUSE_BUTTON_MIDDLE)
+        {
+            engine.get_engine_context().renderer->should_update_camera = false;
+        }
+    }
+}
+
+void window::WindowManager::on_mouse_move(GLFWwindow* window, double xpos, double ypos)
+{
+    core::Engine& engine = core::Engine::get_instance();
+}
+
+void window::WindowManager::on_scroll(GLFWwindow* window, double xoffset, double yoffset)
+{
+    core::Engine& engine = core::Engine::get_instance();
 }

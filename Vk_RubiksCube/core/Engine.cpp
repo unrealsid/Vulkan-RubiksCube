@@ -40,7 +40,6 @@ void core::Engine::init()
     engine_context.swapchain_manager = std::make_unique<vulkan::SwapchainManager>();
     
     engine_context.window_manager->create_window_glfw("Rubik's Cube", true);
-    engine_context.window_manager->register_callbacks(on_mouse_button, on_mouse_move, on_scroll);
     engine_context.device_manager->device_init(engine_context);
 
     engine_context.material_manager = std::make_unique<material::MaterialManager>(engine_context);
@@ -346,19 +345,4 @@ void core::Engine::render() const
     {
         //std::cout << "failed to draw frame \n";
     }
-}
-
-void core::Engine::on_mouse_button(GLFWwindow* window, int button, int action, int mods)
-{
-    
-}
-
-void core::Engine::on_mouse_move(GLFWwindow* window, double xpos, double ypos)
-{
-    
-}
-
-void core::Engine::on_scroll(GLFWwindow* window, double xoffset, double yoffset)
-{
-    
 }

@@ -42,6 +42,8 @@ namespace core
     public:
         Renderer(EngineContext& engine_context);
 
+        bool should_update_camera;
+
         void init();
         
         bool draw_frame();
