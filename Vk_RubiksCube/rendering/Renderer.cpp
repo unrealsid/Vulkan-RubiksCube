@@ -14,6 +14,7 @@
 #include "../structs/DrawItem.h"
 #include "../materials/Material.h"
 #include "../materials/MaterialManager.h"
+#include "../platform/WindowManager.h"
 #include "../utils/RenderUtils.h"
 #include "picking/ObjectPicking.h"
 
@@ -30,7 +31,7 @@ core::Renderer::Renderer(EngineContext& engine_context) : scene_data(), gpu_scen
 void core::Renderer::init()
 {
     create_sync_objects();
-    setup_scene_data();
+    init_camera();
     
     utils::RenderUtils::create_command_pool(engine_context, command_pool);
     utils::RenderUtils::get_supported_depth_stencil_format(device_manager->get_physical_device(), &depth_stencil_image.format);
@@ -147,8 +148,16 @@ bool core::Renderer::draw_frame()
     return true;
 }
 
-bool core::Renderer::setup_scene_data()
+bool core::Renderer::init_camera()
 {
+    //Create the camera object
+    orbit_camera = OrbitCamera();
+    orbit_camera.set_distance_limits(2.0f, 30.0f);
+    orbit_camera.set_distance(10.0f);
+    
+    float aspect = static_cast<float>(window::window_width) / static_cast<float>(window::window_height); 
+    scene_data = orbit_camera.get_scene_data(aspect);
+    
     //Allocate buffer for scene data
     utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), sizeof(Vk_SceneData), gpu_scene_buffer.scene_buffer);
 
@@ -156,10 +165,19 @@ bool core::Renderer::setup_scene_data()
     gpu_scene_buffer.scene_buffer_address = utils::MemoryUtils::get_buffer_device_address(dispatch_table, gpu_scene_buffer.scene_buffer.buffer);
 
     //Fill and map the memory region
-    utils::prepare_ubo(scene_data);
+    //utils::prepare_ubo(scene_data);
     utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), gpu_scene_buffer.scene_buffer.allocation, gpu_scene_buffer.scene_buffer.allocation_info, &scene_data, sizeof(Vk_SceneData));
 
     return true;
+}
+
+void core::Renderer::update_camera(float pos_delta_x, float pos_delta_y)
+{
+    orbit_camera.update_rotation(pos_delta_x, pos_delta_y);
+
+    float aspect = static_cast<float>(window::window_width) / static_cast<float>(window::window_height); 
+    scene_data = orbit_camera.get_scene_data(aspect);
+    utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), gpu_scene_buffer.scene_buffer.allocation, gpu_scene_buffer.scene_buffer.allocation_info, &scene_data, sizeof(Vk_SceneData));
 }
 
 bool core::Renderer::create_sync_objects()

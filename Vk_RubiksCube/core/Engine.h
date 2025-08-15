@@ -7,6 +7,7 @@
 #include "Entity.h"
 #include "../enums/MouseDirection.h"
 #include "../materials/Material.h"
+#include "../rendering/camera/Camera.h"
 #include "../structs/EngineContext.h"
 #include "../structs/DrawBatch.h"
 #include "../utils/mouse_utils/MouseTracker.h"
@@ -37,8 +38,8 @@ namespace core
     class Engine
     {
     public:
-        Engine();
-        ~Engine();
+
+        static Engine& get_instance();
     
         void init();
         void run();
@@ -54,11 +55,18 @@ namespace core
         EngineContext engine_context;
         static std::vector<std::unique_ptr<DrawableEntity>> drawable_entities;
         static std::vector<std::unique_ptr<Entity>> entities;
+
+        //Reference the orbit camera
+        OrbitCamera orbit_camera;
         
         std::unordered_map<std::string, DrawBatch> draw_batches;
 
         static utils::MouseTracker mouse_tracker;
-        static void get_mouse_direction(GLFWwindow* window);
+
+        Engine() = default;  
+        ~Engine() = default; 
+        Engine(const Engine&);
+        Engine& operator=(const Engine&) = delete;
         
         void load_models();
         void load_root();
@@ -74,5 +82,16 @@ namespace core
 
         //Calls render on drawable entities
         void render() const;
+        
+        static void get_mouse_direction(GLFWwindow* window);
+        
+        // Handle mouse button press/release
+        static void on_mouse_button(GLFWwindow* window, int button, int action, int mods);
+
+        // Handle mouse movement
+        static void on_mouse_move(GLFWwindow* window, double xpos, double ypos);
+
+        // Handle scroll wheel
+        static void on_scroll(GLFWwindow* window, double xoffset, double yoffset);
     };
 }

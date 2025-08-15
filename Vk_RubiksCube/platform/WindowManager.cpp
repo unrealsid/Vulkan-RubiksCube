@@ -52,6 +52,15 @@ VkSurfaceKHR window::WindowManager::create_surface_glfw(VkInstance instance, VkA
     return surface;
 }
 
+void window::WindowManager::register_callbacks(GLFWmousebuttonfun mouse_button_fn,
+                                                GLFWcursorposfun mouse_move_fn,
+                                                GLFWscrollfun scroll_fn) const
+{
+    glfwSetMouseButtonCallback(window, mouse_button_fn);
+    glfwSetCursorPosCallback(window, mouse_move_fn);
+    glfwSetScrollCallback(window, scroll_fn);
+}
+
 GLFWwindow* window::WindowManager::get_window() const
 {
     return window;
@@ -89,4 +98,16 @@ bool window::WindowManager::get_local_mouse_xy()
     //std::cout << "Local mouse x" << local_mouse_x << " local_mouse_y " << local_mouse_y << std::endl;
     
     return true;
+}
+
+void window::WindowManager::get_mouse_delta()
+{
+    mouse_delta_x = local_mouse_x - last_mouse_x;
+    mouse_delta_y = local_mouse_y - last_mouse_y;
+}
+
+void window::WindowManager::update_last_mouse_position()
+{
+    last_mouse_x = local_mouse_x;
+    last_mouse_y = local_mouse_y;
 }

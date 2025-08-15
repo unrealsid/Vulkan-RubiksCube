@@ -24,12 +24,10 @@ std::vector<std::unique_ptr<core::Entity>> core::Engine::entities;
 std::vector<std::unique_ptr<core::DrawableEntity>> core::Engine::drawable_entities;
 utils::MouseTracker core::Engine::mouse_tracker(3.0);
 
-core::Engine::Engine()
+core::Engine& core::Engine::get_instance()
 {
-}
-
-core::Engine::~Engine()
-{
+    static Engine instance;
+    return instance;
 }
 
 void core::Engine::init()
@@ -42,6 +40,7 @@ void core::Engine::init()
     engine_context.swapchain_manager = std::make_unique<vulkan::SwapchainManager>();
     
     engine_context.window_manager->create_window_glfw("Rubik's Cube", true);
+    engine_context.window_manager->register_callbacks(on_mouse_button, on_mouse_move, on_scroll);
     engine_context.device_manager->device_init(engine_context);
 
     engine_context.material_manager = std::make_unique<material::MaterialManager>(engine_context);
@@ -54,6 +53,7 @@ void core::Engine::init()
 
     engine_context.renderer = std::make_unique<Renderer>(engine_context);
     engine_context.renderer->init();
+    orbit_camera = engine_context.renderer->get_camera();
 
     load_models();
     load_entities();
@@ -91,19 +91,20 @@ void core::Engine::run()
     while (!glfwWindowShouldClose(window))
     {
         window_manager->update_mouse_position();
-        window_manager->get_local_mouse_xy();    
+        window_manager->get_local_mouse_xy();
+        window_manager->get_mouse_delta();
         
         auto current_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float> elapsed = current_time - previous_time;
         double delta_time = elapsed.count();
-
-        get_mouse_direction(window); 
-
+        
         update(delta_time);
         render();
         
         previous_time = current_time;
 
+        window_manager->update_last_mouse_position();
+        
         glfwPollEvents();
    }
 }
@@ -333,14 +334,31 @@ void core::Engine::update(double delta_time)
 
 void core::Engine::render() const
 {
-   auto object_picker =  engine_context.renderer->get_object_picker();
-   auto window = engine_context.window_manager.get();
+    auto object_picker =  engine_context.renderer->get_object_picker();
+    auto window = engine_context.window_manager.get();
+
+    engine_context.renderer->update_camera(window->mouse_delta_x, window->mouse_delta_y);
     
     // Record the object picking command buffer with new mouse position
-   object_picker->record_command_buffer(window->local_mouse_x, window->local_mouse_y);
+    object_picker->record_command_buffer(window->local_mouse_x, window->local_mouse_y);
     
     if (bool result = engine_context.renderer->draw_frame(); !result)
     {
         //std::cout << "failed to draw frame \n";
     }
+}
+
+void core::Engine::on_mouse_button(GLFWwindow* window, int button, int action, int mods)
+{
+    
+}
+
+void core::Engine::on_mouse_move(GLFWwindow* window, double xpos, double ypos)
+{
+    
+}
+
+void core::Engine::on_scroll(GLFWwindow* window, double xoffset, double yoffset)
+{
+    
 }

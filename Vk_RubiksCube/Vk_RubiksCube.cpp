@@ -60,7 +60,7 @@
 
 int main()
 {
-    core::Engine engine;
+    core::Engine& engine = core::Engine::get_instance();
     engine.init();
     engine.run();
     engine.cleanup();

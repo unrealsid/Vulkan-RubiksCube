@@ -9,6 +9,7 @@
 #include "VkBootstrapDispatch.h"
 #include "../structs/Vk_DepthStencilImage.h"
 #include "../structs/DrawBatch.h"
+#include "camera/Camera.h"
 
 namespace rendering
 {
@@ -45,7 +46,9 @@ namespace core
         
         bool draw_frame();
 
-        bool setup_scene_data();
+        bool init_camera();
+        void update_camera(float pos_delta_x, float pos_delta_y);
+        
         bool create_sync_objects();
         bool create_command_buffers();
 
@@ -62,6 +65,8 @@ namespace core
         [[nodiscard]] VkCommandPool get_command_pool() const { return command_pool; }
         [[nodiscard]] std::unordered_map<std::string, DrawBatch>& get_draw_batches() { return draw_batches; }
         [[nodiscard]] rendering::ObjectPicking* get_object_picker() const { return object_picker.get(); }
+
+        OrbitCamera get_camera() const { return orbit_camera; }
     
     private:
         Vk_SceneData scene_data;
@@ -70,6 +75,9 @@ namespace core
         EngineContext& engine_context;
         
         DepthStencilImage depth_stencil_image;
+
+        //The camera
+        OrbitCamera orbit_camera;
 
         std::vector<VkSemaphore> available_semaphores;
         std::vector<VkSemaphore> finished_semaphores;
