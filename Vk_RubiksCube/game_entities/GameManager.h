@@ -1,6 +1,11 @@
 ﻿#pragma once
 #include "../core/Entity.h"
 
+namespace core
+{
+    class DrawableEntity;
+}
+
 class PointerEntity;
 
 namespace rendering
@@ -37,5 +42,18 @@ private:
     uint32_t selected_object_id;
     glm::vec3 selected_point;
 
+    //How many cubies do we have? 
+    uint32_t cubie_count;
+
     PointerEntity* pointer_entity;
+    std::vector<core::DrawableEntity*> cubies;
+
+    //Finds the selected cubie
+    std::vector<uint32_t> get_face_cubies() const;
+
+    //Cache cubies so they can be reused
+    void cache_cubies();
+
+    //Get selected cubie transform
+    Transform* get_cubie_transform(uint32_t cubie_id) const;
 };

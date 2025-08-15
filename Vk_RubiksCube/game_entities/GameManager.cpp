@@ -22,6 +22,7 @@ void GameManager::start()
 
     parent_cubies_to_root();
     pointer_entity = dynamic_cast<PointerEntity*>(core::Engine::get_entity_by_tag("pointer"));
+    cache_cubies();
 }
 
 void GameManager::update(double delta_time)
@@ -44,18 +45,24 @@ void GameManager::update(double delta_time)
         Transform* transform = entity->get_transform();
         
         std::cout << "Object id: << " << selected_object_id <<  " << Transform: " << *transform << std::endl;
-        std::cout << "Depth of selected point is: " << encoded_color.z << std::endl;
-        std::cout << "________________________________________________________________" << std::endl;
 
-        Vk_SceneData scene_data = engine_context.renderer->get_scene_data();
-        selected_point = utils::ProjectionUtils::unproject_point(engine_context, encoded_color.z, scene_data.view, scene_data.projection);
+        auto face_cubies = get_face_cubies();
+        
+        std::cout << "get_face_cubies() found " << face_cubies.size() << " cubies: ";
+        for (uint32_t id : face_cubies)
+        {
+            std::cout << id << " ";
+        }
 
-        //pointer_entity->get_transform()->set_position(selected_point);
+        std::cout << std::endl;
+        
+        // std::cout << "Depth of selected point is: " << encoded_color.z << std::endl;
+        // std::cout << "________________________________________________________________" << std::endl;
+        //
+        // Vk_SceneData scene_data = engine_context.renderer->get_scene_data();
+        // selected_point = utils::ProjectionUtils::unproject_point(engine_context, encoded_color.z, scene_data.view, scene_data.projection);
 
-        auto object_picker = engine_context.renderer->get_object_picker();
-        glm::vec3 normal = object_picker->get_selected_face_normal(transform->get_model_matrix());
-
-        std::cout << "Normal:" << normal.x << ", " << normal.y << ", " << normal.z << std::endl;
+        pointer_entity->get_transform()->set_position(selected_point);
     }
 }
 
@@ -73,5 +80,58 @@ void GameManager::parent_cubies_to_root()
             cubie->get_transform()->parent = root_drawable->get_transform();
         }
     }
+}
+
+std::vector<uint32_t> GameManager::get_face_cubies() const
+{
+    Transform* selected_cubie_transform = get_cubie_transform(selected_object_id);
+    glm::vec3 selected_position = selected_cubie_transform->get_world_position();
+
+    std::vector<uint32_t> face_cubies;
+    
+    const float EPSILON = 0.001f;
+    
+    for (int cubie_id = 0; cubie_id < cubie_count; ++cubie_id)
+    {
+        auto cubie_transform = get_cubie_transform(cubie_id);
+        glm::vec3 cubie_position{};
+
+        if(cubie_transform)
+        {
+            cubie_position = cubie_transform->get_world_position();
+        }
+    }
+    
+    return face_cubies;
+}
+
+void GameManager::cache_cubies()
+{
+    auto& drawables = core::Engine::get_drawable_entities();
+    
+    for (const auto& cubie : drawables)
+    {
+        auto tag = cubie->get_entity_string_id();
+        //Parent cubies to root
+        if(tag.find("cubie_entity_") != std::string::npos)
+        {
+            cubies.push_back(cubie.get());
+        }
+    }
+
+    cubie_count = cubies.size();
+}
+
+Transform* GameManager::get_cubie_transform(uint32_t cubie_id) const
+{
+    for (const auto& cubie : cubies)
+    {
+        if(cubie_id == cubie->get_entity_id())
+        {
+            return cubie->get_transform();
+        }
+    }
+    
+    return nullptr;
 }
 
