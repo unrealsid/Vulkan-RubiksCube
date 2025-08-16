@@ -1,4 +1,6 @@
 ﻿#pragma once
+#include <queue>
+
 #include "../core/Entity.h"
 
 class DynamicRootEntity;
@@ -52,6 +54,8 @@ public:
 
     void execute_move(const std::string& move_notation);
 
+    void execute_move_sequence(const std::string& move_notation);
+    
     void rotate_face(char face, bool clockwise);
 
 private:
@@ -71,9 +75,22 @@ private:
     DynamicRootEntity* dynamic_root;
     std::vector<core::DrawableEntity*> cubies;
 
+
+    // A queue to hold the individual moves (e.g., 'F', 'u', 'R', 'R').
+    // We'll use uppercase for clockwise and lowercase for counter-clockwise.
+    std::queue<char> move_queue;
+
+    // A flag to indicate if a face is currently animating.
+    bool is_face_rotating = false;
+
+    // A list of the specific cubies involved in the current rotation.
+    // We'll use this to check when they have all finished.
+    std::vector<CubiesEntity*> currently_rotating_cubies;
+    
     //Cache cubies so they can be reused
     void cache_cubies();
 
     //Get selected cubie transform
     Transform* get_cubie_transform(uint32_t cubie_id);
+
 };

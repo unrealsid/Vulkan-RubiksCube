@@ -131,7 +131,8 @@ void window::WindowManager::on_mouse_button(GLFWwindow* window, int button, int 
         if(button == GLFW_MOUSE_BUTTON_RIGHT)
         {
             auto manager = dynamic_cast<GameManager*>(core::Engine::get_entity_by_tag("game_manager"));
-            manager->rotate_face('F', true);
+            manager->execute_move_sequence("FRU'L2B");
+            //manager->execute_move_sequence("FUR");
         }
     }
     if(action == GLFW_RELEASE)
