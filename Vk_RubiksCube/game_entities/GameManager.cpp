@@ -50,7 +50,7 @@ void GameManager::update(double delta_time)
         //Get location of pointer and get ID of cubie selected
         Transform* transform = entity->get_transform();
         
-        std::cout << "Object id: << " << selected_object_id <<  " << Transform: " << *transform << std::endl;
+        //std::cout << "Object id: << " << selected_object_id <<  " << Transform: " << *transform << std::endl;
         // std::cout << "Depth of selected point is: " << encoded_color.z << std::endl;
         // std::cout << "________________________________________________________________" << std::endl;
         //
@@ -232,9 +232,12 @@ void GameManager::execute_move(const std::string& move_notation)
 void GameManager::rotate_face(char face, bool clockwise)
 {
     auto cubies_to_rotate = get_face_cubies(face);
-    attach_face_cubies_to_dynamic_root(dynamic_root, cubies_to_rotate);
     auto rotation_axis = get_rotation_axis(face);
-    dynamic_root->set_rotation_params(true, rotation_axis, 90);
+   
+    for (auto to_rotate : cubies_to_rotate)
+    {
+        to_rotate->set_rotation_params(true, rotation_axis, 90);
+    }
 }
 
 void GameManager::cache_cubies()

@@ -29,7 +29,7 @@ public:
     glm::vec3 get_position() const { return position; }
     void set_position(const glm::vec3& position) { this->position = position;  }
 
-    void set_rotation(const glm::vec3& eulerAngle);
+    void set_rotation(const glm::vec3& euler_angle);
     
     glm::quat get_rotation_quat() const{ return rotation; }
     glm::vec3 get_rotation_euler() const { return glm::eulerAngles(rotation); }

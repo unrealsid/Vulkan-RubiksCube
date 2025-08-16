@@ -23,8 +23,8 @@ glm::vec3 Transform::get_world_position() const
    return glm::vec3(get_model_matrix()[3]);
 }
 
-void Transform::set_rotation(const glm::vec3& eulerAngle)
+void Transform::set_rotation(const glm::vec3& euler_angle)
 {
-    glm::vec3 eulerAnglesRadians = glm::radians(eulerAngle);
+    glm::vec3 eulerAnglesRadians = glm::radians(euler_angle);
     rotation = glm::quat(eulerAnglesRadians);
 }
