@@ -1,6 +1,9 @@
 ﻿#pragma once
 #include "../core/Entity.h"
 
+class DynamicRootEntity;
+class CubiesEntity;
+
 namespace core
 {
     class DrawableEntity;
@@ -27,12 +30,29 @@ public:
     {
     }
 
+    const float epsilon = 0.1f;
+
     void start() override;
 
     void update(double delta_time) override;
 
     //setup a basic scene graph
-    static void parent_cubies_to_root();
+    //This is done at init. For dynamic rotation unparent and reparent to dynamic_root
+    static void init_attach_cubies_to_root();
+
+    void attach_face_cubies_to_dynamic_root(DynamicRootEntity* dynamic_root_entity, std::vector<CubiesEntity*>& cubies_to_attach);
+
+    //Get cubies that belong to a specific face
+    std::vector<class CubiesEntity*> get_face_cubies(char face) const;
+
+    // Find the maximum absolute coordinate value
+    float calculate_face_distance() const;
+
+    static glm::vec3 get_rotation_axis(char face);
+
+    void execute_move(const std::string& move_notation);
+
+    void rotate_face(char face, bool clockwise);
 
 private:
     window::WindowManager* window_manager;
@@ -45,15 +65,15 @@ private:
     //How many cubies do we have? 
     uint32_t cubie_count;
 
-    PointerEntity* pointer_entity;
-    std::vector<core::DrawableEntity*> cubies;
+    float face_distance;
 
-    //Finds the selected cubie
-    std::vector<uint32_t> get_face_cubies() const;
+    PointerEntity* pointer_entity;
+    DynamicRootEntity* dynamic_root;
+    std::vector<core::DrawableEntity*> cubies;
 
     //Cache cubies so they can be reused
     void cache_cubies();
 
     //Get selected cubie transform
-    Transform* get_cubie_transform(uint32_t cubie_id) const;
+    Transform* get_cubie_transform(uint32_t cubie_id);
 };

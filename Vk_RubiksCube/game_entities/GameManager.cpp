@@ -11,6 +11,8 @@
 #include "../core/Engine.h"
 #include "../utils/mouse_utils/ProjectionUtils.h"
 #include "PointerEntity.h"
+#include "CubiesEntity.h"
+#include "DynamicRootEntity.h"
 
 void GameManager::start()
 {
@@ -20,9 +22,13 @@ void GameManager::start()
     object_picker = engine_context.renderer->get_object_picker();
     buffer =  object_picker->get_readback_buffer();
 
-    parent_cubies_to_root();
+    init_attach_cubies_to_root();
+    //Get a reference to the dynamic root
+    dynamic_root = dynamic_cast<DynamicRootEntity*>(core::Engine::get_entity_by_tag("dynamic_root"));
+   
     pointer_entity = dynamic_cast<PointerEntity*>(core::Engine::get_entity_by_tag("pointer"));
     cache_cubies();
+    face_distance = calculate_face_distance();
 }
 
 void GameManager::update(double delta_time)
@@ -45,17 +51,6 @@ void GameManager::update(double delta_time)
         Transform* transform = entity->get_transform();
         
         std::cout << "Object id: << " << selected_object_id <<  " << Transform: " << *transform << std::endl;
-
-        auto face_cubies = get_face_cubies();
-        
-        std::cout << "get_face_cubies() found " << face_cubies.size() << " cubies: ";
-        for (uint32_t id : face_cubies)
-        {
-            std::cout << id << " ";
-        }
-
-        std::cout << std::endl;
-        
         // std::cout << "Depth of selected point is: " << encoded_color.z << std::endl;
         // std::cout << "________________________________________________________________" << std::endl;
         //
@@ -66,7 +61,7 @@ void GameManager::update(double delta_time)
     }
 }
 
-void GameManager::parent_cubies_to_root()
+void GameManager::init_attach_cubies_to_root()
 {
     auto& drawables = core::Engine::get_drawable_entities();
     auto root_drawable = core::Engine::get_entity_by_tag("root");
@@ -82,27 +77,164 @@ void GameManager::parent_cubies_to_root()
     }
 }
 
-std::vector<uint32_t> GameManager::get_face_cubies() const
+void GameManager::attach_face_cubies_to_dynamic_root(DynamicRootEntity* dynamic_root_entity, std::vector<CubiesEntity*>& cubies_to_attach)
 {
-    Transform* selected_cubie_transform = get_cubie_transform(selected_object_id);
-    glm::vec3 selected_position = selected_cubie_transform->get_world_position();
-
-    std::vector<uint32_t> face_cubies;
-    
-    const float EPSILON = 0.001f;
-    
-    for (int cubie_id = 0; cubie_id < cubie_count; ++cubie_id)
+    for (const auto& cubie : cubies_to_attach)
     {
-        auto cubie_transform = get_cubie_transform(cubie_id);
-        glm::vec3 cubie_position{};
+        //Parent cubies to new dynamic root
+        auto* cubie_transform = cubie->get_transform();
+        cubie_transform->parent = nullptr;
+        cubie_transform->parent = dynamic_root_entity->get_transform();
+    }
 
-        if(cubie_transform)
+    dynamic_root_entity->can_rotate = true;
+}
+
+std::vector<CubiesEntity*> GameManager::get_face_cubies(char face) const
+{
+    std::vector<uint32_t> face_cubies;
+        
+    for (int i = 0; i < cubies.size(); ++i)
+    {
+        const glm::vec3& pos = cubies[i]->get_transform()->get_world_position();
+        
+        switch (face)
         {
-            cubie_position = cubie_transform->get_world_position();
+            case 'F': // Front face (positive Z)
+                {
+                    float abs = std::abs(pos.z - face_distance);
+                    if (abs < epsilon)
+                    {
+                        face_cubies.push_back(i);
+                    }
+                }
+            break;
+                
+            case 'B': // Back face (negative Z)
+                if (std::abs(pos.z + face_distance) < epsilon)
+                {
+                    face_cubies.push_back(i);
+                }
+                break;
+                
+            case 'R': // Right face (positive X)
+                if (std::abs(pos.x - face_distance) < epsilon)
+                {
+                    face_cubies.push_back(i);
+                }
+                break;
+                
+            case 'L': // Left face (negative X)
+                if (std::abs(pos.x + face_distance) < epsilon)
+                {
+                    face_cubies.push_back(i);
+                }
+                break;
+                
+            case 'U': // Up face (positive Y)
+                if (std::abs(pos.y - face_distance) < epsilon)
+                {
+                    face_cubies.push_back(i);
+                }
+                break;
+                
+            case 'D': // Down face (negative Y)
+                if (std::abs(pos.y + face_distance) < epsilon)
+                {
+                    face_cubies.push_back(i);
+                }
+                break;
+                
+            // Slice moves
+            case 'M': // Middle slice (between L and R, turns like L)
+                if (std::abs(pos.x) < epsilon)
+                {
+                    face_cubies.push_back(i);
+                }
+                break;
+                
+            case 'E': // Equatorial slice (between U and D, turns like D)
+                if (std::abs(pos.y) < epsilon)
+                {
+                    face_cubies.push_back(i);
+                }
+                break;
+                
+            case 'S': // Standing slice (between F and B, turns like F)
+                if (std::abs(pos.z) < epsilon)
+                {
+                    face_cubies.push_back(i);
+                }
+                break;
+            default: ;
         }
     }
+
+    std::vector<CubiesEntity*> cubies_to_rotate;
+    for (const auto& cubie_id : face_cubies)
+    {
+        auto cubie = core::Engine::get_drawable_entity_by_id(cubie_id);
+        cubies_to_rotate.push_back(dynamic_cast<CubiesEntity*>(cubie));
+    }
     
-    return face_cubies;
+    return cubies_to_rotate;
+}
+
+float GameManager::calculate_face_distance() const
+{
+    for (const auto& i : cubies)
+    {
+        float max_coord = 0.0f;
+        for (const auto& cubie : cubies)
+        {
+            const glm::vec3& position = i->get_transform()->get_world_position();
+            
+            max_coord = std::max(max_coord, std::abs(position.x));
+            max_coord = std::max(max_coord, std::abs(position.y));
+            max_coord = std::max(max_coord, std::abs(position.z));
+        }
+        
+        return max_coord;
+    }
+    
+    return -1.0;
+}
+
+glm::vec3 GameManager::get_rotation_axis(char face)
+{
+    switch (face)
+    {
+    case 'F':
+    case 'B':
+    case 'S': // Standing slice rotates around Z-axis
+        return glm::vec3(0.0f, 0.0f, 1.0f); // Z-axis
+                
+    case 'R':
+    case 'L':
+    case 'M': // Middle slice rotates around X-axis
+        return glm::vec3(1.0f, 0.0f, 0.0f); // X-axis
+                
+    case 'U':
+    case 'D':
+    case 'E': // Equatorial slice rotates around Y-axis
+        return glm::vec3(0.0f, 1.0f, 0.0f); // Y-axis
+                
+    default:
+        return glm::vec3(0.0f, 1.0f, 0.0f);
+    }
+}
+
+void GameManager::execute_move(const std::string& move_notation)
+{
+    
+}
+
+void GameManager::rotate_face(char face, bool clockwise)
+{
+    auto cubies_to_rotate = get_face_cubies(face);
+    attach_face_cubies_to_dynamic_root(dynamic_root, cubies_to_rotate);
+    auto rotation_axis = get_rotation_axis(face);
+    dynamic_root->set_rotation_params(true, rotation_axis, 90);
 }
 
 void GameManager::cache_cubies()
@@ -116,13 +248,16 @@ void GameManager::cache_cubies()
         if(tag.find("cubie_entity_") != std::string::npos)
         {
             cubies.push_back(cubie.get());
+            std::cout << "id: " << cubie->get_entity_id() << "\n";
+            std::cout << "transform " << *cubie->get_transform();
+            std ::cout << std::endl;
         }
     }
 
     cubie_count = cubies.size();
 }
 
-Transform* GameManager::get_cubie_transform(uint32_t cubie_id) const
+Transform* GameManager::get_cubie_transform(uint32_t cubie_id)
 {
     for (const auto& cubie : cubies)
     {

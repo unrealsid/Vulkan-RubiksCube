@@ -1,7 +1,7 @@
-# Blender 4.3.1 MTL File: 'rubiks_cube.blend'
+# Blender 4.3.1 MTL File: 'Rubiks_CubeNew.blend'
 # www.blender.org
 
-newmtl BaseMaterial
+newmtl BaseMaterial.001
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Kd 0.035932 0.034032 0.034867
@@ -11,17 +11,17 @@ Ni 1.500000
 d 1.000000
 illum 2
 
-newmtl BlueMaterial
+newmtl BlueMaterial.001
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
-Kd 0.131492 0.000000 0.800142
+Kd 0.088259 0.000000 0.804297
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
 
-newmtl GreenMaterial
+newmtl GreenMaterial.001
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Kd 0.027624 0.800165 0.000000
@@ -31,7 +31,7 @@ Ni 1.500000
 d 1.000000
 illum 2
 
-newmtl OrangeMaterial
+newmtl OrangeMaterial.001
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Kd 0.800016 0.227716 0.000000
@@ -41,7 +41,7 @@ Ni 1.500000
 d 1.000000
 illum 2
 
-newmtl RedMaterial
+newmtl RedMaterial.001
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Kd 0.800047 0.000000 0.003723
@@ -51,7 +51,7 @@ Ni 1.500000
 d 1.000000
 illum 2
 
-newmtl WhiteMaterial
+newmtl WhiteMaterial.001
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Kd 1.000000 1.000000 1.000000
@@ -61,7 +61,7 @@ Ni 1.500000
 d 1.000000
 illum 2
 
-newmtl YellowMaterial
+newmtl YellowMaterial.001
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Kd 0.800063 0.575639 0.000000

@@ -13,7 +13,7 @@ public:
     OrbitCamera(const glm::vec3& target = glm::vec3(0.0f),
                 float distance = 5.0f,
                 float theta = 0.0f,
-                float phi = glm::pi<float>() * 0.25f);
+                float phi = glm::pi<float>() * 0.5f);
 
     // Update camera based on mouse input
     void update_rotation(float delta_x, float delta_y, float sensitivity = 0.005f);

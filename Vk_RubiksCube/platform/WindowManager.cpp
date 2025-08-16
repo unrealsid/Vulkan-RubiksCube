@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "../core/Engine.h"
+#include "../game_entities/GameManager.h"
 #include "../structs/EngineContext.h"
 #include "../rendering/Renderer.h"
 #include "../vulkan/SwapchainManager.h"
@@ -121,21 +122,22 @@ void window::WindowManager::on_mouse_button(GLFWwindow* window, int button, int 
     if(action == GLFW_PRESS)
     {
         //Rotate camera
-        if(button == GLFW_MOUSE_BUTTON_MIDDLE)
+        if(button == GLFW_MOUSE_BUTTON_LEFT)
         {
             engine.get_engine_context().renderer->should_update_camera = true;
         }
 
         //Select
-        if(button == GLFW_MOUSE_BUTTON_LEFT)
+        if(button == GLFW_MOUSE_BUTTON_RIGHT)
         {
-        
+            auto manager = dynamic_cast<GameManager*>(core::Engine::get_entity_by_tag("game_manager"));
+            manager->rotate_face('B', true);
         }
     }
     if(action == GLFW_RELEASE)
     {
         //Rotate camera
-        if(button == GLFW_MOUSE_BUTTON_MIDDLE)
+        if(button == GLFW_MOUSE_BUTTON_LEFT)
         {
             engine.get_engine_context().renderer->should_update_camera = false;
         }

@@ -6,6 +6,7 @@
 
 #include "DrawableEntity.h"
 #include "../game_entities/CubiesEntity.h"
+#include "../game_entities/DynamicRootEntity.h"
 #include "../game_entities/GameManager.h"
 #include "../game_entities/PointerEntity.h"
 #include "../game_entities/RootEntity.h"
@@ -158,7 +159,7 @@ void core::Engine::load_models()
         //"/models/viper/viper.obj"
     };
 
-    uint32_t entity_id = 0;
+    uint32_t entity_id = -1;
     
     //Load all models 
     for (const auto& model_path : model_paths)
@@ -169,12 +170,10 @@ void core::Engine::load_models()
         //For each shape in the obj file
         for (const auto& loaded_object : model_utils.get_loaded_objects())
         {
-            ++entity_id;
-            
             //Create an entity for each loaded shape
             std::unique_ptr<DrawableEntity> entity = std::make_unique<CubiesEntity>
             (
-                entity_id,
+                ++entity_id,
                 RenderData
                 {
                     .vertex_buffer = loaded_object.vertex_buffer,
@@ -192,40 +191,13 @@ void core::Engine::load_models()
         }
     }
 
-    load_root();
+    load_root<RootEntity>(1500, "root");
+    load_root<DynamicRootEntity>(1600, "dynamic_root");
     load_pointer();
 
     //Once all materials are loaded, we can move them to the gpu
     engine_context.material_manager->init();
     organize_draw_batches();
-}
-
-void core::Engine::load_root()
-{
-    std::string root_obj_path = "/models/root/root.obj";
-
-    utils::ModelLoaderUtils model_utils;
-    model_utils.load_model_from_obj(root_obj_path, engine_context);
-    auto loaded_object = model_utils.get_loaded_objects()[0];
-
-    //Create an entity for each loaded shape
-    std::unique_ptr<DrawableEntity> entity = std::make_unique<RootEntity>
-    (
-        1500,
-        RenderData
-        {
-            .vertex_buffer = loaded_object.vertex_buffer,
-            .index_buffer = loaded_object.index_buffer,
-            .local_position = loaded_object.local_position,
-            .vertices = loaded_object.vertices,
-            .indices = loaded_object.indices,
-            .material_index_ranges = loaded_object.material_index_ranges,
-        },
-        engine_context,
-        "root"
-    );
-            
-    drawable_entities.push_back(std::move(entity));
 }
 
 void core::Engine::load_pointer()
