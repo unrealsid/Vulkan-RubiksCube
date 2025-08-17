@@ -16,7 +16,7 @@ namespace vulkan
     class DeviceManager
     {
     public:
-        DeviceManager();
+        DeviceManager(EngineContext& engine_context);
         ~DeviceManager();
         
         bool device_init(EngineContext& engine_context);
@@ -28,6 +28,7 @@ namespace vulkan
         VkSurfaceKHR surface;
         vkb::Device device;
         vkb::PhysicalDevice physical_device;
+        EngineContext& engine_context;
 
         VkQueue graphics_queue;
         VkQueue present_queue;

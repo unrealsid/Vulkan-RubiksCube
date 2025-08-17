@@ -31,21 +31,18 @@ namespace core
         std::string get_entity_string_id() const { return entity_string_id; }
 
         //We store transforms in buffers that are linked via an address -- I love Vulkan
-        GPU_Buffer get_transform_buffer() const { return transform_buffer; }
+        //Gets the sub allocated address from the global world matrix manager which is set from the engine
         [[nodiscard]] VkDeviceAddress get_transform_buffer_sub_address() const;
 
         [[nodiscard]] VkDeviceAddress get_object_id_buffer_address() const { return  object_id_buffer_address; }
 
+        //Sent an updated world matrix data from cpu to GPU
         void update_transform_on_gpu(const glm::mat4& matrix_data) const;
 
     protected:
         vulkan::DeviceManager* device_manager;
 
         EngineContext& engine_context;
-
-        //Stores transform address
-        GPU_Buffer transform_buffer;
-        VkDeviceAddress transform_buffer_address;
 
         std::unique_ptr<Transform> transform;
 
@@ -60,10 +57,6 @@ namespace core
         //Stores Object ID Address
         GPU_Buffer object_id_buffer;
         VkDeviceAddress object_id_buffer_address;
-    
-        //Init the buffer used to store object data
-        void initialize_transform_buffer();
 
-        void initialize_object_id_buffer();
     };
 }

@@ -10,13 +10,17 @@
 #include "../platform/WindowManager.h"
 #include "../structs/EngineContext.h"
 
-vulkan::DeviceManager::DeviceManager()
+vulkan::DeviceManager::DeviceManager(EngineContext& engine_context): surface(nullptr), engine_context(engine_context), graphics_queue(nullptr),
+                                        present_queue(nullptr),
+                                        vmaAllocator(nullptr)
 {
 }
 
 vulkan::DeviceManager::~DeviceManager()
 {
-    
+    engine_context.instance_dispatch_table.destroySurfaceKHR(surface, nullptr);
+    vkDestroyDevice(device, nullptr);
+    engine_context.instance_dispatch_table.destroyInstance(nullptr);
 }
 
 bool vulkan::DeviceManager::device_init(EngineContext& engine_context)

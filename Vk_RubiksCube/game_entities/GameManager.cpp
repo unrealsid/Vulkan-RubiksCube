@@ -2,33 +2,26 @@
 
 #include <iostream>
 
+#include "CubiesEntity.h"
+#include "PointerEntity.h"
+#include "../core/Engine.h"
+#include "../platform/WindowManager.h"
 #include "../rendering/Renderer.h"
 #include "../structs/EngineContext.h"
-#include "../vulkan/SwapchainManager.h"
-#include "../platform/WindowManager.h"
-#include "../utils/GameUtils.h"
-#include "../rendering/picking/ObjectPicking.h"
-#include "../core/Engine.h"
 #include "../utils/mouse_utils/ProjectionUtils.h"
-#include "PointerEntity.h"
-#include "CubiesEntity.h"
-#include "DynamicRootEntity.h"
 
 void GameManager::start()
 {
     Entity::start();
 
     window_manager = engine_context.window_manager.get();
-    object_picker = engine_context.renderer->get_object_picker();
     
     init_attach_cubies_to_root();
-    dynamic_root = dynamic_cast<DynamicRootEntity*>(core::Engine::get_entity_by_tag("dynamic_root"));
     pointer_entity = dynamic_cast<PointerEntity*>(core::Engine::get_entity_by_tag("pointer"));
     
     cache_cubies();
     face_distance = calculate_face_distance();
-
-    // Example of how to start a sequence
+    
     //execute_move_sequence("FRU'L2B");
 }
 
@@ -72,24 +65,6 @@ void GameManager::update(double delta_time)
         char face = toupper(move_char);
 
         rotate_face(face, is_clockwise);
-    }
-
-    buffer = object_picker->get_readback_buffer();
-
-    VkExtent2D swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
-    auto encoded_color = utils::GameUtils::get_pixel_color(engine_context,
-        window_manager->local_mouse_x,
-         window_manager->local_mouse_y, swapchain_extents, buffer);
-    
-    selected_object_id = utils::GameUtils::get_object_id_from_color(engine_context,
-         window_manager->local_mouse_x,
-         window_manager->local_mouse_y, swapchain_extents,
-        buffer, encoded_color);
-
-    if(Entity* entity =  core::Engine::get_drawable_entity_by_id(selected_object_id))
-    {
-        Transform* transform = entity->get_transform();
-        pointer_entity->get_transform()->set_position(selected_point);
     }
 }
 
@@ -192,17 +167,6 @@ void GameManager::init_attach_cubies_to_root()
     }
 }
 
-void GameManager::attach_face_cubies_to_dynamic_root(DynamicRootEntity* dynamic_root_entity, std::vector<CubiesEntity*>& cubies_to_attach)
-{
-    for (const auto& cubie : cubies_to_attach)
-    {
-        auto* cubie_transform = cubie->get_transform();
-        cubie_transform->parent = nullptr;
-        cubie_transform->parent = dynamic_root_entity->get_transform();
-    }
-    dynamic_root_entity->can_rotate = true;
-}
-
 std::vector<CubiesEntity*> GameManager::get_face_cubies(char face) const
 {
     std::vector<CubiesEntity*> face_cubies_entities;
@@ -252,7 +216,7 @@ glm::vec3 GameManager::get_rotation_axis(char face)
     case 'F': case 'B': case 'S': return glm::vec3(0.0f, 0.0f, 1.0f); // Z-axis
     case 'R': case 'L': case 'M': return glm::vec3(1.0f, 0.0f, 0.0f); // X-axis
     case 'U': case 'D': case 'E': return glm::vec3(0.0f, 1.0f, 0.0f); // Y-axis
-    default: return glm::vec3(0.0f, 0.0f, 0.0f); // Should not happen
+    default: return glm::vec3(0.0f, 0.0f, 0.0f); 
     }
 }
 

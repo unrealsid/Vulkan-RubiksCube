@@ -16,7 +16,6 @@
 #include "../materials/MaterialManager.h"
 #include "../platform/WindowManager.h"
 #include "../utils/RenderUtils.h"
-#include "picking/ObjectPicking.h"
 
 core::Renderer::Renderer(EngineContext& engine_context) : scene_data(), gpu_scene_buffer(),
                                                           engine_context(engine_context),
@@ -25,7 +24,6 @@ core::Renderer::Renderer(EngineContext& engine_context) : scene_data(), gpu_scen
     device_manager = engine_context.device_manager.get();
     swapchain_manager = engine_context.swapchain_manager.get();
     dispatch_table = engine_context.dispatch_table;
-    object_picker = std::make_unique<rendering::ObjectPicking>(engine_context);
     should_update_camera = false;
 }
 
@@ -37,17 +35,6 @@ void core::Renderer::init()
     utils::RenderUtils::create_command_pool(engine_context, command_pool);
     utils::RenderUtils::get_supported_depth_stencil_format(device_manager->get_physical_device(), &depth_stencil_image.format);
     utils::RenderUtils::create_depth_stencil_image(engine_context, swapchain_manager->get_swapchain().extent, device_manager->get_allocator(), depth_stencil_image);
-
-    //init_object_picker();
-}
-
-void core::Renderer::init_object_picker()
-{
-    VkSemaphoreCreateInfo semaphore_info{};
-    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    
-    engine_context.dispatch_table.createSemaphore(&semaphore_info, nullptr, &object_picker_done_semaphore);
-    object_picker->init_picking();
 }
 
 bool core::Renderer::create_command_pool()
@@ -69,20 +56,9 @@ void core::Renderer::destroy_command_pool()
     command_pool = VK_NULL_HANDLE;
 }
 
-void core::Renderer::submit_object_picker_command_buffer() const
+void core::Renderer::cleanup()
 {
-    auto buffer = object_picker->get_command_buffer();
-    auto object_picker_fence = object_picker->get_object_picker_fence();
-    
-    VkSubmitInfo submit_info{};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &buffer;
-    submit_info.pSignalSemaphores = &object_picker_done_semaphore;
-    submit_info.signalSemaphoreCount = 1;
-    dispatch_table.queueSubmit(device_manager->get_graphics_queue(), 1, &submit_info, object_picker_fence);
-
-    object_picker->first_submit_done = true;
+    dispatch_table.destroyCommandPool(command_pool, nullptr);
 }
 
 bool core::Renderer::draw_frame()
@@ -98,7 +74,7 @@ bool core::Renderer::draw_frame()
 
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) 
     {
-        //std::cout << "failed to acquire swapchain image. Error " << result << "\n";
+        std::cout << "failed to acquire swapchain image. Error " << result << "\n";
         return false;
     }
 
@@ -109,9 +85,6 @@ bool core::Renderer::draw_frame()
     
     image_in_flight[image_index] = in_flight_fences[current_frame];
     
-    //Object picker
-    //submit_object_picker_command_buffer();
-
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -160,7 +133,7 @@ bool core::Renderer::draw_frame()
     }
     if (result != VK_SUCCESS)
     {
-        //std::cout << "failed to present swapchain image\n";
+        std::cout << "failed to present swapchain image\n";
         return false;
     }
 
@@ -174,6 +147,7 @@ bool core::Renderer::init_camera()
     orbit_camera = OrbitCamera();
     orbit_camera.set_distance_limits(2.0f, 30.0f);
     orbit_camera.set_distance(10.0f);
+    orbit_camera.set_angles(glm::pi<float>() * 0.5f, glm::pi<float>() * 0.5f);
     
     float aspect = static_cast<float>(window::window_width) / static_cast<float>(window::window_height); 
     scene_data = orbit_camera.get_scene_data(aspect);
@@ -185,7 +159,6 @@ bool core::Renderer::init_camera()
     gpu_scene_buffer.scene_buffer_address = utils::MemoryUtils::get_buffer_device_address(dispatch_table, gpu_scene_buffer.scene_buffer.buffer);
 
     //Fill and map the memory region
-    //utils::prepare_ubo(scene_data);
     utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), gpu_scene_buffer.scene_buffer.allocation, gpu_scene_buffer.scene_buffer.allocation_info, &scene_data, sizeof(Vk_SceneData));
 
     return true;

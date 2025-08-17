@@ -12,17 +12,6 @@ struct Init;
 
 namespace utils
 {
+    //Used for debugging vulkan objects in render doc or nvidia nsight
     void set_vulkan_object_Name(const vkb::DispatchTable& disp, uint64_t objectHandle, VkObjectType objectType, const std::string& name);
-
-    void fill_scene_data_ubo(
-        ::Vk_SceneData& sceneDataUBO,
-        const glm::vec3& cameraPosition,
-        const glm::vec3& cameraTarget,
-        const glm::vec3& cameraUp,
-        float fieldOfViewRadians,
-        float aspectRatio,
-        float nearPlane,
-        float farPlane);
-
-    void prepare_ubo( Vk_SceneData& sceneDataUBO);
 }

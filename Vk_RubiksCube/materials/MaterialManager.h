@@ -58,7 +58,22 @@ namespace material
         }
 
         [[nodiscard]] std::string get_material_name_from_index(uint32_t index) const;
-    
+
+        [[nodiscard]] VkDescriptorSetLayout get_texture_descriptor_layout() const
+        {
+            return texture_descriptor_layout;
+        }
+
+        [[nodiscard]] VkDescriptorSet get_texture_descriptor_set() const
+        {
+            return texture_descriptor_set;
+        }
+
+        [[nodiscard]] VkDescriptorPool get_texture_descriptor_pool() const
+        {
+            return texture_descriptor_pool;
+        }
+        
     private:
         //Store all kinds of materials (Translucent, Opaque etc)
         std::unordered_map<std::string, std::unique_ptr<Material>> materials;
@@ -81,6 +96,7 @@ namespace material
         //Global texture Descriptor Info
         VkDescriptorSetLayout texture_descriptor_layout;
         VkDescriptorSet texture_descriptor_set;
+        VkDescriptorPool texture_descriptor_pool;
 
         std::unordered_map<std::string, Vk_ShaderInfo> shader_info;
         EngineContext& engine_context; 

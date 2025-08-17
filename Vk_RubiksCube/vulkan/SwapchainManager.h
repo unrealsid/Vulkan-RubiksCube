@@ -16,6 +16,8 @@ namespace vulkan
     class SwapchainManager
     {
     public:
+        ~SwapchainManager();
+
         bool create_swapchain(const EngineContext& engine_context);
         bool recreate_swapchain(const EngineContext& engine_context);
         void cleanup();
@@ -27,7 +29,6 @@ namespace vulkan
         [[nodiscard]] VkExtent2D get_swapchain_extent() const { return swapchain.extent; }
 
     private:    
-        bool create_image_views(const EngineContext& engine_context);
         void cleanup_image_views(const EngineContext& engine_context);
 
         vkb::Swapchain swapchain{};

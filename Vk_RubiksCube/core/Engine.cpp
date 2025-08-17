@@ -6,7 +6,6 @@
 
 #include "DrawableEntity.h"
 #include "../game_entities/CubiesEntity.h"
-#include "../game_entities/DynamicRootEntity.h"
 #include "../game_entities/GameManager.h"
 #include "../game_entities/PointerEntity.h"
 #include "../game_entities/RootEntity.h"
@@ -18,8 +17,6 @@
 #include "../rendering/Renderer.h"
 #include "../structs/EngineContext.h"
 #include "../structs/DrawItem.h"
-#include "../rendering/picking/ObjectPicking.h"
-#include "../utils/GameUtils.h"
 
 std::vector<std::unique_ptr<core::Entity>> core::Engine::entities;
 std::vector<std::unique_ptr<core::DrawableEntity>> core::Engine::drawable_entities;
@@ -36,10 +33,10 @@ void core::Engine::init()
     
     //Init window and vulkan objects
     engine_context.window_manager = std::make_unique<window::WindowManager>(engine_context);
-    engine_context.device_manager = std::make_unique<vulkan::DeviceManager>();
+    engine_context.device_manager = std::make_unique<vulkan::DeviceManager>(engine_context);
     engine_context.swapchain_manager = std::make_unique<vulkan::SwapchainManager>();
     
-    engine_context.window_manager->create_window_glfw("Rubik's Cube", true);
+    engine_context.window_manager->create_window_glfw("Rubik's Cube", false);
     engine_context.device_manager->device_init(engine_context);
 
     engine_context.material_manager = std::make_unique<material::MaterialManager>(engine_context);
@@ -95,7 +92,27 @@ void core::Engine::run()
 
 void core::Engine::cleanup()
 {
+    auto device_manager = engine_context.device_manager.get();
+    auto swapchain_manager = engine_context.swapchain_manager.get();
+    auto transform_manager = engine_context.transform_manager.get();
+    auto material_manager = engine_context.material_manager.get();
+    auto renderer = engine_context.renderer.get();
+
+    auto transform_buffer = transform_manager->get_transforms_buffer();
+    vmaDestroyBuffer(engine_context.device_manager->get_allocator(), transform_buffer.buffer, transform_buffer.allocation);
+
+    for (auto& drawable : drawable_entities)
+    {
+        auto render_data = drawable->get_render_data();
+        vmaDestroyBuffer(device_manager->get_allocator(), render_data.index_buffer.buffer, render_data.index_buffer.allocation);
+        vmaDestroyBuffer(device_manager->get_allocator(), render_data.vertex_buffer.buffer, render_data.vertex_buffer.allocation);
+    }
     
+    engine_context.dispatch_table.destroyDescriptorSetLayout(material_manager->get_texture_descriptor_layout(), nullptr);
+    engine_context.dispatch_table.destroyDescriptorPool(material_manager->get_texture_descriptor_pool(), nullptr);
+
+    renderer->cleanup();
+    swapchain_manager->cleanup();
 }
 
 core::Entity* core::Engine::get_entity_by_tag(const std::string& tag)
@@ -176,7 +193,6 @@ void core::Engine::load_models()
     }
 
     load_root<RootEntity>(100, "root");
-    load_root<DynamicRootEntity>(200, "dynamic_root");
     load_pointer();
 
     //Once all materials are loaded, we can move them to the gpu
@@ -215,7 +231,7 @@ void core::Engine::load_pointer()
 void core::Engine::load_entities()
 {
     //Load Game manager
-    std::unique_ptr<Entity> game_manager = std::make_unique<GameManager>(1000, engine_context, "game_manager");
+    std::unique_ptr<Entity> game_manager = std::make_unique<GameManager>(300, engine_context, "game_manager");
     entities.push_back(std::move(game_manager));
 }
 
@@ -289,16 +305,12 @@ void core::Engine::update(double delta_time)
 
 void core::Engine::render() const
 {
-    auto object_picker =  engine_context.renderer->get_object_picker();
     auto window = engine_context.window_manager.get();
 
     engine_context.renderer->update_camera(window->mouse_delta_x, window->mouse_delta_y);
     
-    // Record the object picking command buffer with new mouse position
-    //object_picker->record_command_buffer();
-    
     if (bool result = engine_context.renderer->draw_frame(); !result)
     {
-        //std::cout << "failed to draw frame \n";
+        std::cout << "failed to draw frame \n";
     }
 }

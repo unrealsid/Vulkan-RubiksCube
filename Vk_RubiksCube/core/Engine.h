@@ -58,8 +58,6 @@ namespace core
         static std::vector<std::unique_ptr<DrawableEntity>> drawable_entities;
         static std::vector<std::unique_ptr<Entity>> entities;
 
-        GPU_Buffer transform_buffer;
-
         //Reference the orbit camera
         OrbitCamera orbit_camera;
         
@@ -69,9 +67,11 @@ namespace core
         ~Engine() = default; 
         Engine(const Engine&);
         Engine& operator=(const Engine&) = delete;
-        
+
+        //Loads the cubies
         void load_models();
 
+        //Making this a template since we can have different kinds of root classes
         template<typename T>
         void load_root(uint32_t id, const std::string& tag)
         {

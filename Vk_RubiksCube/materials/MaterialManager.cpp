@@ -44,7 +44,7 @@ void material::MaterialManager::init()
     material_params_address = utils::MemoryUtils::get_buffer_device_address(engine_context.dispatch_table, material_params_buffer.buffer);
     
     //Setup Texture descriptors
-    utils::DescriptorUtils::setup_texture_descriptors(engine_context.dispatch_table, textures, texture_descriptor_layout, texture_descriptor_set);
+    utils::DescriptorUtils::setup_texture_descriptors(engine_context.dispatch_table, textures, texture_descriptor_layout, texture_descriptor_set, texture_descriptor_pool);
 
     init_shaders();
 }

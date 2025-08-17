@@ -17,6 +17,7 @@ public:
 
     void reset_entity();
 
+    //Called to start a face rotation
     void set_rotation_params(bool can_rotate, const glm::vec3& new_rotation_axis, float rotation_angle);
 
     [[nodiscard]] bool is_rotating() const{ return can_rotate; }
@@ -39,6 +40,7 @@ private:
     
     float face_rotation_speed;
 
+    //Checks face rotation stop condition
     void stop_rotation();
     
     virtual void initialize_transform() const override;

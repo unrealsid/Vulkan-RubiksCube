@@ -4,8 +4,12 @@
 #include "DeviceManager.h"
 #include "../structs/EngineContext.h"
 #include "../rendering/Renderer.h"
-#include "../rendering/picking/ObjectPicking.h"
 #include "../utils/RenderUtils.h"
+
+vulkan::SwapchainManager::~SwapchainManager()
+{
+    cleanup();
+}
 
 bool vulkan::SwapchainManager::create_swapchain(const EngineContext& engine_context)
 {
@@ -44,12 +48,6 @@ bool vulkan::SwapchainManager::create_swapchain(const EngineContext& engine_cont
     }
     swapchain_images = images.value();
     
-    // Create image views
-    if (!create_image_views(engine_context))
-    {
-        return false;
-    }
-    
     return true;
 }
 
@@ -64,9 +62,7 @@ bool vulkan::SwapchainManager::recreate_swapchain(const EngineContext& engine_co
     // Clean up resources that depend on the swapchain
     if (renderer)
     {
-        // Destroy command pool (this will also destroy command buffers)
         renderer->destroy_command_pool();
-        //renderer->get_object_picker()->destroy_command_pool();
     }
 
     // Recreate the swapchain
@@ -98,54 +94,8 @@ bool vulkan::SwapchainManager::recreate_swapchain(const EngineContext& engine_co
             std::cout << "Failed to recreate command buffers\n";
             return false;
         }
-
-        // if (!renderer->get_object_picker()->recreate_picking_images())
-        // {
-        //     std::cout << "Failed to recreate depth, stencil images and buffer for object picking \n";
-        //     return false;
-        // }
     }
 
-    return true;
-}
-
-bool vulkan::SwapchainManager::create_image_views(const EngineContext& engine_context)
-{
-    swapchain_image_views.resize(swapchain_images.size());
-    
-    for (size_t i = 0; i < swapchain_images.size(); i++)
-    {
-        VkImageViewCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        create_info.image = swapchain_images[i];
-        create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        create_info.format = swapchain.image_format;
-        
-        create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-        
-        create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        create_info.subresourceRange.baseMipLevel = 0;
-        create_info.subresourceRange.levelCount = 1;
-        create_info.subresourceRange.baseArrayLayer = 0;
-        create_info.subresourceRange.layerCount = 1;
-        
-        VkResult result = engine_context.dispatch_table.createImageView(&create_info, nullptr, &swapchain_image_views[i]);
-        if (result != VK_SUCCESS)
-        {
-            std::cout << "Failed to create image view " << i << ": " << result << "\n";
-            // Clean up any views we've created so far
-            for (size_t j = 0; j < i; j++)
-            {
-                engine_context.dispatch_table.destroyImageView(swapchain_image_views[j], nullptr);
-            }
-            swapchain_image_views.clear();
-            return false;
-        }
-    }
-    
     return true;
 }
 
