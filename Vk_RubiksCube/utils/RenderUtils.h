@@ -14,6 +14,6 @@ namespace utils
 
         static VkBool32 get_supported_depth_stencil_format(VkPhysicalDevice physical_device, VkFormat* depth_stencil_format);
 
-        static void create_depth_stencil_image(const EngineContext& engine_context, VkExtent2D extents, VmaAllocator allocator, DepthStencilImage& depth_image);
+        static bool create_depth_stencil_image(const EngineContext& engine_context, VkExtent2D extents, VmaAllocator allocator, DepthStencilImage& depth_image);
     };
 }

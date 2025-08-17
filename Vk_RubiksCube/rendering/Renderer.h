@@ -11,11 +11,6 @@
 #include "../structs/DrawBatch.h"
 #include "camera/Camera.h"
 
-namespace rendering
-{
-    class ObjectPicking;
-}
-
 struct EngineContext;
 
 namespace vulkan
@@ -66,9 +61,16 @@ namespace core
         [[nodiscard]] std::vector<VkCommandBuffer> get_command_buffers() const { return command_buffers; }
         [[nodiscard]] VkCommandPool get_command_pool() const { return command_pool; }
         [[nodiscard]] std::unordered_map<std::string, DrawBatch>& get_draw_batches() { return draw_batches; }
-        [[nodiscard]] rendering::ObjectPicking* get_object_picker() const { return object_picker.get(); }
 
         OrbitCamera get_camera() const { return orbit_camera; }
+
+        bool create_command_pool();
+
+        bool recreate_depth_stencil_image();
+
+        void destroy_command_pool();
+
+        void cleanup();
     
     private:
         Vk_SceneData scene_data;
@@ -99,11 +101,5 @@ namespace core
         vulkan::SwapchainManager* swapchain_manager;
 
         std::unordered_map<std::string, DrawBatch> draw_batches;
-
-        std::unique_ptr<rendering::ObjectPicking> object_picker;
-
-        void init_object_picker();
-
-        void submit_object_picker_command_buffer() const;
     };
 }

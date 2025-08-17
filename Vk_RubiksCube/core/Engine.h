@@ -5,13 +5,11 @@
 
 #include "DrawableEntity.h"
 #include "Entity.h"
-#include "../enums/MouseDirection.h"
 #include "../materials/Material.h"
 #include "../rendering/camera/Camera.h"
 #include "../structs/EngineContext.h"
 #include "../structs/DrawBatch.h"
 #include "../utils/ModelLoaderUtils.h"
-#include "../utils/mouse_utils/MouseTracker.h"
 
 namespace renderer
 {
@@ -36,6 +34,8 @@ namespace vulkan
 
 namespace core
 {
+    constexpr uint32_t MAX_OBJECTS = 500;
+    
     class Engine
     {
     public:
@@ -63,15 +63,15 @@ namespace core
         
         std::unordered_map<std::string, DrawBatch> draw_batches;
 
-        static utils::MouseTracker mouse_tracker;
-
         Engine() = default;  
         ~Engine() = default; 
         Engine(const Engine&);
         Engine& operator=(const Engine&) = delete;
-        
+
+        //Loads the cubies
         void load_models();
 
+        //Making this a template since we can have different kinds of root classes
         template<typename T>
         void load_root(uint32_t id, const std::string& tag)
         {
@@ -104,7 +104,7 @@ namespace core
         void load_pointer();
         void load_entities();
         void organize_draw_batches();
-
+        
         //Calls start event on entities
         static void exec_start();
 
@@ -113,7 +113,5 @@ namespace core
 
         //Calls render on drawable entities
         void render() const;
-        
-        static void get_mouse_direction(GLFWwindow* window);
     };
 }

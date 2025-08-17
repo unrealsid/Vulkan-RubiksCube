@@ -51,8 +51,9 @@ void utils::MemoryUtils::create_vma_allocator(vulkan::DeviceManager& device_mana
     std::cout << "VMA allocator created successfully." << std::endl;
 }
 
-void utils::MemoryUtils::create_buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage,
-                               VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags vmaAllocationFlags, GPU_Buffer& outBuffer) 
+void utils::MemoryUtils::create_buffer(vkb::DispatchTable dispatch_table, VmaAllocator allocator, VkDeviceSize size,
+                                       VkBufferUsageFlags usage, VmaMemoryUsage memory_usage, VmaAllocationCreateFlags vmaAllocationFlags, GPU_Buffer&
+                                       out_buffer) 
 {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -61,23 +62,26 @@ void utils::MemoryUtils::create_buffer(VmaAllocator allocator, VkDeviceSize size
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     VmaAllocationCreateInfo allocCreateInfo = {};
-    allocCreateInfo.usage = memoryUsage;  
+    allocCreateInfo.usage = memory_usage;  
     allocCreateInfo.flags = vmaAllocationFlags;
 
-    if (VkResult result = vmaCreateBuffer(allocator, &bufferInfo, &allocCreateInfo, &outBuffer.buffer, &outBuffer.allocation, &outBuffer.allocation_info); result != VK_SUCCESS)
+    if (VkResult result = vmaCreateBuffer(allocator, &bufferInfo, &allocCreateInfo, &out_buffer.buffer, &out_buffer.allocation, &out_buffer.allocation_info); result != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create buffer with VMA!");
     }
+
+    out_buffer.buffer_address = MemoryUtils::get_buffer_device_address(dispatch_table, out_buffer.buffer);
 }
 
-VkResult utils::MemoryUtils::map_persistent_data(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize bufferSize)
+VkResult utils::MemoryUtils::map_persistent_data(VmaAllocator vmaAllocator, VmaAllocation allocation, const VmaAllocationInfo& allocationInfo, const void* data, VkDeviceSize
+                                                bufferSize, size_t buffer_offset)
 {
     VkMemoryPropertyFlags memPropFlags;
     vmaGetAllocationMemoryProperties(vmaAllocator, allocation, &memPropFlags);
     
     if(memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
     {
-        memcpy(allocationInfo.pMappedData, data, bufferSize);
+        memcpy((char*) allocationInfo.pMappedData + buffer_offset, data, bufferSize);
         VkResult result = vmaFlushAllocation(vmaAllocator, allocation, 0, VK_WHOLE_SIZE);
         return result;
     }
@@ -145,11 +149,11 @@ void utils::MemoryUtils::create_vertex_and_index_buffers(
 
     // Create Staging Buffer for Vertices using VMA
     GPU_Buffer staging_vertex_buffer;
-    create_buffer(device_manager->get_allocator(), vertexBufferSize,
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VMA_MEMORY_USAGE_AUTO,
-                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                    staging_vertex_buffer);
+    create_buffer(engine_context.dispatch_table, device_manager->get_allocator(),
+                  vertexBufferSize,
+                  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                  VMA_MEMORY_USAGE_AUTO,
+                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT, staging_vertex_buffer);
 
     // Copy Vertex Data to Staging Buffer using VMA mapping
     assert(vertices.size() != 0, "Vertex Data is empty!");
@@ -160,9 +164,9 @@ void utils::MemoryUtils::create_vertex_and_index_buffers(
     vmaUnmapMemory(engine_context.device_manager->get_allocator(), staging_vertex_buffer.allocation);
 
     // Create Vertex Buffer (Device Local) using VMA
-    create_buffer(device_manager->get_allocator(), vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                    VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,out_vertex_buffer);
+    create_buffer(engine_context.dispatch_table, device_manager->get_allocator(), vertexBufferSize,
+                  VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                  VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO,VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, out_vertex_buffer);
 
     // Copy from Staging Vertex Buffer to Device Local Vertex Buffer
     copy_buffer(engine_context.dispatch_table, device_manager->get_graphics_queue(), renderer->get_command_pool(), staging_vertex_buffer.buffer, out_vertex_buffer.buffer, vertexBufferSize);
@@ -173,9 +177,9 @@ void utils::MemoryUtils::create_vertex_and_index_buffers(
 
     // Create Staging Buffer for Indices using VMA
     GPU_Buffer staging_index_buffer;
-    create_buffer(device_manager->get_allocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO,
-                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                    staging_index_buffer);
+    create_buffer(engine_context.dispatch_table, device_manager->get_allocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                  VMA_MEMORY_USAGE_AUTO,
+                  VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT, staging_index_buffer);
 
     // Copy Index Data to Staging Buffer using VMA mapping
     vmaMapMemory(device_manager->get_allocator(), staging_index_buffer.allocation, &data);
@@ -183,9 +187,9 @@ void utils::MemoryUtils::create_vertex_and_index_buffers(
     vmaUnmapMemory(device_manager->get_allocator(), staging_index_buffer.allocation);
 
     // Create Index Buffer (Device Local) using VMA
-    create_buffer(device_manager->get_allocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_AUTO,
-                    VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, out_index_buffer);
+    create_buffer(engine_context.dispatch_table, device_manager->get_allocator(), indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                  VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                  VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, out_index_buffer);
     
     utils::set_vulkan_object_Name(engine_context.dispatch_table, (uint64_t) out_index_buffer.buffer, VK_OBJECT_TYPE_BUFFER, "Index Buffer");
 
@@ -235,22 +239,22 @@ void utils::MemoryUtils::createMaterialParamsBuffer(const vulkan::DeviceManager&
     map_persistent_data(device_manager.get_allocator(), out_material_params_buffer.allocation, out_material_params_buffer.allocation_info, materialData.data(), bufferSize);
 }
 
-void utils::MemoryUtils::allocate_buffer_with_mapped_access(VmaAllocator allocator, VkDeviceSize size, GPU_Buffer& buffer)
+void utils::MemoryUtils::allocate_buffer_with_mapped_access(const vkb::DispatchTable& dispatch_table, VmaAllocator allocator, VkDeviceSize size, GPU_Buffer& buffer)
 {
-    create_buffer(allocator, size,
-                     VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,  
-                     VMA_MEMORY_USAGE_AUTO,
-                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                     VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
-                     VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer);
+    create_buffer(dispatch_table, allocator,
+                  size,  
+                  VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                  VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                  VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
+                  VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer);
 }
 
-void utils::MemoryUtils::allocate_buffer_with_readback_access(VmaAllocator allocator, VkDeviceSize size,
-    GPU_Buffer& buffer)
+void utils::MemoryUtils::allocate_buffer_with_random_access(const vkb::DispatchTable& dispatch_table, VmaAllocator allocator,
+                                                            VkDeviceSize size, GPU_Buffer& buffer)
 {
-    create_buffer(allocator, size,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
-        VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer);
+    create_buffer(dispatch_table, allocator,
+                  size,
+                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                  VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
+                  VMA_ALLOCATION_CREATE_MAPPED_BIT, buffer);
 }

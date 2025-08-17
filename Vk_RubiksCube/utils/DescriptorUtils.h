@@ -19,7 +19,8 @@ namespace utils
         static void setup_texture_descriptors(const vkb::DispatchTable& disp,
                                             const std::vector<Vk_Image>& textures,
                                             VkDescriptorSetLayout& outDescriptorSetLayout,
-                                            VkDescriptorSet& outDescriptorSet);
+                                            VkDescriptorSet& outDescriptorSet,
+                                            VkDescriptorPool& descriptor_pool);
 
         static void map_ubo(const EngineContext& engine_context, const Vk_SceneData& sceneDataUBO, GPU_SceneBuffer& gpu_scene_data);
     };

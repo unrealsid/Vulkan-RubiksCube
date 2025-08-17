@@ -42,8 +42,6 @@ public:
     //This is done at init. For dynamic rotation unparent and reparent to dynamic_root
     static void init_attach_cubies_to_root();
 
-    void attach_face_cubies_to_dynamic_root(DynamicRootEntity* dynamic_root_entity, std::vector<CubiesEntity*>& cubies_to_attach);
-
     //Get cubies that belong to a specific face
     std::vector<class CubiesEntity*> get_face_cubies(char face) const;
 
@@ -52,12 +50,9 @@ public:
 
     static glm::vec3 get_rotation_axis(char face);
 
-    void execute_move(const std::string& move_notation);
-
     void execute_move_sequence(const std::string& move_notation);
     
-    void rotate_face(char face, bool clockwise);
-
+   
 private:
     window::WindowManager* window_manager;
     rendering::ObjectPicking* object_picker;
@@ -72,7 +67,6 @@ private:
     float face_distance;
 
     PointerEntity* pointer_entity;
-    DynamicRootEntity* dynamic_root;
     std::vector<core::DrawableEntity*> cubies;
 
 
@@ -93,4 +87,6 @@ private:
     //Get selected cubie transform
     Transform* get_cubie_transform(uint32_t cubie_id);
 
+    //Actually start rotating a face
+    void rotate_face(char face, bool clockwise);
 };

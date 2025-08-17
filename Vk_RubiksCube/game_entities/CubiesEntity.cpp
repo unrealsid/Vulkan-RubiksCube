@@ -37,17 +37,18 @@ void CubiesEntity::update(double delta_time)
         
         glm::mat4 incremental_rotation = glm::rotate(glm::mat4(1.0f), angle, rotation_axis);
 
-        // 2. Apply the new rotation to the cubie's state BEFORE this turn started
+        // 1. Apply the new rotation to the cubie's state
         glm::mat4 model_matrix = incremental_rotation * initial_model_matrix;
 
-        // 3. Decompose the final matrix to update the transform component
+        // 2. Decompose the final matrix to update the transform component
         // This ensures the transform always has the correct world position/rotation
         get_transform()->set_position(glm::vec3(model_matrix[3]));
         glm::quat rotation_quat = glm::quat_cast(model_matrix);
         get_transform()->set_rotation(glm::degrees(glm::eulerAngles(rotation_quat)));
-        
-        utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), get_transform_buffer().allocation, get_transform_buffer().allocation_info, &model_matrix, sizeof(glm::mat4));
 
+        //After everything is done, sent the data to the gpu via mapped memory
+        update_transform_on_gpu(model_matrix);
+        
         stop_rotation();
     }
     else
@@ -74,6 +75,8 @@ void CubiesEntity::stop_rotation()
         get_transform()->set_position(glm::vec3(final_model_matrix[3]));
         glm::quat rotation_quat = glm::quat_cast(final_model_matrix);
         get_transform()->set_rotation(glm::degrees(glm::eulerAngles(rotation_quat)));
+        
+        update_transform_on_gpu(final_model_matrix);
         
         //std::cout << "cubie id " <<  get_entity_id() << "\n" << *get_transform() << std::endl; 
     }

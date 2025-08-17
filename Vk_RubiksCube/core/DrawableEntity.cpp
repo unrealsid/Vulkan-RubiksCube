@@ -14,10 +14,11 @@ void core::DrawableEntity::update(double delta_time)
 
     //Update model matrix and submit data to the gpu
     auto model_matrix = get_transform()->get_model_matrix();
-    utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), get_transform_buffer().allocation, get_transform_buffer().allocation_info, &model_matrix, sizeof(glm::mat4));
+    update_transform_on_gpu(model_matrix);
 }
 
 void core::DrawableEntity::initialize_transform() const
 {
     transform->set_position(get_render_data().local_position);
+    Entity::initialize_transform();
 }

@@ -10,7 +10,8 @@
 #include "MemoryUtils.h"
 #include "../vulkan/DeviceManager.h"
 
-void utils::DescriptorUtils::setup_texture_descriptors(const vkb::DispatchTable& disp, const std::vector<Vk_Image>& textures, VkDescriptorSetLayout& outDescriptorSetLayout, VkDescriptorSet& outDescriptorSet)
+void utils::DescriptorUtils::setup_texture_descriptors(const vkb::DispatchTable& disp, const std::vector<Vk_Image>& textures, VkDescriptorSetLayout& outDescriptorSetLayout, VkDescriptorSet
+                                                       & outDescriptorSet, VkDescriptorPool& descriptor_pool)
 {
     if (textures.empty())
     {
@@ -21,9 +22,8 @@ void utils::DescriptorUtils::setup_texture_descriptors(const vkb::DispatchTable&
     //Descriptor Pool
     std::vector<VkDescriptorPoolSize> poolSizes = { initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(textures.size())) };
     VkDescriptorPoolCreateInfo descriptorPoolInfo = initializers::descriptorPoolCreateInfo(poolSizes, 1);
-
-    VkDescriptorPool descriptorPool;
-    disp.createDescriptorPool(&descriptorPoolInfo, nullptr, &descriptorPool);
+    
+    disp.createDescriptorPool(&descriptorPoolInfo, nullptr, &descriptor_pool);
 
     //Descriptor set layout
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
@@ -61,7 +61,7 @@ void utils::DescriptorUtils::setup_texture_descriptors(const vkb::DispatchTable&
     variableDescriptorCountAllocInfo.descriptorSetCount = static_cast<uint32_t>(variableDescriptorCounts.size());
     variableDescriptorCountAllocInfo.pDescriptorCounts  = variableDescriptorCounts.data();
 
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = initializers::descriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = initializers::descriptorSetAllocateInfo(descriptor_pool, &descriptorSetLayout, 1);
     descriptorSetAllocateInfo.pNext = &variableDescriptorCountAllocInfo;
 
     VkDescriptorSet descriptorSet;
