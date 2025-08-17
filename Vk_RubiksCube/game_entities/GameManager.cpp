@@ -20,8 +20,7 @@ void GameManager::start()
 
     window_manager = engine_context.window_manager.get();
     object_picker = engine_context.renderer->get_object_picker();
-    buffer =  object_picker->get_readback_buffer();
-
+    
     init_attach_cubies_to_root();
     dynamic_root = dynamic_cast<DynamicRootEntity*>(core::Engine::get_entity_by_tag("dynamic_root"));
     pointer_entity = dynamic_cast<PointerEntity*>(core::Engine::get_entity_by_tag("pointer"));
@@ -75,8 +74,8 @@ void GameManager::update(double delta_time)
         rotate_face(face, is_clockwise);
     }
 
+    buffer = object_picker->get_readback_buffer();
 
-    // --- Your existing object picking logic can remain here ---
     VkExtent2D swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
     auto encoded_color = utils::GameUtils::get_pixel_color(engine_context,
         window_manager->local_mouse_x,

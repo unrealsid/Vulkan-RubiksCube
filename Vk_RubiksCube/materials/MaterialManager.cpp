@@ -40,7 +40,7 @@ void material::MaterialManager::init()
     auto device_manager = engine_context.device_manager.get();
     
     //Just create the buffer for now, but leave it empty
-    utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), material_buffer_size, material_params_buffer);
+    utils::MemoryUtils::allocate_buffer_with_mapped_access(engine_context.dispatch_table, device_manager->get_allocator(), material_buffer_size, material_params_buffer);
     material_params_address = utils::MemoryUtils::get_buffer_device_address(engine_context.dispatch_table, material_params_buffer.buffer);
     
     //Setup Texture descriptors

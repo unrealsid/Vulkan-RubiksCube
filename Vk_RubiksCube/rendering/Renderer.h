@@ -69,6 +69,12 @@ namespace core
         [[nodiscard]] rendering::ObjectPicking* get_object_picker() const { return object_picker.get(); }
 
         OrbitCamera get_camera() const { return orbit_camera; }
+
+        bool create_command_pool();
+
+        bool recreate_depth_stencil_image();
+
+        void destroy_command_pool();
     
     private:
         Vk_SceneData scene_data;

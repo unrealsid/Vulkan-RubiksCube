@@ -38,7 +38,7 @@ void core::Renderer::init()
     utils::RenderUtils::get_supported_depth_stencil_format(device_manager->get_physical_device(), &depth_stencil_image.format);
     utils::RenderUtils::create_depth_stencil_image(engine_context, swapchain_manager->get_swapchain().extent, device_manager->get_allocator(), depth_stencil_image);
 
-    init_object_picker();
+    //init_object_picker();
 }
 
 void core::Renderer::init_object_picker()
@@ -48,6 +48,25 @@ void core::Renderer::init_object_picker()
     
     engine_context.dispatch_table.createSemaphore(&semaphore_info, nullptr, &object_picker_done_semaphore);
     object_picker->init_picking();
+}
+
+bool core::Renderer::create_command_pool()
+{
+    return utils::RenderUtils::create_command_pool(engine_context, command_pool);
+}
+
+bool core::Renderer::recreate_depth_stencil_image()
+{
+    auto swapchain_extents = swapchain_manager->get_swapchain().extent;
+    vmaDestroyImage(device_manager->get_allocator(), depth_stencil_image.image, depth_stencil_image.allocation);
+    engine_context.dispatch_table.destroyImageView(depth_stencil_image.view, nullptr);
+    return utils::RenderUtils::create_depth_stencil_image(engine_context, swapchain_extents, device_manager->get_allocator(), depth_stencil_image);
+}
+
+void core::Renderer::destroy_command_pool()
+{
+    dispatch_table.destroyCommandPool(command_pool, nullptr);
+    command_pool = VK_NULL_HANDLE;
 }
 
 void core::Renderer::submit_object_picker_command_buffer() const
@@ -91,19 +110,19 @@ bool core::Renderer::draw_frame()
     image_in_flight[image_index] = in_flight_fences[current_frame];
     
     //Object picker
-    submit_object_picker_command_buffer();
+    //submit_object_picker_command_buffer();
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore wait_semaphores[] = { available_semaphores[current_frame], object_picker_done_semaphore};
+    VkSemaphore wait_semaphores[] = { available_semaphores[current_frame]}; //TODO: Add object picker semaphore here
     VkPipelineStageFlags wait_stages[] =
     {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
     
-    submitInfo.waitSemaphoreCount = 2;
+    submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = wait_semaphores;
     submitInfo.pWaitDstStageMask = wait_stages;
 
@@ -160,7 +179,7 @@ bool core::Renderer::init_camera()
     scene_data = orbit_camera.get_scene_data(aspect);
     
     //Allocate buffer for scene data
-    utils::MemoryUtils::allocate_buffer_with_mapped_access(device_manager->get_allocator(), sizeof(Vk_SceneData), gpu_scene_buffer.scene_buffer);
+    utils::MemoryUtils::allocate_buffer_with_mapped_access(engine_context.dispatch_table, device_manager->get_allocator(), sizeof(Vk_SceneData), gpu_scene_buffer.scene_buffer);
 
     //Get its address and other params
     gpu_scene_buffer.scene_buffer_address = utils::MemoryUtils::get_buffer_device_address(dispatch_table, gpu_scene_buffer.scene_buffer.buffer);
@@ -215,6 +234,8 @@ bool core::Renderer::create_sync_objects()
 
 bool core::Renderer::create_command_buffers()
 {
+    command_buffers.clear();
+
     auto swapchain = engine_context.swapchain_manager->get_swapchain();
     command_buffers.resize(swapchain.image_count);
 
@@ -308,7 +329,7 @@ bool core::Renderer::create_command_buffers()
             //Binds and draws meshes
             for (auto draw_item : draw_batch.items)
             {
-                references.object_model_transform_addr = draw_item.entity->get_transform_buffer_address();
+                references.object_model_transform_addr = draw_item.entity->get_transform_buffer_sub_address();
 
                 dispatch_table.cmdPushConstants(command_buffers[i], draw_batch.material->get_pipeline_layout(),
                     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantBlock), &references);

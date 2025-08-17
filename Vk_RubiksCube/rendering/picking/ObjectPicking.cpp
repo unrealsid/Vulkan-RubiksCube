@@ -27,6 +27,25 @@ rendering::ObjectPicking::ObjectPicking(EngineContext& engine_context): engine_c
     first_submit_done = false;
 }
 
+bool rendering::ObjectPicking::create_command_buffer(vkb::DispatchTable& dispatch_table)
+{
+    VkCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = command_pool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+
+    dispatch_table = engine_context.dispatch_table;
+
+    if (dispatch_table.allocateCommandBuffers(&allocInfo, &command_buffer) != VK_SUCCESS)
+    {
+        // failed to allocate command buffers;
+        std::cerr << "failed to allocate command buffers for object picker\n";
+        return false;
+    }
+    return true;
+}
+
 void rendering::ObjectPicking::init_picking()
 {
     utils::RenderUtils::create_command_pool(engine_context, command_pool);
@@ -39,18 +58,9 @@ void rendering::ObjectPicking::init_picking()
 
     create_object_picking_material();
 
-    VkCommandBufferAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = command_pool;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = 1;
-
-    auto dispatch_table = engine_context.dispatch_table;
-    
-    if (dispatch_table.allocateCommandBuffers(&allocInfo, &command_buffer) != VK_SUCCESS)
+    vkb::DispatchTable dispatch_table;
+    if (!create_command_buffer(dispatch_table))
     {
-        // failed to allocate command buffers;
-        std::cerr << "failed to allocate command buffers for object picker\n";
         return;
     }
 
@@ -58,6 +68,40 @@ void rendering::ObjectPicking::init_picking()
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_info.flags = 0;
     dispatch_table.createFence(&fence_info, nullptr, &object_picker_fence);
+}
+
+bool rendering::ObjectPicking::recreate_picking_images()
+{
+    first_submit_done = false;
+    
+    vmaDestroyImage(device_manager->get_allocator(), depth_stencil_image.image, depth_stencil_image.allocation);
+    engine_context.dispatch_table.destroyImageView(depth_stencil_image.view, nullptr);
+    if(!utils::RenderUtils::create_depth_stencil_image(engine_context, swapchain_manager->get_swapchain().extent, device_manager->get_allocator(), depth_stencil_image))
+    {
+        std:: cerr << "Failed to recreate depth stencil image for object picker render pass";
+    }
+
+    vmaDestroyImage(device_manager->get_allocator(), object_id_image.image, object_id_image.allocation);
+    engine_context.dispatch_table.destroyImageView(object_id_image.view, nullptr);
+
+    create_image_attachment();
+
+    vmaDestroyBuffer(engine_context.device_manager->get_allocator(), readback_id_buffer.buffer, readback_id_buffer.allocation);
+    create_readback_id_buffer();
+
+    recreate_command_pool();
+
+    create_command_buffer(engine_context.dispatch_table);
+
+    engine_context.dispatch_table.resetFences(1, &object_picker_fence);
+    
+    record_command_buffer();
+    return true;
+}
+
+bool rendering::ObjectPicking::recreate_command_pool()
+{
+    return utils::RenderUtils::create_command_pool(engine_context, command_pool);
 }
 
 void rendering::ObjectPicking::create_image_attachment()
@@ -74,17 +118,20 @@ void rendering::ObjectPicking::create_image_attachment()
     vmaCreateImage(device_manager->get_allocator(), &image_info, &alloc_info, &object_id_image.image, &object_id_image.allocation, nullptr);
 
     utils::ImageUtils::create_image_view(engine_context.dispatch_table, object_id_image, image_format);
+
+    vmaDestroyBuffer(device_manager->get_allocator(), readback_id_buffer.buffer, readback_id_buffer.allocation);
+    create_readback_id_buffer();
 }
 
 void rendering::ObjectPicking::create_readback_id_buffer()
 {
     auto swapchain_extents = engine_context.swapchain_manager->get_swapchain().extent;
-    utils::MemoryUtils::allocate_buffer_with_readback_access(device_manager->get_allocator(), swapchain_extents.width * swapchain_extents.height * sizeof(glm::vec4), readback_id_buffer);
+    utils::MemoryUtils::allocate_buffer_with_random_access(engine_context.dispatch_table, device_manager->get_allocator(), swapchain_extents.width * swapchain_extents.height * sizeof(glm::vec4), readback_id_buffer);
 }
 
 void rendering::ObjectPicking::create_normal_readback_buffer()
 {
-    utils::MemoryUtils::allocate_buffer_with_readback_access(device_manager->get_allocator(),  sizeof(glm::vec4), normal_readback_buffer);
+    utils::MemoryUtils::allocate_buffer_with_random_access(engine_context.dispatch_table, device_manager->get_allocator(),  sizeof(glm::vec4), normal_readback_buffer);
     normal_readback_buffer_address = utils::MemoryUtils::get_buffer_device_address(engine_context.dispatch_table, normal_readback_buffer.buffer);
 }
 
@@ -125,7 +172,7 @@ void rendering::ObjectPicking::create_object_picking_material()
     object_picker_material->add_descriptor_set(nullptr);
 }
 
-bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mouse_y)
+bool rendering::ObjectPicking::record_command_buffer()
 {
     auto dispatch_table = engine_context.dispatch_table;
 
@@ -219,7 +266,7 @@ bool rendering::ObjectPicking::record_command_buffer(int32_t mouse_x, int32_t mo
     {
         RenderData render_data = entity->get_render_data();
 
-        push_constants.model_transform_addr = entity->get_transform_buffer_address();
+        push_constants.model_transform_addr = entity->get_transform_buffer_sub_address();
         push_constants.object_id_addr = entity->get_object_id_buffer_address();
 
         dispatch_table.cmdPushConstants(command_buffer, object_picker_material->get_pipeline_layout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(ObjectPickerPushConstantBlock), &push_constants);
@@ -278,4 +325,10 @@ glm::vec3 rendering::ObjectPicking::get_selected_face_normal(const glm::mat4& mo
     }
 
     return glm::vec3(0.0);
+}
+
+void rendering::ObjectPicking::destroy_command_pool()
+{
+    engine_context.dispatch_table.destroyCommandPool(command_pool, nullptr);
+    command_pool = VK_NULL_HANDLE;
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include "VkBootstrapDispatch.h"
+#include "../core/TransformManager.h"
 
 namespace material
 {
@@ -30,6 +31,7 @@ struct EngineContext
     std::unique_ptr<material::MaterialManager> material_manager;
     std::unique_ptr<core::Renderer> renderer;
     std::unique_ptr<vulkan::SwapchainManager> swapchain_manager;
+    std::unique_ptr<core::TransformManager> transform_manager;
 
     vkb::InstanceDispatchTable instance_dispatch_table;
     vkb::DispatchTable dispatch_table;

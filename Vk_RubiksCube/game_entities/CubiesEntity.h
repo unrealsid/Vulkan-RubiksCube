@@ -12,7 +12,7 @@ public:
         can_rotate = false;
         use_trs_matrix = true;
         start_model_matrix = glm::mat4{};
-        face_rotation_speed = 1.0f;
+        face_rotation_speed = 3.0f;
     }
 
     void reset_entity();

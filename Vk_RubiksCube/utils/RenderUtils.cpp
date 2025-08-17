@@ -44,7 +44,7 @@ VkBool32 utils::RenderUtils::get_supported_depth_stencil_format(VkPhysicalDevice
     return false;
 }
 
-void utils::RenderUtils::create_depth_stencil_image(const EngineContext& engine_context, VkExtent2D extents,
+bool utils::RenderUtils::create_depth_stencil_image(const EngineContext& engine_context, VkExtent2D extents,
     VmaAllocator allocator, DepthStencilImage& depth_image)
 {
     VkImageCreateInfo imageCI{};
@@ -63,7 +63,8 @@ void utils::RenderUtils::create_depth_stencil_image(const EngineContext& engine_
 
     if (vmaCreateImage(allocator, &imageCI, &allocInfo, &depth_image.image, &depth_image.allocation, nullptr) != VK_SUCCESS)
     {
-        throw std::runtime_error("failed to create depth stencil image!");
+        std::cerr << "failed to create depth stencil image!";
+        return true;
     }
 
     VkImageViewCreateInfo imageViewCI{};
@@ -85,6 +86,9 @@ void utils::RenderUtils::create_depth_stencil_image(const EngineContext& engine_
 
     if (engine_context.dispatch_table.createImageView(&imageViewCI, nullptr,  &depth_image.view) != VK_SUCCESS)
     {
-        throw std::runtime_error("failed to create depth stencil image view!");
+        std::cerr << "failed to create depth stencil image view!";
+        return false;
     }
+
+    return true;
 }

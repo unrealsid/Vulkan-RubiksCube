@@ -5,13 +5,11 @@
 
 #include "DrawableEntity.h"
 #include "Entity.h"
-#include "../enums/MouseDirection.h"
 #include "../materials/Material.h"
 #include "../rendering/camera/Camera.h"
 #include "../structs/EngineContext.h"
 #include "../structs/DrawBatch.h"
 #include "../utils/ModelLoaderUtils.h"
-#include "../utils/mouse_utils/MouseTracker.h"
 
 namespace renderer
 {
@@ -36,6 +34,8 @@ namespace vulkan
 
 namespace core
 {
+    constexpr uint32_t MAX_OBJECTS = 500;
+    
     class Engine
     {
     public:
@@ -58,12 +58,12 @@ namespace core
         static std::vector<std::unique_ptr<DrawableEntity>> drawable_entities;
         static std::vector<std::unique_ptr<Entity>> entities;
 
+        GPU_Buffer transform_buffer;
+
         //Reference the orbit camera
         OrbitCamera orbit_camera;
         
         std::unordered_map<std::string, DrawBatch> draw_batches;
-
-        static utils::MouseTracker mouse_tracker;
 
         Engine() = default;  
         ~Engine() = default; 
@@ -104,7 +104,7 @@ namespace core
         void load_pointer();
         void load_entities();
         void organize_draw_batches();
-
+        
         //Calls start event on entities
         static void exec_start();
 
@@ -113,7 +113,5 @@ namespace core
 
         //Calls render on drawable entities
         void render() const;
-        
-        static void get_mouse_direction(GLFWwindow* window);
     };
 }

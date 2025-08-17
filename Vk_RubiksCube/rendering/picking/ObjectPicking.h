@@ -32,21 +32,30 @@ namespace rendering
     {
     public:
         ObjectPicking(EngineContext& engine_context);
+        bool create_command_buffer(vkb::DispatchTable& dispatch_table);
 
         bool first_submit_done;
 
         void init_picking();
-        bool record_command_buffer(int32_t mouse_x, int32_t mouse_y);
+
+        bool recreate_picking_images();
+        bool recreate_command_pool();
+        
+        bool record_command_buffer();
 
         VkCommandBuffer get_command_buffer() const { return command_buffer; }
 
+        VkCommandPool get_command_pool() const { return command_pool; }
+        
         VkFence get_object_picker_fence() const { return object_picker_fence; }
 
         GPU_Buffer get_readback_buffer() const { return readback_id_buffer; }
 
         GPU_Buffer get_face_normal_readback_buffer() const { return normal_readback_buffer;  }
 
-        glm::vec3 get_selected_face_normal(const glm::mat4& model_transform) const;  
+        glm::vec3 get_selected_face_normal(const glm::mat4& model_transform) const;
+
+        void destroy_command_pool();
 
     private:
         EngineContext& engine_context;

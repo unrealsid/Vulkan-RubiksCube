@@ -32,9 +32,11 @@ namespace core
 
         //We store transforms in buffers that are linked via an address -- I love Vulkan
         GPU_Buffer get_transform_buffer() const { return transform_buffer; }
-        [[nodiscard]] VkDeviceAddress get_transform_buffer_address() const { return transform_buffer_address; }
+        [[nodiscard]] VkDeviceAddress get_transform_buffer_sub_address() const;
 
         [[nodiscard]] VkDeviceAddress get_object_id_buffer_address() const { return  object_id_buffer_address; }
+
+        void update_transform_on_gpu(const glm::mat4& matrix_data) const;
 
     protected:
         vulkan::DeviceManager* device_manager;
@@ -46,6 +48,8 @@ namespace core
         VkDeviceAddress transform_buffer_address;
 
         std::unique_ptr<Transform> transform;
+
+        virtual void initialize_transform() const;
         
     private:
 
@@ -61,7 +65,5 @@ namespace core
         void initialize_transform_buffer();
 
         void initialize_object_id_buffer();
-
-        virtual void initialize_transform() const;
     };
 }

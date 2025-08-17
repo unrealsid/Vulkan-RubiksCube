@@ -45,9 +45,9 @@ void CubiesEntity::update(double delta_time)
         get_transform()->set_position(glm::vec3(model_matrix[3]));
         glm::quat rotation_quat = glm::quat_cast(model_matrix);
         get_transform()->set_rotation(glm::degrees(glm::eulerAngles(rotation_quat)));
-        
-        utils::MemoryUtils::map_persistent_data(device_manager->get_allocator(), get_transform_buffer().allocation, get_transform_buffer().allocation_info, &model_matrix, sizeof(glm::mat4));
 
+        update_transform_on_gpu(model_matrix);
+        
         stop_rotation();
     }
     else
@@ -74,6 +74,8 @@ void CubiesEntity::stop_rotation()
         get_transform()->set_position(glm::vec3(final_model_matrix[3]));
         glm::quat rotation_quat = glm::quat_cast(final_model_matrix);
         get_transform()->set_rotation(glm::degrees(glm::eulerAngles(rotation_quat)));
+        
+        update_transform_on_gpu(final_model_matrix);
         
         //std::cout << "cubie id " <<  get_entity_id() << "\n" << *get_transform() << std::endl; 
     }

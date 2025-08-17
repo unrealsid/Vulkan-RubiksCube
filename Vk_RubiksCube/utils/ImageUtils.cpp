@@ -56,7 +56,8 @@ Vk_Image utils::ImageUtils::create_texture_image(EngineContext& engine_context, 
         //create staging buffer for image
         GPU_Buffer stagingImageBuffer;
 
-        MemoryUtils::create_buffer(device_manager->get_allocator(), imageSize,
+        MemoryUtils::create_buffer(engine_context.dispatch_table,
+                                     device_manager->get_allocator(), imageSize,
                                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                      VMA_MEMORY_USAGE_AUTO,
                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |  VMA_ALLOCATION_CREATE_MAPPED_BIT,
@@ -227,7 +228,8 @@ void utils::ImageUtils::copy_image_to_buffer(EngineContext& engine_context, Vk_I
     copy_region.imageSubresource.baseArrayLayer = 0;
     copy_region.imageSubresource.layerCount = 1;
     copy_region.imageOffset = image_offset;
-    copy_region.imageExtent = {1280, 720, 1};
+    auto extents = engine_context.swapchain_manager->get_swapchain_extent();
+    copy_region.imageExtent = {extents.width, extents.height, 1};
     
     dispatch_table.cmdCopyImageToBuffer(
         cmd_buffer,

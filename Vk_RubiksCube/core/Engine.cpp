@@ -23,7 +23,6 @@
 
 std::vector<std::unique_ptr<core::Entity>> core::Engine::entities;
 std::vector<std::unique_ptr<core::DrawableEntity>> core::Engine::drawable_entities;
-utils::MouseTracker core::Engine::mouse_tracker(3.0);
 
 core::Engine& core::Engine::get_instance()
 {
@@ -51,6 +50,9 @@ void core::Engine::init()
     engine_context.device_manager->get_queues();
     utils::MemoryUtils::create_vma_allocator(*engine_context.device_manager);
 
+    //Initialize the transform manager
+    engine_context.transform_manager = std::make_unique<TransformManager>(engine_context);
+    
     engine_context.renderer = std::make_unique<Renderer>(engine_context);
     engine_context.renderer->init();
     orbit_camera = engine_context.renderer->get_camera();
@@ -61,24 +63,6 @@ void core::Engine::init()
     engine_context.renderer->create_command_buffers();
 
     exec_start();
-}
-
-void core::Engine::get_mouse_direction(GLFWwindow* window)
-{
-    mouse_tracker.update_position(window);
-    MouseDirection dir = mouse_tracker.get_direction();
-
-    if (dir != MouseDirection::none)
-    {
-        //printf("Mouse moving: %s\n", utils::direction_to_string(dir));
-            
-        // Get actual movement values if needed
-        double delta_x, delta_y;
-        mouse_tracker.get_movement_delta(delta_x, delta_y);
-        //printf("Delta: %.2f, %.2f\n", delta_x, delta_y);
-    }
-        
-    mouse_tracker.commit_position();
 }
 
 void core::Engine::run()
@@ -191,8 +175,8 @@ void core::Engine::load_models()
         }
     }
 
-    load_root<RootEntity>(1500, "root");
-    load_root<DynamicRootEntity>(1600, "dynamic_root");
+    load_root<RootEntity>(100, "root");
+    load_root<DynamicRootEntity>(200, "dynamic_root");
     load_pointer();
 
     //Once all materials are loaded, we can move them to the gpu
@@ -211,7 +195,7 @@ void core::Engine::load_pointer()
     //Create an entity for each loaded shape
     std::unique_ptr<DrawableEntity> entity = std::make_unique<PointerEntity>
     (
-        1600,
+        300,
         RenderData
         {
             .vertex_buffer = loaded_object.vertex_buffer,
@@ -311,7 +295,7 @@ void core::Engine::render() const
     engine_context.renderer->update_camera(window->mouse_delta_x, window->mouse_delta_y);
     
     // Record the object picking command buffer with new mouse position
-    object_picker->record_command_buffer(window->local_mouse_x, window->local_mouse_y);
+    //object_picker->record_command_buffer();
     
     if (bool result = engine_context.renderer->draw_frame(); !result)
     {
