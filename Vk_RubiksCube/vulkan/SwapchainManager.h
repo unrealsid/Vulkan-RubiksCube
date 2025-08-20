@@ -1,10 +1,8 @@
 #pragma once
 #include <vector>
 #include <vulkan.h>
-
+#include "../structs/EngineContext.h"
 #include "VkBootstrap.h"
-
-struct EngineContext;
 
 namespace vulkan
 {
@@ -16,10 +14,12 @@ namespace vulkan
     class SwapchainManager
     {
     public:
-        ~SwapchainManager();
 
-        bool create_swapchain(const EngineContext& engine_context);
-        bool recreate_swapchain(const EngineContext& engine_context);
+        SwapchainManager(EngineContext& engine_context) : engine_context(engine_context){} 
+        ~SwapchainManager();
+        
+        bool create_swapchain();
+        bool recreate_swapchain();
         void cleanup();
 
         [[nodiscard]] vkb::Swapchain get_swapchain() const { return swapchain; }
@@ -30,6 +30,8 @@ namespace vulkan
 
     private:    
         void cleanup_image_views(const EngineContext& engine_context);
+
+        EngineContext& engine_context;
 
         vkb::Swapchain swapchain{};
         std::vector<VkImage> swapchain_images;

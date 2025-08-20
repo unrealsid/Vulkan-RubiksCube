@@ -1,8 +1,6 @@
 #include "SwapchainManager.h"
 #include <iostream>
-
 #include "DeviceManager.h"
-#include "../structs/EngineContext.h"
 #include "../rendering/Renderer.h"
 #include "../utils/RenderUtils.h"
 
@@ -11,7 +9,7 @@ vulkan::SwapchainManager::~SwapchainManager()
     cleanup();
 }
 
-bool vulkan::SwapchainManager::create_swapchain(const EngineContext& engine_context)
+bool vulkan::SwapchainManager::create_swapchain()
 {
     vkb::SwapchainBuilder swapchain_builder{ engine_context.device_manager->get_device() };
     
@@ -51,7 +49,7 @@ bool vulkan::SwapchainManager::create_swapchain(const EngineContext& engine_cont
     return true;
 }
 
-bool vulkan::SwapchainManager::recreate_swapchain(const EngineContext& engine_context)
+bool vulkan::SwapchainManager::recreate_swapchain()
 {
     auto device_manager = engine_context.device_manager.get();
     auto renderer = engine_context.renderer.get();
@@ -66,7 +64,7 @@ bool vulkan::SwapchainManager::recreate_swapchain(const EngineContext& engine_co
     }
 
     // Recreate the swapchain
-    if (!create_swapchain(engine_context))
+    if (!create_swapchain())
     {
         std::cout << "Failed to recreate swapchain\n";
         return false;

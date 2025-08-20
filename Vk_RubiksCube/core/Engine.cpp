@@ -34,7 +34,7 @@ void core::Engine::init()
     //Init window and vulkan objects
     engine_context.window_manager = std::make_unique<window::WindowManager>(engine_context);
     engine_context.device_manager = std::make_unique<vulkan::DeviceManager>(engine_context);
-    engine_context.swapchain_manager = std::make_unique<vulkan::SwapchainManager>();
+    engine_context.swapchain_manager = std::make_unique<vulkan::SwapchainManager>(engine_context);
     
     engine_context.window_manager->create_window_glfw("Rubik's Cube", false);
     engine_context.device_manager->device_init(engine_context);
@@ -42,7 +42,7 @@ void core::Engine::init()
     engine_context.material_manager = std::make_unique<material::MaterialManager>(engine_context);
 
     auto swapchain_manager = engine_context.swapchain_manager.get();
-    swapchain_manager->create_swapchain(engine_context);
+    swapchain_manager->create_swapchain();
 
     engine_context.device_manager->get_queues();
     utils::MemoryUtils::create_vma_allocator(*engine_context.device_manager);
@@ -230,7 +230,7 @@ void core::Engine::load_pointer()
 
 void core::Engine::load_entities()
 {
-    //Load Game manager
+    //Instantiate the Game manager
     std::unique_ptr<Entity> game_manager = std::make_unique<GameManager>(300, engine_context, "game_manager");
     entities.push_back(std::move(game_manager));
 }

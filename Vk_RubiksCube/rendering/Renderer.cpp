@@ -69,7 +69,7 @@ bool core::Renderer::draw_frame()
     VkResult result = dispatch_table.acquireNextImageKHR(swapchain_manager->get_swapchain(), UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) 
     {
-        return swapchain_manager->recreate_swapchain(engine_context);
+        return swapchain_manager->recreate_swapchain();
     }
 
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) 
@@ -129,7 +129,7 @@ bool core::Renderer::draw_frame()
     result = dispatch_table.queuePresentKHR(device_manager->get_present_queue(), &present_info);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
     {
-        return swapchain_manager->recreate_swapchain(engine_context);
+        return swapchain_manager->recreate_swapchain();
     }
     if (result != VK_SUCCESS)
     {
