@@ -5,7 +5,7 @@
 #include <GLFW/glfw3.h>
 
 #include "VkBootstrap.h"
-#include "Features/VulkanFeatureActivator.h"
+#include "features/VulkanFeatureActivator.h"
 #include "../rendering/Vk_DynamicRendering.h"
 #include "../platform/WindowManager.h"
 #include "../structs/EngineContext.h"
