@@ -1,7 +1,7 @@
 #pragma once
 #include <functional>
 #include <memory>
-#include <vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 #include <GLFW/glfw3.h>
 
 namespace core

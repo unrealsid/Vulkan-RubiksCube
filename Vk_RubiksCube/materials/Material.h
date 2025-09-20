@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
-#include <vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 #include "../structs/Vk_MaterialData.h"
 
 namespace vkb

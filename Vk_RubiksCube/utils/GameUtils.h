@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include <vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 #include <glm/vec4.hpp>
 
 #include "../structs/EngineContext.h"

@@ -1,7 +1,7 @@
 #include "DeviceManager.h"
 
 #include <iostream>
-#include <vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 #include <GLFW/glfw3.h>
 
 #include "VkBootstrap.h"
