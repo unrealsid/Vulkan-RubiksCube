@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vk_mem_alloc.h>
-#include <vulkan_core.h>
+#include <vma/vk_mem_alloc.h>
+#include <vulkan/vulkan_core.h>
 
 struct DepthStencilImage
 {

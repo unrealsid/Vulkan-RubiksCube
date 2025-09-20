@@ -1,6 +1,6 @@
 #pragma once
 #include <memory>
-#include <vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 
 namespace material
 {

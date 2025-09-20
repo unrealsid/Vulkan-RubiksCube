@@ -2,7 +2,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 
 #include "VkBootstrapDispatch.h"
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include <vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 #include <glm/glm.hpp>
 
 struct Vertex

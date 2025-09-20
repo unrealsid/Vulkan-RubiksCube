@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include <iostream>
-#include <GLFW/glfw3.h>
+#include <GLFW3/glfw3.h>
 
 #include "DrawableEntity.h"
 #include "../game_entities/CubiesEntity.h"

@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <vulkan_core.h>
+#include <vulkan/vulkan_core.h>
 #include <glm/vec3.hpp>
 
 #include "VkBootstrapDispatch.h"
