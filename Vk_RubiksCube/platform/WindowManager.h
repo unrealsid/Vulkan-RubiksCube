@@ -2,7 +2,7 @@
 #include <functional>
 #include <memory>
 #include <vulkan/vulkan_core.h>
-#include <GLFW3/glfw3.h>
+#include <GLFW/glfw3.h>
 
 namespace core
 {

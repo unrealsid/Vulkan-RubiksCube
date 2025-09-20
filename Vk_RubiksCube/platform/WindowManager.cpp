@@ -1,6 +1,6 @@
 #include "WindowManager.h"
 #include <iostream>
-#include <GLFW3/glfw3.h>
+#include <GLFW/glfw3.h>
 
 #include "../core/Engine.h"
 #include "../game_entities/GameManager.h"

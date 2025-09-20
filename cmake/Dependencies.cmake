@@ -22,20 +22,20 @@ if(NOT vk-bootstrap_FOUND)
 endif()
 
 #3. Include GLFW
-find_package(GLFW CONFIG QUIET)
-if(GLFW_FOUND)
+find_package(GLFW3 CONFIG QUIET)
+if(GLFW3_FOUND)
     message(STATUS "Using GLFW via find_package")
 endif()
-if(NOT GLFW_FOUND)
+if(NOT GLFW3_FOUND)
     FetchContent_Declare(
-            GLFW
+            GLFW3
             GIT_REPOSITORY "https://github.com/glfw/glfw.git"
             GIT_TAG        "master"
             GIT_SHALLOW TRUE
             GIT_PROGRESS TRUE
     )
     message(STATUS "Using GLFW via FetchContent")
-    FetchContent_MakeAvailable(GLFW)
+    FetchContent_MakeAvailable(GLFW3)
 endif()
 
 #4. include STBI Image Library
@@ -77,7 +77,7 @@ endif()
 set(EXT_DIR ${CMAKE_SOURCE_DIR}/ext)
 
 # 6. Add ImGui
-set(IMG_UI_PROJECT_NAME imgui)
+set(IMGUI_PROJECT_NAME imgui)
 set(IMGUI_DIR ${EXT_DIR}/imgui-master)
 
 file(GLOB IMGUI_SOURCES
@@ -89,10 +89,13 @@ file(GLOB IMGUI_SOURCES
 
 message(STATUS "Current source files in imgui: ${IMGUI_SOURCES}")
 
-add_library(${IMG_UI_PROJECT_NAME} STATIC ${IMGUI_SOURCES})
+add_library(${IMGUI_PROJECT_NAME} STATIC ${IMGUI_SOURCES})
 
 # Add ImGui include paths (both main and backends)
-target_include_directories(${IMG_UI_PROJECT_NAME} PUBLIC
+target_include_directories(${IMGUI_PROJECT_NAME} PUBLIC
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
 )
+
+target_link_libraries(${IMGUI_PROJECT_NAME} PUBLIC Vulkan::Vulkan)
+

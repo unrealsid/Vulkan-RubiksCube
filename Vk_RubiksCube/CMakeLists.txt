@@ -17,9 +17,17 @@ target_include_directories(
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 
-target_link_libraries(${ENGINE_PROJECT_NAME} PRIVATE Vulkan::Vulkan
+if(NOT TARGET glfw)
+  message(FATAL_ERROR "Och nuu, GLFW is not a target")
+
+    get_property(allTargets DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY BUILDSYSTEM_TARGETS)
+
+    message(STATUS "Targets in this directory: ${allTargets}")
+endif()
+
+target_link_libraries(${ENGINE_PROJECT_NAME} PUBLIC Vulkan::Vulkan
                                                     vk-bootstrap::vk-bootstrap
-                                                    GLFW
+                                                    glfw
                                                     STB-image::STB-image
                                                     imgui
                                                     tinyobjloader)
