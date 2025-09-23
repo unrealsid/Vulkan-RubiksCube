@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <memory>
+#include <string>
 #include <vulkan/vulkan_core.h>
 #include <GLFW/glfw3.h>
 
@@ -62,13 +63,14 @@ namespace window
         double mouse_y = 0.0;
         bool mouse_moved = false;
 
+        static std::string sequence;
+
         // Handle mouse button press/release
         static void on_mouse_button(GLFWwindow* window, int button, int action, int mods);
 
-        // Handle mouse movement
-        static void on_mouse_move(GLFWwindow* window, double xpos, double ypos);
+        //Handle key inputs
+        static void on_key_interacted(GLFWwindow* window, int key, int scancode, int action, int mods);
 
-        // Handle scroll wheel
-        static void on_scroll(GLFWwindow* window, double xoffset, double yoffset);
+        static char get_char_from_glfw_key(int value);
     };
 }

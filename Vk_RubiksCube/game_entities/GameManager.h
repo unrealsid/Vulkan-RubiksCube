@@ -66,9 +66,7 @@ private:
 
     float face_distance;
 
-    PointerEntity* pointer_entity;
     std::vector<core::DrawableEntity*> cubies;
-
 
     // A queue to hold the individual moves (e.g., 'F', 'u', 'R', 'R').
     // We'll use uppercase for clockwise and lowercase for counter-clockwise.

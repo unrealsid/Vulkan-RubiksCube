@@ -7,7 +7,6 @@
 #include "DrawableEntity.h"
 #include "../game_entities/CubiesEntity.h"
 #include "../game_entities/GameManager.h"
-#include "../game_entities/PointerEntity.h"
 #include "../game_entities/RootEntity.h"
 #include "../platform/WindowManager.h"
 #include "../utils/MemoryUtils.h"
@@ -193,39 +192,10 @@ void core::Engine::load_models()
     }
 
     load_root<RootEntity>(100, "root");
-    load_pointer();
 
     //Once all materials are loaded, we can move them to the gpu
     engine_context.material_manager->init();
     organize_draw_batches();
-}
-
-void core::Engine::load_pointer()
-{
-    std::string root_obj_path = "/models/mouse_pointer/mouse_pointer.obj";
-
-    utils::ModelLoaderUtils model_utils;
-    model_utils.load_model_from_obj(root_obj_path, engine_context);
-    auto loaded_object = model_utils.get_loaded_objects()[0];
-
-    //Create an entity for each loaded shape
-    std::unique_ptr<DrawableEntity> entity = std::make_unique<PointerEntity>
-    (
-        300,
-        RenderData
-        {
-            .vertex_buffer = loaded_object.vertex_buffer,
-            .index_buffer = loaded_object.index_buffer,
-            .local_position = loaded_object.local_position,
-            .vertices = loaded_object.vertices,
-            .indices = loaded_object.indices,
-            .material_index_ranges = loaded_object.material_index_ranges,
-        },
-        engine_context,
-        "pointer"
-    );
-            
-    drawable_entities.push_back(std::move(entity));
 }
 
 void core::Engine::load_entities()

@@ -100,8 +100,7 @@ namespace core
             
             drawable_entities.push_back(std::move(entity));
         }
-        
-        void load_pointer();
+
         void load_entities();
         void organize_draw_batches();
         
