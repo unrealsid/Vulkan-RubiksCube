@@ -3,7 +3,6 @@
 #include <iostream>
 
 #include "CubiesEntity.h"
-#include "PointerEntity.h"
 #include "../core/Engine.h"
 #include "../platform/WindowManager.h"
 #include "../rendering/Renderer.h"
@@ -17,7 +16,6 @@ void GameManager::start()
     window_manager = engine_context.window_manager.get();
     
     init_attach_cubies_to_root();
-    pointer_entity = dynamic_cast<PointerEntity*>(core::Engine::get_entity_by_tag("pointer"));
     
     cache_cubies();
     face_distance = calculate_face_distance();
@@ -116,7 +114,7 @@ void GameManager::rotate_face(char face, bool clockwise)
 
     auto cubies_to_rotate = get_face_cubies(face);
 
-    // If a face has no cubies (e.g., invalid character), do nothing.
+    // If a face has no cubies, do nothing.
     if (cubies_to_rotate.empty())
     {
         return;
