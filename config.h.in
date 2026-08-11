@@ -5,6 +5,5 @@
 #define WINDOW_HEIGHT 720
 
 #define RESOURCE_PATH "@RESOURCE_PATH@"
-#define SHADER_PATH "@SHADER_PATH@"
 
 #endif // CONFIG_H

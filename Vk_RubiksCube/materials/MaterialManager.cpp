@@ -2,14 +2,15 @@
 
 #include "Material.h"
 #include "../structs/PushConstantBlock.h"
-#include "../utils/FileUtils.h"
-#include "../Config.h"
+#include "../utils/ShaderCompiler.h"
 #include "../rendering/Renderer.h"
 #include "../structs/Vk_ShaderInfo.h"
 #include "../utils/DescriptorUtils.h"
 #include "../utils/MemoryUtils.h"
 #include "../vulkan/DeviceManager.h"
+#include <cassert>
 #include <cmath>
+#include <iostream>
 
 material::MaterialManager::MaterialManager(EngineContext& engine_context) : max_materials(1000),
                                                                             material_params_address(0), material_params_buffer({}),
@@ -17,13 +18,16 @@ material::MaterialManager::MaterialManager(EngineContext& engine_context) : max_
                                                                             texture_descriptor_set(nullptr),
                                                                             engine_context(engine_context)
 {
+    //Shaders ship as GLSL next to the executable and are compiled to SPIR-V on startup
+    const std::string shader_directory = utils::ShaderCompiler::get_shader_directory();
+
     shader_info =
     {
         {
-            "Mesh Material", 
+            "Mesh Material",
            {
-               .vertex_shader_path = std::string(SHADER_PATH) + "/mesh_shader.vert.spv",
-               .fragment_shader_path = std::string(SHADER_PATH) + "/mesh_shader.frag.spv"
+               .vertex_shader_path = shader_directory + "/mesh_shader.vert.glsl",
+               .fragment_shader_path = shader_directory + "/mesh_shader.frag.glsl"
            }
         }
     };
@@ -120,7 +124,8 @@ void material::MaterialManager::create_material(const std::string& name)
 
     if (shader_info_data == shader_info.end())
     {
-        std::cout << "Failed to find shader info for material: " << name << "\n";
+        std::cerr << "Failed to find shader info for material: " << name << std::endl;
+        assert(false && "missing shader info");
         return;
     }
     
@@ -130,15 +135,14 @@ void material::MaterialManager::create_material(const std::string& name)
     push_constant_range.offset = 0;
     push_constant_range.size = sizeof(PushConstantBlock);
    
-    size_t shaderCodeSizes[2]{};
-    char* shaderCodes[2]{};
-
-    utils::FileUtils::loadShader(shader_info_data->second.vertex_shader_path, shaderCodes[0], shaderCodeSizes[0]);
-    utils::FileUtils::loadShader(shader_info_data->second.fragment_shader_path, shaderCodes[1], shaderCodeSizes[1]);
+    auto vertex_spirv = utils::ShaderCompiler::compile_glsl_to_spirv(
+        shader_info_data->second.vertex_shader_path, VK_SHADER_STAGE_VERTEX_BIT);
+    auto fragment_spirv = utils::ShaderCompiler::compile_glsl_to_spirv(
+        shader_info_data->second.fragment_shader_path, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     auto shader_object = std::make_unique<ShaderObject>();
     shader_object->create_shaders(engine_context.dispatch_table,
-        shaderCodes[0], shaderCodeSizes[0], shaderCodes[1], shaderCodeSizes[1],
+        std::move(vertex_spirv), std::move(fragment_spirv),
         &texture_descriptor_layout, (texture_descriptor_layout != nullptr ? 1 : 0),
         &push_constant_range, 1);
 

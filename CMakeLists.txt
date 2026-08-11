@@ -27,11 +27,9 @@ include(GNUInstallDirs)
 # Convert paths to CMake-safe paths
 # Update paths to use the correct source folder name 'Vk_RubiksCube'
 file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Vk_RubiksCube/resources/" RESOURCE_PATH)
-file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Vk_RubiksCube/shaders/" SHADER_PATH)
 
-# Store them as cache variables to allow editing via CMake GUI or Visual Studio
+# Store it as a cache variable to allow editing via CMake GUI or Visual Studio
 set(RESOURCE_PATH "${RESOURCE_PATH}" CACHE STRING "Path to the resources directory")
-set(SHADER_PATH "${SHADER_PATH}" CACHE STRING "Path to the shaders directory")
 
 # Configure a header file with this path
 configure_file(

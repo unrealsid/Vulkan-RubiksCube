@@ -1,7 +1,8 @@
 include(FetchContent)
 
 #1. Include Vulkan
-find_package(Vulkan REQUIRED)
+# shaderc_combined provides runtime GLSL -> SPIR-V compilation
+find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
 
 #2. Include VK Bootstrap
 find_package(vk-bootstrap QUIET)

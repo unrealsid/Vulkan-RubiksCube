@@ -8,8 +8,7 @@
 material::ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
                              VkShaderStageFlags           next_stage_,
                              std::string                  shader_name_,
-                             char*						  glsl_source,
-                             size_t						  spirv_size,
+                             std::vector<uint32_t>		  spirv_code,
                              const VkDescriptorSetLayout *pSetLayouts,
                              uint32_t                     setLayoutCount,
                              const VkPushConstantRange   *pPushConstantRange,
@@ -18,7 +17,7 @@ material::ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
     stage       = stage_;
     shader_name = std::move(shader_name_);
     next_stage  = next_stage_;
-    spirv       = glsl_source;
+    spirv       = std::move(spirv_code);
 
     // Fill out the shader create info struct
     vk_shader_create_info.sType                  = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
@@ -27,8 +26,8 @@ material::ShaderObject::Shader::Shader(VkShaderStageFlagBits        stage_,
     vk_shader_create_info.stage                  = stage;
     vk_shader_create_info.nextStage              = next_stage;
     vk_shader_create_info.codeType               = VK_SHADER_CODE_TYPE_SPIRV_EXT;
-    vk_shader_create_info.codeSize               = spirv_size;
-    vk_shader_create_info.pCode                  = spirv;
+    vk_shader_create_info.codeSize               = spirv.size() * sizeof(uint32_t);
+    vk_shader_create_info.pCode                  = spirv.data();
     vk_shader_create_info.pName                  = "main";
     vk_shader_create_info.setLayoutCount         = setLayoutCount;
     vk_shader_create_info.pSetLayouts            = pSetLayouts;
@@ -78,20 +77,20 @@ void material::ShaderObject::build_linked_shaders(const vkb::DispatchTable& disp
     frag->set_shader(shaderEXTs[1]);
 }
 
-void material::ShaderObject::create_shaders(const vkb::DispatchTable& disp, char* vertexShader, size_t vertShaderSize, char* fragmentShader, size_t fragShaderSize,
+void material::ShaderObject::create_shaders(const vkb::DispatchTable& disp, std::vector<uint32_t> vertex_spirv, std::vector<uint32_t> fragment_spirv,
 	const VkDescriptorSetLayout* pSetLayouts, uint32_t setLayoutCount,
 	const VkPushConstantRange* pPushConstantRange, uint32_t pPushConstantCount)
 {
 	vert_shader = std::make_unique<Shader>(VK_SHADER_STAGE_VERTEX_BIT,
 	                                      VK_SHADER_STAGE_FRAGMENT_BIT,
-	                                      "MeshShader", vertexShader,
-	                                      vertShaderSize, pSetLayouts, setLayoutCount, pPushConstantRange, pPushConstantCount);
-                                        
+	                                      "MeshShader", std::move(vertex_spirv),
+	                                      pSetLayouts, setLayoutCount, pPushConstantRange, pPushConstantCount);
+
     frag_shader = std::make_unique<Shader>(VK_SHADER_STAGE_FRAGMENT_BIT,
                                     0,
                                     "MeshShader",
-                                    fragmentShader,
-                                    fragShaderSize, pSetLayouts, setLayoutCount, pPushConstantRange, pPushConstantCount);
+                                    std::move(fragment_spirv),
+                                    pSetLayouts, setLayoutCount, pPushConstantRange, pPushConstantCount);
 
     build_linked_shaders(disp, vert_shader.get(), frag_shader.get());
 }

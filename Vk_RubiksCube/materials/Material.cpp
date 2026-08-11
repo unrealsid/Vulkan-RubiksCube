@@ -5,8 +5,6 @@
 #include <iostream>
 
 #include "ShaderObject.h"
-#include "../utils/FileUtils.h"
-#include "../Config.h"
 
 material::Material::Material(std::string material_name): material_name(std::move(material_name)), descriptor_set(nullptr), pipeline_layout(nullptr)
 {
