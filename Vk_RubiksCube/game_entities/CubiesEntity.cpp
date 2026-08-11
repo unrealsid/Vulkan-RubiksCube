@@ -43,8 +43,7 @@ void CubiesEntity::update(double delta_time)
         // 2. Decompose the final matrix to update the transform component
         // This ensures the transform always has the correct world position/rotation
         get_transform()->set_position(glm::vec3(model_matrix[3]));
-        glm::quat rotation_quat = glm::quat_cast(model_matrix);
-        get_transform()->set_rotation(glm::degrees(glm::eulerAngles(rotation_quat)));
+        get_transform()->set_rotation(glm::quat_cast(model_matrix));
 
         //After everything is done, sent the data to the gpu via mapped memory
         update_transform_on_gpu(model_matrix);
@@ -73,8 +72,7 @@ void CubiesEntity::stop_rotation()
 
         // Update transform component one last time
         get_transform()->set_position(glm::vec3(final_model_matrix[3]));
-        glm::quat rotation_quat = glm::quat_cast(final_model_matrix);
-        get_transform()->set_rotation(glm::degrees(glm::eulerAngles(rotation_quat)));
+        get_transform()->set_rotation(glm::quat_cast(final_model_matrix));
         
         update_transform_on_gpu(final_model_matrix);
         

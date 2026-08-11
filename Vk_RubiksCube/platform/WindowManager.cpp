@@ -1,4 +1,5 @@
 #include "WindowManager.h"
+#include <cctype>
 #include <iostream>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -162,17 +163,32 @@ namespace window
 
     void WindowManager::on_key_interacted(const SDL_KeyboardEvent& event)
     {
-        if (!event.repeat)
+        if (event.repeat)
         {
-            auto game_manager = dynamic_cast<GameManager*>(core::Engine::get_entity_by_tag("game_manager"));
-            sequence += get_char_from_key(event.key);
-
-            std::cout << sequence << std::endl;
-
-            game_manager->execute_move_sequence(sequence);
+            return;
         }
 
-        sequence = "";
+        const char face = get_char_from_key(event.key);
+        if (face == '\0')
+        {
+            //Key isn't bound to a face, so leave any queued moves untouched
+            return;
+        }
+
+        auto game_manager = dynamic_cast<GameManager*>(core::Engine::get_entity_by_tag("game_manager"));
+        if (game_manager == nullptr)
+        {
+            std::cerr << "No game_manager entity found; ignoring key input" << std::endl;
+            return;
+        }
+
+        //Holding shift turns the face the other way, matching the F / F' notation
+        const bool counter_clockwise = (event.mod & SDL_KMOD_SHIFT) != 0;
+        const char move = counter_clockwise ? static_cast<char>(std::tolower(face)) : face;
+
+        std::cout << "Queued move: " << face << (counter_clockwise ? "'" : "") << std::endl;
+
+        game_manager->queue_move(move);
     }
 
     char WindowManager::get_char_from_key(int32_t key)

@@ -17,8 +17,10 @@ void GameManager::start()
 
     cache_cubies();
     face_distance = calculate_face_distance();
-    
-    //execute_move_sequence("FRU'L2B");
+    layer_threshold = face_distance * 0.5f;
+
+    std::cout << "Cubies: " << cubie_count << ", face distance: " << face_distance
+              << ", layer threshold: " << layer_threshold << std::endl;
 }
 
 void GameManager::update(double delta_time)
@@ -62,6 +64,19 @@ void GameManager::update(double delta_time)
 
         rotate_face(face, is_clockwise);
     }
+}
+
+// Appends a single move. Uppercase is clockwise, lowercase counter-clockwise.
+// Unlike execute_move_sequence this leaves already-queued moves alone, so holding down
+// a run of keys plays them back in the order they were pressed.
+void GameManager::queue_move(char move_char)
+{
+    if (!isalpha(static_cast<unsigned char>(move_char)))
+    {
+        return;
+    }
+
+    move_queue.push(move_char);
 }
 
 // This is the new public function you'll call to start a sequence of moves.
@@ -150,32 +165,39 @@ void GameManager::rotate_face(char face, bool clockwise)
 
 std::vector<CubiesEntity*> GameManager::get_face_cubies(char face) const
 {
+    //A cubie sits in the outer layer of an axis when it is more than half way out from the
+    //centre. Testing against a mid-point rather than matching an exact distance keeps the
+    //selection stable regardless of small asymmetries in the model or drift from past turns.
     std::vector<CubiesEntity*> face_cubies_entities;
+
     for (const auto& entity : cubies)
     {
         auto cubie = dynamic_cast<CubiesEntity*>(entity);
         if (!cubie) continue;
 
         const glm::vec3& pos = cubie->get_transform()->get_world_position();
-        
+
         bool should_add = false;
         switch (face)
         {
-            case 'F': if (std::abs(pos.z - face_distance) < epsilon) should_add = true; break;
-            case 'B': if (std::abs(pos.z + face_distance) < epsilon) should_add = true; break;
-            case 'R': if (std::abs(pos.x - face_distance) < epsilon) should_add = true; break;
-            case 'L': if (std::abs(pos.x + face_distance) < epsilon) should_add = true; break;
-            case 'U': if (std::abs(pos.y - face_distance) < epsilon) should_add = true; break;
-            case 'D': if (std::abs(pos.y + face_distance) < epsilon) should_add = true; break;
-            case 'M': if (std::abs(pos.x) < epsilon) should_add = true; break;
-            case 'E': if (std::abs(pos.y) < epsilon) should_add = true; break;
-            case 'S': if (std::abs(pos.z) < epsilon) should_add = true; break;
+            case 'F': should_add = pos.z >  layer_threshold; break;
+            case 'B': should_add = pos.z < -layer_threshold; break;
+            case 'R': should_add = pos.x >  layer_threshold; break;
+            case 'L': should_add = pos.x < -layer_threshold; break;
+            case 'U': should_add = pos.y >  layer_threshold; break;
+            case 'D': should_add = pos.y < -layer_threshold; break;
+            case 'M': should_add = std::abs(pos.x) <= layer_threshold; break;
+            case 'E': should_add = std::abs(pos.y) <= layer_threshold; break;
+            case 'S': should_add = std::abs(pos.z) <= layer_threshold; break;
+            default: break;
         }
+
         if (should_add)
         {
             face_cubies_entities.push_back(cubie);
         }
     }
+
     return face_cubies_entities;
 }
 

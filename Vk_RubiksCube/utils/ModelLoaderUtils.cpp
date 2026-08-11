@@ -243,6 +243,9 @@ bool utils::ModelLoaderUtils::load_model_from_obj(const std::string& path,
         material_manager->add_texture(ImageUtils::create_texture_image(engine_context, image_data));
     }
     
+    //One entity per cubie, not one per material group
+    loaded_objects = merge_objects_by_name_prefix(loaded_objects);
+
     //Create Model index and vertex buffers
     for (auto& loaded_object : loaded_objects)
     {
@@ -261,6 +264,59 @@ bool utils::ModelLoaderUtils::load_model_from_obj(const std::string& path,
     }
 
     return true;   
+}
+
+std::vector<LoadedObject> utils::ModelLoaderUtils::merge_objects_by_name_prefix(const std::vector<LoadedObject>& objects)
+{
+    std::vector<LoadedObject> merged;
+    std::unordered_map<std::string, size_t> key_to_index;
+
+    for (const auto& object : objects)
+    {
+        //"Cube.001_WhiteMaterial.001" -> "Cube.001"
+        const std::string key = object.name.substr(0, object.name.find('_'));
+
+        auto existing = key_to_index.find(key);
+        if (existing == key_to_index.end())
+        {
+            key_to_index[key] = merged.size();
+            merged.push_back(object);
+            merged.back().name = key;
+            continue;
+        }
+
+        LoadedObject& target = merged[existing->second];
+
+        const auto vertex_offset = static_cast<uint32_t>(target.vertices.size());
+        const auto index_offset = static_cast<uint32_t>(target.indices.size());
+
+        target.vertices.insert(target.vertices.end(), object.vertices.begin(), object.vertices.end());
+        for (const uint32_t index : object.indices)
+        {
+            target.indices.push_back(index + vertex_offset);
+        }
+
+        //Each incoming group holds exactly one material and the groups are appended in order,
+        //so a material's indices stay contiguous and its range only ever has to grow.
+        for (const auto& [material_id, range] : object.material_index_ranges)
+        {
+            const uint32_t start = range.first + index_offset;
+            const uint32_t end = range.second + index_offset;
+
+            if (auto range_it = target.material_index_ranges.find(material_id); range_it != target.material_index_ranges.end())
+            {
+                range_it->second.second = end;
+            }
+            else
+            {
+                target.material_index_ranges[material_id] = { start, end };
+            }
+        }
+    }
+
+    std::cout << "Merged " << objects.size() << " material groups into " << merged.size() << " objects" << std::endl;
+
+    return merged;
 }
 
 glm::vec3 utils::ModelLoaderUtils::compute_vertices_average(const std::vector<Vertex>& object_vertices)

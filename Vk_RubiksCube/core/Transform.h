@@ -30,7 +30,12 @@ public:
     void set_position(const glm::vec3& position) { this->position = position;  }
 
     void set_rotation(const glm::vec3& euler_angle);
-    
+
+    //Set directly from a quaternion. Preferred over the euler overload when the rotation came
+    //out of a matrix: round-tripping through euler angles loses precision and can gimbal-flip.
+    void set_rotation(const glm::quat& rotation_quat) { rotation = rotation_quat; }
+
+
     glm::quat get_rotation_quat() const{ return rotation; }
     glm::vec3 get_rotation_euler() const { return glm::eulerAngles(rotation); }
 

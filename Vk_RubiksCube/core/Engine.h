@@ -71,36 +71,6 @@ namespace core
         //Loads the cubies
         void load_models();
 
-        //Making this a template since we can have different kinds of root classes
-        template<typename T>
-        void load_root(uint32_t id, const std::string& tag)
-        {
-            std::string root_obj_path = "/models/root/root.obj";
-
-            utils::ModelLoaderUtils model_utils;
-            model_utils.load_model_from_obj(root_obj_path, engine_context);
-            auto loaded_object = model_utils.get_loaded_objects()[0];
-
-            //Create an entity for each loaded shape
-            std::unique_ptr<DrawableEntity> entity = std::make_unique<T>
-            (
-                id,
-                RenderData
-                {
-                    .vertex_buffer = loaded_object.vertex_buffer,
-                    .index_buffer = loaded_object.index_buffer,
-                    .local_position = loaded_object.local_position,
-                    .vertices = loaded_object.vertices,
-                    .indices = loaded_object.indices,
-                    .material_index_ranges = loaded_object.material_index_ranges,
-                },
-                engine_context,
-                tag
-            );
-            
-            drawable_entities.push_back(std::move(entity));
-        }
-
         void load_entities();
         void organize_draw_batches();
         

@@ -68,8 +68,6 @@ namespace window
         bool mouse_moved = false;
         bool close_requested = false;
 
-        std::string sequence;
-
         // Handle mouse button press/release
         void on_mouse_button(const SDL_MouseButtonEvent& event) const;
 

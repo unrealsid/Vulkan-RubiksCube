@@ -68,6 +68,11 @@ namespace utils
         
         std::vector<tinyobj::material_t> materials;
 
+        //Blender exports one group per material, so a single cubie arrives split across
+        //several shapes ("Cube.001_WhiteMaterial.001"). Merge them back into one object per
+        //cubie, keyed on the name before the first underscore.
+        static std::vector<LoadedObject> merge_objects_by_name_prefix(const std::vector<LoadedObject>& objects);
+
         //Calculates average and normalizes vertices
         static glm::vec3 compute_vertices_average(const std::vector<Vertex>& object_vertices);
 

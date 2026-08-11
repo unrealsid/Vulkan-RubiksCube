@@ -3,7 +3,6 @@
 
 #include "../core/Entity.h"
 
-class DynamicRootEntity;
 class CubiesEntity;
 
 namespace core
@@ -28,11 +27,9 @@ class GameManager : public core::Entity
 public:
     GameManager(uint32_t entity_id, EngineContext& engine_context, const std::string& entity_string_id)
         : Entity(entity_id, engine_context, entity_string_id), window_manager(nullptr), object_picker(nullptr),
-          buffer{}, selected_object_id(-1)
+          buffer{}, selected_object_id(-1), cubie_count(0), face_distance(0.0f), layer_threshold(0.0f)
     {
     }
-
-    const float epsilon = 0.1f;
 
     void start() override;
 
@@ -47,6 +44,9 @@ public:
     static glm::vec3 get_rotation_axis(char face);
 
     void execute_move_sequence(const std::string& move_notation);
+
+    //Appends one move to the queue without discarding what is already pending
+    void queue_move(char move_char);
     
    
 private:
@@ -60,7 +60,10 @@ private:
     //How many cubies do we have? 
     uint32_t cubie_count;
 
+    //Distance from the centre to the outermost cubies, and the mid-point used to decide
+    //which layer a cubie belongs to along a given axis.
     float face_distance;
+    float layer_threshold;
 
     std::vector<core::DrawableEntity*> cubies;
 
