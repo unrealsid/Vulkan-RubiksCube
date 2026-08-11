@@ -71,8 +71,8 @@
 		"hidden": true,
 		"toolchainFile": "${sourceDir}/cmake/toolchain-msvc.cmake",
         "cacheVariables": {
-          "CMAKE_C_FLAGS_INIT": "/W4/Zc:__cplusplus",
-          "CMAKE_CXX_FLAGS_INIT": "/W4/Zc:__cplusplus"
+          "CMAKE_C_FLAGS_INIT": "/W4 /Zc:__cplusplus",
+          "CMAKE_CXX_FLAGS_INIT": "/W4 /Zc:__cplusplus"
         }
 	},
 	{

@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <vulkan/vulkan_core.h>
-#include <GLFW/glfw3.h>
 
 #include "VkBootstrap.h"
 #include "features/VulkanFeatureActivator.h"
@@ -52,7 +51,7 @@ bool vulkan::DeviceManager::device_init(EngineContext& engine_context)
 
     engine_context.instance_dispatch_table = instance.make_table();
 
-    surface = create_surface_GLFW(engine_context);
+    surface = create_surface(engine_context);
 
     VkPhysicalDeviceFeatures features = {};
     features.geometryShader = VK_FALSE;
@@ -114,27 +113,9 @@ bool vulkan::DeviceManager::device_init(EngineContext& engine_context)
     return true;
 }
 
-VkSurfaceKHR vulkan::DeviceManager::create_surface_GLFW(const EngineContext& engine_context, const VkAllocationCallbacks* allocator) const
+VkSurfaceKHR vulkan::DeviceManager::create_surface(const EngineContext& engine_context, const VkAllocationCallbacks* allocator) const
 {
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
-    
-    VkResult err = glfwCreateWindowSurface(instance, engine_context.window_manager->get_window(), allocator, &surface);
-    if (err)
-    {
-        const char* error_msg;
-        int ret = glfwGetError(&error_msg);
-        if (ret != 0)
-        {
-            std::cout << ret << " ";
-            if (error_msg != nullptr)
-            {
-                std::cout << error_msg;
-            }
-            std::cout << "\n";
-        }
-        surface = VK_NULL_HANDLE;
-    }
-    return surface;
+    return engine_context.window_manager->create_surface(instance, allocator);
 }
 
 bool vulkan::DeviceManager::get_queues()

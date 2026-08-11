@@ -19,7 +19,16 @@ target_include_directories(
 
 target_link_libraries(${ENGINE_PROJECT_NAME} PUBLIC Vulkan::Vulkan
                                                     vk-bootstrap::vk-bootstrap
-                                                    glfw
+                                                    SDL3::SDL3
                                                     STB-image::STB-image
                                                     imgui
                                                     tinyobjloader)
+
+# SDL3 is linked as a shared library, so its DLL has to sit next to the
+# executable for the build tree to be runnable in place.
+add_custom_command(TARGET ${ENGINE_PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_RUNTIME_DLLS:${ENGINE_PROJECT_NAME}>
+                $<TARGET_FILE_DIR:${ENGINE_PROJECT_NAME}>
+        COMMAND_EXPAND_LISTS
+)

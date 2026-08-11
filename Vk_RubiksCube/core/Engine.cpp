@@ -2,12 +2,10 @@
 
 #include <chrono>
 #include <iostream>
-#include <GLFW/glfw3.h>
 
 #include "DrawableEntity.h"
 #include "../game_entities/CubiesEntity.h"
 #include "../game_entities/GameManager.h"
-#include "../game_entities/RootEntity.h"
 #include "../platform/WindowManager.h"
 #include "../utils/MemoryUtils.h"
 #include "../utils/ModelLoaderUtils.h"
@@ -35,7 +33,7 @@ void core::Engine::init()
     engine_context.device_manager = std::make_unique<vulkan::DeviceManager>(engine_context);
     engine_context.swapchain_manager = std::make_unique<vulkan::SwapchainManager>(engine_context);
     
-    engine_context.window_manager->create_window_glfw("Rubik's Cube", false);
+    engine_context.window_manager->create_window("Rubik's Cube", false);
     engine_context.device_manager->device_init(engine_context);
 
     engine_context.material_manager = std::make_unique<material::MaterialManager>(engine_context);
@@ -66,10 +64,11 @@ void core::Engine::run()
     auto previous_time = std::chrono::high_resolution_clock::now();
 
     auto window_manager = engine_context.window_manager.get();
-    auto window = engine_context.window_manager->get_window();
-    
-    while (!glfwWindowShouldClose(window))
+
+    while (!window_manager->should_close())
     {
+        window_manager->poll_events();
+
         window_manager->update_mouse_position();
         window_manager->get_local_mouse_xy();
         window_manager->get_mouse_delta();
@@ -84,8 +83,6 @@ void core::Engine::run()
         previous_time = current_time;
 
         window_manager->update_last_mouse_position();
-        
-        glfwPollEvents();
    }
 }
 
@@ -155,7 +152,7 @@ void core::Engine::load_models()
         //"/models/rubiks_cube_texture/rubiksCubeTexture.obj",
         //"/models/plane/plane_simple.obj",
         //"/models/rubiks_cube/rubiks_cube.obj",
-        "/models/rubiks_cube_newpivots/rubiks_cube_new_pivot.obj"
+        "/models/rubiks_cube_newpivots/Rubiks_CubeNew.obj"
         //"/models/viper/viper.obj"
     };
 
@@ -190,8 +187,6 @@ void core::Engine::load_models()
             drawable_entities.push_back(std::move(entity));
         }
     }
-
-    load_root<RootEntity>(100, "root");
 
     //Once all materials are loaded, we can move them to the gpu
     engine_context.material_manager->init();

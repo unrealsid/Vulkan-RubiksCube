@@ -38,10 +38,6 @@ public:
 
     void update(double delta_time) override;
 
-    //setup a basic scene graph
-    //This is done at init. For dynamic rotation unparent and reparent to dynamic_root
-    static void init_attach_cubies_to_root();
-
     //Get cubies that belong to a specific face
     std::vector<class CubiesEntity*> get_face_cubies(char face) const;
 

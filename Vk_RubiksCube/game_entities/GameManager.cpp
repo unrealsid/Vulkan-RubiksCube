@@ -14,9 +14,7 @@ void GameManager::start()
     Entity::start();
 
     window_manager = engine_context.window_manager.get();
-    
-    init_attach_cubies_to_root();
-    
+
     cache_cubies();
     face_distance = calculate_face_distance();
     
@@ -147,21 +145,6 @@ void GameManager::rotate_face(char face, bool clockwise)
     {
         // We assume CubiesEntity is castable from the Entity* in the cubies vector
         cubie->set_rotation_params(true, rotation_axis, final_angle);
-    }
-}
-
-void GameManager::init_attach_cubies_to_root()
-{
-    auto& drawables = core::Engine::get_drawable_entities();
-    auto root_drawable = core::Engine::get_entity_by_tag("root");
-    
-    for (const auto& cubie : drawables)
-    {
-        auto tag = cubie->get_entity_string_id();
-        if(tag.find("cubie_entity_") != std::string::npos)
-        {
-            cubie->get_transform()->parent = root_drawable->get_transform();
-        }
     }
 }
 

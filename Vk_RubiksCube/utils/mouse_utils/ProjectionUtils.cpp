@@ -5,7 +5,7 @@
 glm::vec3 utils::ProjectionUtils::unproject_point(const EngineContext& engine_context, float depth_value,
                                                   const glm::mat4& view_matrix, const glm::mat4& projection_matrix)
 {
-    auto window_manager = *engine_context.window_manager;
+    const auto& window_manager = *engine_context.window_manager;
     auto extents = engine_context.swapchain_manager->get_swapchain().extent;
         
     // 1. Convert mouse coordinates to Normalized Device Coordinates (NDC)

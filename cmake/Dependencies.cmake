@@ -13,7 +13,9 @@ if(NOT vk-bootstrap_FOUND)
     FetchContent_Declare(
             vk_bootstrap
             GIT_REPOSITORY "https://github.com/charles-lunarg/vk-bootstrap"
-            GIT_TAG        v1.4.321
+            # Must track the installed Vulkan SDK's VK_HEADER_VERSION: the generated
+            # dispatch table references entry points that only exist in matching headers.
+            GIT_TAG        v1.4.341
             GIT_SHALLOW TRUE
             GIT_PROGRESS TRUE
     )
@@ -21,21 +23,32 @@ if(NOT vk-bootstrap_FOUND)
     FetchContent_MakeAvailable(vk_bootstrap)
 endif()
 
-#3. Include GLFW
-find_package(GLFW3 CONFIG QUIET)
-if(GLFW3_FOUND)
-    message(STATUS "Using GLFW via find_package")
+#3. Include SDL3
+# The Vulkan SDK ships a prebuilt SDL3 (headers, import library, DLL and a CMake
+# package config), so look there first before falling back to a source build.
+find_package(SDL3 CONFIG QUIET
+        HINTS
+            "$ENV{VULKAN_SDK}"
+            "$ENV{VK_SDK_PATH}"
+)
+if(SDL3_FOUND)
+    message(STATUS "Using SDL3 ${SDL3_VERSION} via find_package (${SDL3_DIR})")
 endif()
-if(NOT GLFW3_FOUND)
+if(NOT SDL3_FOUND)
+    set(SDL_SHARED ON CACHE BOOL "" FORCE)
+    set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+
     FetchContent_Declare(
-            GLFW3
-            GIT_REPOSITORY "https://github.com/glfw/glfw.git"
-            GIT_TAG        "master"
+            SDL3
+            GIT_REPOSITORY "https://github.com/libsdl-org/SDL.git"
+            GIT_TAG        "release-3.4.14"
             GIT_SHALLOW TRUE
             GIT_PROGRESS TRUE
     )
-    message(STATUS "Using GLFW via FetchContent")
-    FetchContent_MakeAvailable(GLFW3)
+    message(STATUS "Using SDL3 via FetchContent")
+    FetchContent_MakeAvailable(SDL3)
 endif()
 
 #4. include STBI Image Library
@@ -72,6 +85,13 @@ if(NOT Obj_Loader_FOUND)
     FetchContent_MakeAvailable(Obj_Loader)
 endif()
 
+# MSVC 19.51 rejects the constexpr SIMD paths in the fast_float copy vendored into
+# tinyobjloader's release branch. Fall back to its strtod-based parser until upstream
+# picks up a newer fast_float.
+if(MSVC AND TARGET tinyobjloader)
+    target_compile_definitions(tinyobjloader PUBLIC TINYOBJLOADER_DISABLE_FAST_FLOAT)
+endif()
+
 #Adding ext folder
 # Define EXT_DIR for libraries kept in the external folder
 set(EXT_DIR ${CMAKE_SOURCE_DIR}/ext)
@@ -83,7 +103,6 @@ set(IMGUI_DIR ${EXT_DIR}/imgui-master)
 file(GLOB IMGUI_SOURCES
     "${IMGUI_DIR}/*.h"
     "${IMGUI_DIR}/*.cpp"
-    "${IMGUI_DIR}/backends/imgui_impl_glfw.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp"
 )
 

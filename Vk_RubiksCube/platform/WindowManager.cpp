@@ -1,6 +1,7 @@
 #include "WindowManager.h"
 #include <iostream>
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 
 #include "../core/Engine.h"
 #include "../game_entities/GameManager.h"
@@ -10,8 +11,6 @@
 
 namespace window
 {
-    std::string WindowManager::sequence = "";
-
     WindowManager::WindowManager(EngineContext& engine_context) : last_mouse_x(0), last_mouse_y(0), mouse_delta_x(0),
                                                                   mouse_delta_y(0),
                                                                   window(nullptr),
@@ -21,64 +20,95 @@ namespace window
 
     WindowManager::~WindowManager()
     {
+        //Torn down here rather than by the engine so that the window always
+        //outlives the Vulkan surface created from it.
+        destroy_window();
     }
 
-    GLFWwindow* WindowManager::create_window_glfw(const char* windowName, bool resize)
+    SDL_Window* WindowManager::create_window(const char* windowName, bool resize)
     {
-        glfwInit();
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        if (!resize)
+        if (!SDL_Init(SDL_INIT_VIDEO))
         {
-            glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+            std::cout << "SDL_Init failed: " << SDL_GetError() << "\n";
+            return nullptr;
         }
 
-        window = glfwCreateWindow(window_width, window_height, windowName, nullptr, nullptr);
-        register_callbacks();
+        SDL_WindowFlags flags = SDL_WINDOW_VULKAN;
+        if (resize)
+        {
+            flags |= SDL_WINDOW_RESIZABLE;
+        }
+
+        window = SDL_CreateWindow(windowName, window_width, window_height, flags);
+        if (window == nullptr)
+        {
+            std::cout << "SDL_CreateWindow failed: " << SDL_GetError() << "\n";
+        }
+
         return window;
     }
 
-    void WindowManager::destroy_window_glfw() const
+    void WindowManager::destroy_window()
     {
-        glfwDestroyWindow(window);
-        glfwTerminate();
+        if (window != nullptr)
+        {
+            SDL_DestroyWindow(window);
+            window = nullptr;
+        }
+
+        SDL_Quit();
     }
 
-    VkSurfaceKHR WindowManager::create_surface_glfw(VkInstance instance, VkAllocationCallbacks* allocator) const
+    VkSurfaceKHR WindowManager::create_surface(VkInstance instance, const VkAllocationCallbacks* allocator) const
     {
         VkSurfaceKHR surface = VK_NULL_HANDLE;
-        VkResult err = glfwCreateWindowSurface(instance, window, allocator, &surface);
 
-        if (err)
+        if (!SDL_Vulkan_CreateSurface(window, instance, allocator, &surface))
         {
-            const char* error_msg;
-            int ret = glfwGetError(&error_msg);
-
-            if (ret != 0)
-            {
-                std::cout << ret << " ";
-                if (error_msg != nullptr) std::cout << error_msg;
-                std::cout << "\n";
-            }
+            std::cout << "SDL_Vulkan_CreateSurface failed: " << SDL_GetError() << "\n";
             surface = VK_NULL_HANDLE;
         }
+
         return surface;
     }
 
-    void WindowManager::register_callbacks() const
+    void WindowManager::poll_events()
     {
-        glfwSetKeyCallback(window, on_key_interacted);
-        glfwSetMouseButtonCallback(window, on_mouse_button);
+        SDL_Event event;
+
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.type)
+            {
+            case SDL_EVENT_QUIT:
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                close_requested = true;
+                break;
+
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                on_mouse_button(event.button);
+                break;
+
+            case SDL_EVENT_KEY_DOWN:
+                on_key_interacted(event.key);
+                break;
+
+            default:
+                break;
+            }
+        }
     }
 
-    GLFWwindow* WindowManager::get_window() const
+    SDL_Window* WindowManager::get_window() const
     {
         return window;
     }
 
     void WindowManager::update_mouse_position()
     {
-        double new_x, new_y;
-        glfwGetCursorPos(window, &new_x, &new_y);
+        float new_x, new_y;
+        SDL_GetMouseState(&new_x, &new_y);
 
         // Check if mouse has moved
         if (new_x != mouse_x || new_y != mouse_y)
@@ -121,34 +151,21 @@ namespace window
         last_mouse_y = local_mouse_y;
     }
 
-    void WindowManager::on_mouse_button(GLFWwindow* window, int button, int action, int mods)
+    void WindowManager::on_mouse_button(const SDL_MouseButtonEvent& event) const
     {
-        core::Engine& engine = core::Engine::get_instance();
-
-        if(action == GLFW_PRESS)
+        //Rotate camera
+        if (event.button == SDL_BUTTON_LEFT)
         {
-            //Rotate camera
-            if(button == GLFW_MOUSE_BUTTON_LEFT)
-            {
-                engine.get_engine_context().renderer->should_update_camera = true;
-            }
-        }
-        if(action == GLFW_RELEASE)
-        {
-            //Rotate camera
-            if(button == GLFW_MOUSE_BUTTON_LEFT)
-            {
-                engine.get_engine_context().renderer->should_update_camera = false;
-            }
+            engine_context.renderer->should_update_camera = event.down;
         }
     }
 
-    void WindowManager::on_key_interacted(GLFWwindow* window, int key, int scancode, int action, int mods)
+    void WindowManager::on_key_interacted(const SDL_KeyboardEvent& event)
     {
-        if (action == GLFW_PRESS)
+        if (!event.repeat)
         {
-            auto game_manager =  dynamic_cast<GameManager*>(core::Engine::get_entity_by_tag("game_manager"));
-            sequence += get_char_from_glfw_key(key);
+            auto game_manager = dynamic_cast<GameManager*>(core::Engine::get_entity_by_tag("game_manager"));
+            sequence += get_char_from_key(event.key);
 
             std::cout << sequence << std::endl;
 
@@ -158,24 +175,24 @@ namespace window
         sequence = "";
     }
 
-    char WindowManager::get_char_from_glfw_key(int key)
+    char WindowManager::get_char_from_key(int32_t key)
     {
         switch (key)
         {
             // Z-axis keys
-        case GLFW_KEY_F: return 'F';
-        case GLFW_KEY_B: return 'B';
-        case GLFW_KEY_S: return 'S';
+        case SDLK_F: return 'F';
+        case SDLK_B: return 'B';
+        case SDLK_S: return 'S';
 
             // X-axis keys
-        case GLFW_KEY_R: return 'R';
-        case GLFW_KEY_L: return 'L';
-        case GLFW_KEY_M: return 'M';
+        case SDLK_R: return 'R';
+        case SDLK_L: return 'L';
+        case SDLK_M: return 'M';
 
             // Y-axis keys
-        case GLFW_KEY_U: return 'U';
-        case GLFW_KEY_D: return 'D';
-        case GLFW_KEY_E: return 'E';
+        case SDLK_U: return 'U';
+        case SDLK_D: return 'D';
+        case SDLK_E: return 'E';
 
         default: return '\0';
         }

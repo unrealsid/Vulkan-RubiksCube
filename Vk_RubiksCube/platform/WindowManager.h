@@ -1,9 +1,7 @@
 #pragma once
-#include <functional>
-#include <memory>
+#include <cstdint>
 #include <string>
 #include <vulkan/vulkan_core.h>
-#include <GLFW/glfw3.h>
 
 namespace core
 {
@@ -11,18 +9,23 @@ namespace core
 }
 
 struct EngineContext;
-struct GLFWwindow;
+struct SDL_Window;
+struct SDL_KeyboardEvent;
+struct SDL_MouseButtonEvent;
 
 namespace window
 {
     constexpr int window_width = 1280;
     constexpr int window_height = 720;
-    
+
     class WindowManager
     {
     public:
         WindowManager(EngineContext& engine_context);
         ~WindowManager();
+
+        WindowManager(const WindowManager&) = delete;
+        WindowManager& operator=(const WindowManager&) = delete;
 
         //Mouse coordinates clamped to the viewport
         int32_t local_mouse_x = 0;
@@ -30,25 +33,26 @@ namespace window
 
         int32_t last_mouse_x;
         int32_t last_mouse_y;
-        
+
         int32_t mouse_delta_x;
         int32_t mouse_delta_y;
 
-        GLFWwindow* create_window_glfw(const char* windowName = "", bool resize = true);
-        void destroy_window_glfw() const;
-        VkSurfaceKHR create_surface_glfw(VkInstance instance, VkAllocationCallbacks* allocator = nullptr) const;
+        SDL_Window* create_window(const char* windowName = "", bool resize = true);
+        void destroy_window();
+        VkSurfaceKHR create_surface(VkInstance instance, const VkAllocationCallbacks* allocator = nullptr) const;
 
-        //Register window callbacks
-        void register_callbacks() const;
+        //Drain the SDL event queue and dispatch to the handlers below
+        void poll_events();
+        bool should_close() const { return close_requested; }
 
-        GLFWwindow* get_window() const;
+        SDL_Window* get_window() const;
 
         void update_mouse_position();
         double get_mouse_x() const { return mouse_x > 0 ? mouse_x : 0.0 ; }
         double get_mouse_y() const { return mouse_y > 0 ? mouse_y : 0.0 ; }
 
-        bool get_local_mouse_xy(); 
-        
+        bool get_local_mouse_xy();
+
         bool has_mouse_moved() const { return mouse_moved; }
         void reset_mouse_moved_flag() { mouse_moved = false; }
         void get_mouse_delta();
@@ -56,21 +60,22 @@ namespace window
 
 
     private:
-        GLFWwindow* window;
+        SDL_Window* window;
         EngineContext& engine_context;
 
         double mouse_x = 0.0;
         double mouse_y = 0.0;
         bool mouse_moved = false;
+        bool close_requested = false;
 
-        static std::string sequence;
+        std::string sequence;
 
         // Handle mouse button press/release
-        static void on_mouse_button(GLFWwindow* window, int button, int action, int mods);
+        void on_mouse_button(const SDL_MouseButtonEvent& event) const;
 
         //Handle key inputs
-        static void on_key_interacted(GLFWwindow* window, int key, int scancode, int action, int mods);
+        void on_key_interacted(const SDL_KeyboardEvent& event);
 
-        static char get_char_from_glfw_key(int value);
+        static char get_char_from_key(int32_t key);
     };
 }
